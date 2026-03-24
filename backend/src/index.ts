@@ -63,7 +63,7 @@ app.use(cookieParser());
 app.use(cors({
     origin: (origin, callback) => {
         // Allow server-to-server requests (no origin) and explicit allowlist
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('cyvhub.com')) {
             callback(null, true);
         } else {
             callback(new Error(`CORS policy: Origin '${origin}' not allowed.`));
