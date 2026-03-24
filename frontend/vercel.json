@@ -2,6 +2,10 @@
   "framework": "create-react-app",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://cyvhub-backend-eta.vercel.app/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
