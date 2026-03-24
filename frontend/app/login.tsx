@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, Truck, ShoppingBag, User, ChevronRight, Shield, Container, ArrowLeft } from 'lucide-react-native';
