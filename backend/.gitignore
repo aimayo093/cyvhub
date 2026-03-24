@@ -1,0 +1,11 @@
+node_modules
+dist/
+# Keep environment variables out of version control
+.env
+*.db
+*.db-journal
+dev.db
+/generated/prisma
+public/uploads/
+
+.vercel

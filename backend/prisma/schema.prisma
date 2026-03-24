@@ -1,0 +1,646 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // MIGRATION: Now using Supabase PostgreSQL.
+  // DATABASE_URL  — use the Supabase "Transaction" pooler URL (port 6543, ?pgbouncer=true)
+  // DIRECT_URL    — use the Supabase "Session" direct URL (port 5432) for prisma migrate
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String  @id @default(uuid())
+  email        String  @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         String // "driver" | "customer" | "admin" | "carrier"
+  status       String  @default("ACTIVE") // "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING"
+  phone        String?
+  avatar       String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  jobsAsCustomer Job[] @relation("CustomerJobs")
+  jobsAsDriver   Job[] @relation("DriverJobs")
+  jobsAsCarrier  Job[] @relation("CarrierJobs")
+
+  businessAccountId String?
+  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id])
+
+  carrierProfileId String?         @unique
+  carrierProfile   CarrierProfile? @relation(fields: [carrierProfileId], references: [id])
+
+  // Real-time location tracking for drivers
+  lastKnownLat Float?
+  lastKnownLng Float?
+
+  // HR & Payroll Additions
+  hrRecord        HRRecord?
+  timeOffRequests TimeOffRequest[]
+  payslips        Payslip[]
+}
+
+model Job {
+  id        String @id @default(uuid())
+  jobNumber String @unique
+  status    String // "DRAFT" | "PENDING_DISPATCH" | "ASSIGNED" | "EN_ROUTE_TO_PICKUP" ...
+  priority  String // "NORMAL" | "URGENT"
+
+  pickupContactName  String
+  pickupContactPhone String
+  pickupAddressLine1 String
+  pickupCity         String
+  pickupPostcode     String
+  pickupLatitude     Float
+  pickupLongitude    Float
+  pickupWindowStart  String
+  pickupWindowEnd    String
+
+  dropoffContactName  String
+  dropoffContactPhone String
+  dropoffAddressLine1 String
+  dropoffCity         String
+  dropoffPostcode     String
+  dropoffLatitude     Float
+  dropoffLongitude    Float
+  dropoffWindowStart  String
+  dropoffWindowEnd    String
+
+  vehicleType         String
+  specialInstructions String?
+  goodsDescription    String?
+  calculatedPrice     Float
+  distanceKm          Float?
+
+  // Delivery Unification Fields
+  trackingNumber    String?   @unique
+  paymentStatus     String?   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  estimatedDelivery DateTime?
+  deliveredAt       DateTime?
+
+  // Relationships
+  customerId String
+  customer   User   @relation("CustomerJobs", fields: [customerId], references: [id])
+
+  assignedDriverId String?
+  assignedDriver   User?   @relation("DriverJobs", fields: [assignedDriverId], references: [id])
+
+  assignedCarrierId String?
+  assignedCarrier   User?   @relation("CarrierJobs", fields: [assignedCarrierId], references: [id])
+
+  businessAccountId String?
+  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id])
+
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id])
+
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  completedAt  DateTime?
+  
+  // Epic 2/3: Commercial Engine Quote Linkage
+  quoteRequestId String?       @unique
+  quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
+}
+
+// ==========================================
+// PAYMENTS & SETTLEMENTS
+// ==========================================
+
+model PaymentTransaction {
+  id          String @id @default(uuid())
+  type        String // "charge" | "refund" | "payout"
+  status      String // "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "REFUNDED"
+  amount      Float
+  currency    String @default("GBP")
+  method      String // "stripe" | "paypal"
+  description String
+
+  // Optional References
+  deliveryId      String?
+  trackingNumber  String?
+  jobNumber       String?
+  customerName    String?
+  customerEmail   String?
+  stripePaymentId String?
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+
+model SettlementBatch {
+  id            String   @id @default(uuid())
+  recipientId   String
+  recipientName String
+  recipientType String // "driver" | "carrier"
+  status        String // "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "PROCESSING" | "PAID" | "FAILED"
+  periodStart   DateTime
+  periodEnd     DateTime
+
+  jobIds          String // Stored as JSON string array
+  jobsCount       Int
+  grossAmount     Float
+  totalDeductions Float
+  netAmount       Float
+
+  method      String
+  reference   String    @unique
+  approvedBy  String?
+  approvedAt  DateTime?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model MediaAsset {
+  id           String   @id @default(uuid())
+  url          String
+  filename     String
+  size         String
+  type         String // "image" | "icon" | "document"
+  dateUploaded DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AccountingEntry {
+  id          String   @id @default(uuid())
+  type        String // "credit" | "debit"
+  category    String // "delivery_revenue" | "delivery_payment" | "driver_payout" ...
+  amount      Float
+  description String
+  date        DateTime @default(now())
+  reference   String // E.g., transaction.id or settlement.id
+  balance     Float    @default(0)
+
+  recipientId   String?
+  recipientName String?
+  settlementId  String?
+  deliveryId    String?
+}
+
+// ==========================================
+// COMMERCIAL CORE (PHASE A)
+// ==========================================
+
+model BusinessAccount {
+  id              String  @id @default(uuid())
+  tradingName     String
+  companyName     String
+  contactEmail    String
+  contactPhone    String?
+  billingAddress  String?
+  billingCity     String?
+  billingPostcode String?
+
+  status          String  @default("ACTIVE") // "ACTIVE" | "ON_HOLD" | "PENDING" | "SUSPENDED"
+  industryProfile String?
+
+  totalSpend     Float   @default(0)
+  currentBalance Float   @default(0)
+  creditLimit    Float   @default(0)
+  billingTerms   String? @default("Net 30")
+  slaCompliance  Float   @default(100.0)
+  totalJobs      Int     @default(0)
+
+  contractId String?   @unique
+  contract   Contract? @relation(fields: [contractId], references: [id])
+
+  users    User[]
+  jobs     Job[]
+  invoices Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contract {
+  id                String    @id @default(uuid())
+  contractName      String
+  contractRef       String    @unique
+  clientId          String
+  clientName        String
+  startDate         DateTime
+  endDate           DateTime?
+  status            String    @default("ACTIVE") // "ACTIVE" | "EXPIRED" | "DRAFT"
+  paymentTerms      String    @default("Net 30")
+  monthlyVolumeTier String    @default("tier_1")
+
+  baseRateDiscount  Float  @default(0.0)
+  mileageRateFactor Float  @default(1.0)
+  specialSlaParams  String @default("standard")
+
+  // Relationships
+  businessAccount BusinessAccount?
+  rateRules       RateRule[]
+  jobs            Job[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RateRule {
+  id         String   @id @default(uuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  vehicleType   String
+  baseRate      Float
+  perMileRate   Float
+  minimumCharge Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Quote {
+  id          String  @id @default(uuid())
+  quoteNumber String  @unique
+  customerId  String
+  businessId  String?
+
+  pickupPostcode  String
+  dropoffPostcode String
+  vehicleType     String
+  distanceKm      Float
+
+  estimatedCost Float
+  status        String   @default("VALID") // "VALID" | "ACCEPTED" | "EXPIRED"
+  expiresAt     DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// FLEET & CARRIERS (PHASE B)
+// ==========================================
+
+model CarrierProfile {
+  id                    String   @id @default(uuid())
+  companyName           String
+  tradingName           String
+  contactFirstName      String
+  contactLastName       String
+  email                 String
+  phone                 String
+  avatar                String?
+  registrationNumber    String
+  vatNumber             String?
+  insuranceExpiry       DateTime
+  operatorLicence       String
+  operatorLicenceExpiry DateTime
+  coverageRegions       String // Stored as JSON string array
+  status                String   @default("PENDING") // "APPROVED" | "PENDING" | "SUSPENDED"
+
+  totalJobsCompleted Int   @default(0)
+  slaScore           Float @default(100.0)
+  rating             Float @default(5.0)
+
+  memberSince DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  users                 User[]
+  vehicles              FleetVehicle[]
+  complianceDocs        ComplianceDocument[]
+  accountingIntegration AccountingIntegration?
+}
+
+model FleetVehicle {
+  id           String @id @default(uuid())
+  registration String @unique
+  type         String
+  make         String
+  model        String
+  year         Int
+  capacity     String
+  status       String @default("ACTIVE") // "ACTIVE" | "MAINTENANCE" | "OFFLINE"
+
+  motExpiry       DateTime
+  insuranceExpiry DateTime
+  lastService     DateTime
+
+  carrierId String
+  carrier   CarrierProfile @relation(fields: [carrierId], references: [id], onDelete: Cascade)
+
+  // Can be assigned to a specific driver (user)
+  currentDriverId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ComplianceDocument {
+  id          String    @id @default(uuid())
+  type        String // "INSURANCE" | "MOT" | "LICENCE" | "GOODS_INT_TRANSIT"
+  status      String    @default("PENDING") // "VALID" | "EXPIRING_SOON" | "EXPIRED" | "PENDING"
+  documentUrl String
+  uploadDate  DateTime  @default(now())
+  expiryDate  DateTime?
+
+  carrierId String
+  carrier   CarrierProfile @relation(fields: [carrierId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// INVOICING & ACTIVITY (PHASE D)
+// ==========================================
+
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  status        String   @default("PENDING") // "PAID" | "PENDING" | "OVERDUE" | "DRAFT"
+  amount        Float
+  currency      String   @default("GBP")
+  date          DateTime @default(now())
+  dueDate       DateTime
+  description   String?
+
+  // Relations
+  businessAccountId String
+  businessAccount   BusinessAccount @relation(fields: [businessAccountId], references: [id])
+
+  jobs Job[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id       String  @id @default(uuid())
+  type     String // "delivery_created", "delivery_picked_up", "payment", "sla_warning", etc.
+  title    String
+  message  String
+  severity String  @default("info") // "info" | "warning" | "urgent"
+  read     Boolean @default(false)
+
+  // Potential context
+  userId     String?
+  jobId      String?
+  deliveryId String?
+  amount     Float?
+
+  timestamp DateTime @default(now())
+}
+
+// ==========================================
+// NOTIFICATIONS & SETTINGS (NEW)
+// ==========================================
+
+model NotificationSettings {
+  id String @id @default(uuid())
+
+  // Email (SMTP/Nodemailer)
+  emailEnabled  Boolean @default(false)
+  smtpHost      String?
+  smtpPort      Int?
+  smtpUser      String?
+  smtpPass      String?
+  emailFromName String?
+  emailFromAddr String?
+
+  // SMS (Twilio)
+  smsEnabled  Boolean @default(false)
+  twilioSid   String?
+  twilioToken String?
+  twilioFrom  String?
+
+  // Notification Rules (Events)
+  notifyOnJobCreated   Boolean @default(true)
+  notifyOnJobAssigned  Boolean @default(true)
+  notifyOnJobDelivered Boolean @default(true)
+  notifyOnPayment      Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationLog {
+  id        String  @id @default(uuid())
+  type      String // "EMAIL" | "SMS"
+  recipient String // email address or phone number
+  subject   String? // for email
+  message   String
+  status    String // "SUCCESS" | "FAILED"
+  error     String? // error details if failed
+
+  // Optional relations
+  jobId  String?
+  userId String?
+
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// HR & PAYROLL (EPIC 1)
+// ==========================================
+
+model HRRecord {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Compliance / Right to Work
+  nationalInsurance String?
+  taxCode           String? @default("1257L")
+  bankAccountName   String?
+  bankAccountNumber String?
+  bankSortCode      String?
+
+  // Employment Details
+  employmentType String    @default("CONTRACTOR") // "EMPLOYEE" | "CONTRACTOR"
+  startDate      DateTime  @default(now())
+  endDate        DateTime?
+
+  // Status
+  backgroundCheckStatus String  @default("PENDING") // "PENDING" | "PASSED" | "FAILED"
+  rightToWorkVerified   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TimeOffRequest {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String // "HOLIDAY" | "SICK" | "OTHER"
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  status    String   @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+
+  approvedBy String?
+  approvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payslip {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  periodStart DateTime
+  periodEnd   DateTime
+
+  grossPay        Float
+  taxDeductions   Float
+  niDeductions    Float
+  otherDeductions Float @default(0)
+  netPay          Float
+
+  status      String    @default("DRAFT") // "DRAFT" | "PUBLISHED" | "PAID"
+  paymentDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// ACCOUNTING INTEGRATIONS (EPIC 4)
+// ==========================================
+
+model AccountingIntegration {
+  id        String         @id @default(uuid())
+  carrierId String         @unique
+  carrier   CarrierProfile @relation(fields: [carrierId], references: [id], onDelete: Cascade)
+
+  provider     String // "XERO" | "FREEAGENT" | "SAGE"
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  tenantId     String? // Needed for Xero
+  expiresAt    DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// COMMERCIAL PRICING & PAYOUT ENGINE (PHASE E)
+// ==========================================
+
+model VehicleClass {
+  id       String  @id @default(uuid())
+  name     String  @unique // 'CAR', 'SMALL_VAN', 'MEDIUM_VAN', 'LARGE_VAN'
+  isActive Boolean @default(true)
+
+  maxWeightKg Float
+  maxLengthCm Float
+  maxWidthCm  Float
+  maxHeightCm Float
+
+  // Baseline Fallbacks (Overridden by specific PricingRules)
+  baseFee           Float @default(0.0)
+  mileageRate       Float @default(0.0)
+  driverPickupFee   Float @default(0.0)
+  driverMileageRate Float @default(0.0)
+
+  pricingRules  PricingRule[]
+  payoutRules   PayoutRule[]
+  quoteRequests QuoteRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PricingRule {
+  id             String       @id @default(uuid())
+  name           String
+  vehicleClassId String
+  vehicle        VehicleClass @relation(fields: [vehicleClassId], references: [id])
+
+  type         String // 'BASE_FEE', 'MILEAGE', 'WEIGHT_SURCHARGE', 'VOLUME_SURCHARGE', 'ACCESS_SURCHARGE', 'OOH_UPLIFT', 'EXTRA_STOP'
+  conditionKey String? // 'weight_kg', 'stairs', 'out_of_hours'
+  conditionMin Float?
+  conditionMax Float?
+
+  amount       Float
+  isPercentage Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model PayoutRule {
+  id             String       @id @default(uuid())
+  name           String
+  vehicleClassId String
+  vehicle        VehicleClass @relation(fields: [vehicleClassId], references: [id])
+
+  type         String // 'PICKUP_FEE', 'MILEAGE', 'WEIGHT_BONUS', 'ACCESS_BONUS', 'EXTRA_STOP'
+  conditionKey String?
+  conditionMin Float?
+  conditionMax Float?
+
+  amount       Float
+  isPercentage Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model QuoteRequest {
+  id              String @id @default(uuid())
+  pickupPostcode  String
+  dropoffPostcode String
+  distanceMiles   Float
+
+  // Imputed Metrics
+  actualWeightKg     Float
+  volumetricWeightKg Float
+  chargeableWeightKg Float
+
+  // Selected vs Recommended
+  recommendedVehicleId String
+  vehicle              VehicleClass @relation(fields: [recommendedVehicleId], references: [id])
+
+  customerTotal     Float
+  driverPayoutTotal Float
+  marginPercentage  Float
+
+  status String @default("AUTO_APPROVED") // 'AUTO_APPROVED', 'PENDING_REVIEW', 'REJECTED'
+
+  lineItems QuoteLineItem[]
+  job       Job?
+
+  createdAt DateTime @default(now())
+}
+
+model QuoteLineItem {
+  id             String       @id @default(uuid())
+  quoteRequestId String
+  quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+
+  target      String // 'CUSTOMER' or 'DRIVER'
+  type        String // 'BASE_FEE', 'WEIGHT_SURCHARGE', 'MILEAGE'
+  amount      Float
+  description String
+
+  createdAt DateTime @default(now())
+}
+
+model ManualReviewCase {
+  id             String @id @default(uuid())
+  quoteRequestId String @unique
+  reason         String // 'MARGIN_TOO_LOW', 'OVERWEIGHT', 'OVERSIZE'
+  status         String @default("OPEN") // 'OPEN', 'RESOLVED', 'REJECTED'
+
+  reviewedBy String?
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+}
