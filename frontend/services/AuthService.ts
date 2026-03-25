@@ -148,28 +148,30 @@ export class AuthService {
     // Admin access is enforced exclusively at the backend API level via JWT role guards.
 
     /**
-     * Signs up a new user on the backend
+     * Signs up a new user on the backend.
+     * Does NOT store a session or log the user in — the user must verify their email first.
      */
-    static async signup(firstName: string, lastName: string, email: string, password: string, role: UserRole): Promise<{ success: boolean; error?: string; user?: any }> {
+    static async signup(
+        firstName: string,
+        lastName: string,
+        email: string,
+        password: string,
+        role: UserRole,
+        phone: string,
+    ): Promise<{ success: boolean; error?: string; email?: string }> {
         if (role === 'admin') return { success: false, error: 'Cannot register as an administrator' };
 
         try {
             const response = await apiClient('/auth/signup', {
                 method: 'POST',
-                body: JSON.stringify({ firstName, lastName, email, password, role }),
+                body: JSON.stringify({ firstName, lastName, email, password, role, phone }),
             });
 
-            // SEC-AUDIT-6: On web, the browser manages the session cookie automatically.
-            // Only store token in SecureStore on native mobile platforms.
-            if (Platform.OS !== 'web') {
-                await SecureStore.setItemAsync(AUTH_KEY, 'true');
-                await SecureStore.setItemAsync(ROLE_KEY, response.user.role);
-                await SecureStore.setItemAsync(TOKEN_KEY, response.token);
-            }
-
-            return { success: true, user: response.user };
+            // Backend returns { message, email } — no token. User must verify email before login.
+            return { success: true, email: response.email };
         } catch (e: any) {
             return { success: false, error: e.message || 'Registration failed' };
         }
     }
+
 }

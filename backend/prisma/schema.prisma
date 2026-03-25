@@ -18,9 +18,14 @@ model User {
   firstName    String
   lastName     String
   role         String // "driver" | "customer" | "admin" | "carrier"
-  status       String  @default("ACTIVE") // "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING"
+  status       String  @default("PENDING") // "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING"
   phone        String?
   avatar       String?
+
+  // Email verification
+  emailVerified     Boolean   @default(false)
+  emailVerifyToken  String?   @unique
+  emailVerifyExpiry DateTime?
 
   // Timestamps
   createdAt DateTime @default(now())

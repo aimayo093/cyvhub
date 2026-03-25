@@ -43,7 +43,9 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/app-icon.png"
+      "favicon": "./assets/images/app-icon.png",
+      "themeColor": "#0a2540",
+      "viewport": "width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover"
     },
     "plugins": [
       [

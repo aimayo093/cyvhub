@@ -56,15 +56,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     email: string,
     password: string,
     role: UserRole,
-  ): Promise<{ success: boolean; error?: string }> => {
-    const result = await AuthService.signup(firstName, lastName, email, password, role);
-    if (!result.success || !result.user) return { success: false, error: result.error };
+    phone: string,
+  ): Promise<{ success: boolean; error?: string; email?: string }> => {
+    const result = await AuthService.signup(firstName, lastName, email, password, role, phone);
+    if (!result.success) return { success: false, error: result.error };
 
-    loadProfileForRole(role, result.user);
-    setUserRole(role);
-    setIsAuthenticated(true);
-    return { success: true };
-  }, [loadProfileForRole]);
+    // Do NOT authenticate the user here — they must verify their email first.
+    // The login screen will redirect them to the verify-email-sent screen.
+    return { success: true, email: result.email };
+  }, []);
 
   const logout = useCallback(async () => {
     await AuthService.clearSession();

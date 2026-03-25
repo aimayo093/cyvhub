@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff, Truck, ShoppingBag, User, ChevronRight, Shield, Container, ArrowLeft } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, Truck, ShoppingBag, User, ChevronRight, Container, ArrowLeft, Phone } from 'lucide-react-native';
 import { Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -46,6 +46,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -90,9 +91,15 @@ export default function LoginScreen() {
   }, [fadeAnim]);
 
   const handleSubmit = useCallback(async () => {
-    if (authMode === 'signup' && (!firstName.trim() || !lastName.trim())) {
-      setError('Please fill in all fields');
-      return;
+    if (authMode === 'signup') {
+      if (!firstName.trim() || !lastName.trim()) {
+        setError('Please enter your first and last name');
+        return;
+      }
+      if (!phone.trim()) {
+        setError('Please enter a phone number');
+        return;
+      }
     }
     if (!email.trim() || !password.trim()) {
       setError('Please fill in all fields');
@@ -101,26 +108,33 @@ export default function LoginScreen() {
     setError('');
     setIsLoading(true);
     try {
-      let result: { success: boolean; error?: string };
       if (authMode === 'login') {
-        result = await login(email.trim(), password, selectedRole);
+        const result = await login(email.trim(), password, selectedRole);
+        if (result.success) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.replace('/');
+        } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          setError(result.error || 'Invalid email or password');
+        }
       } else {
-        result = await signup(firstName.trim(), lastName.trim(), email.trim(), password, selectedRole);
-      }
-      if (result.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.replace('/');
-      } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        // QA-4: Show the specific error from AuthService (e.g. rate-limit message)
-        setError(result.error || 'Invalid email or password');
+        const result = await signup(firstName.trim(), lastName.trim(), email.trim(), password, selectedRole, phone.trim());
+        if (result.success) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          // Redirect to "check your inbox" screen — user must verify before logging in
+          router.replace(`/verify-email-sent?email=${encodeURIComponent(result.email ?? email.trim())}` as any);
+        } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          setError(result.error || 'Could not create account. Please try again.');
+        }
       }
     } catch (e) {
       setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [authMode, email, password, firstName, lastName, selectedRole, login, signup, router]);
+  }, [authMode, email, password, firstName, lastName, phone, selectedRole, login, signup, router]);
+
 
 
 
@@ -202,37 +216,56 @@ export default function LoginScreen() {
               ) : null}
 
               {authMode === 'signup' && (
-                <View style={styles.nameRow}>
-                  <View style={[styles.inputGroup, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>First Name</Text>
+                <>
+                  <View style={styles.nameRow}>
+                    <View style={[styles.inputGroup, { flex: 1 }]}>
+                      <Text style={styles.inputLabel}>First Name</Text>
+                      <View style={styles.inputContainer}>
+                        <User size={16} color={Colors.textMuted} />
+                        <TextInput
+                          style={styles.input}
+                          value={firstName}
+                          onChangeText={setFirstName}
+                          placeholder="First"
+                          placeholderTextColor={Colors.textMuted}
+                          autoCapitalize="words"
+                          testID="signup-firstname"
+                        />
+                      </View>
+                    </View>
+                    <View style={[styles.inputGroup, { flex: 1 }]}>
+                      <Text style={styles.inputLabel}>Last Name</Text>
+                      <View style={styles.inputContainer}>
+                        <TextInput
+                          style={[styles.input, { paddingLeft: 0 }]}
+                          value={lastName}
+                          onChangeText={setLastName}
+                          placeholder="Last"
+                          placeholderTextColor={Colors.textMuted}
+                          autoCapitalize="words"
+                          testID="signup-lastname"
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Phone Number</Text>
                     <View style={styles.inputContainer}>
-                      <User size={16} color={Colors.textMuted} />
+                      <Phone size={16} color={Colors.textMuted} />
                       <TextInput
                         style={styles.input}
-                        value={firstName}
-                        onChangeText={setFirstName}
-                        placeholder="First"
+                        value={phone}
+                        onChangeText={setPhone}
+                        placeholder="+44 7700 900000"
                         placeholderTextColor={Colors.textMuted}
-                        autoCapitalize="words"
-                        testID="signup-firstname"
+                        keyboardType="phone-pad"
+                        autoCapitalize="none"
+                        testID="signup-phone"
                       />
                     </View>
                   </View>
-                  <View style={[styles.inputGroup, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Last Name</Text>
-                    <View style={styles.inputContainer}>
-                      <TextInput
-                        style={[styles.input, { paddingLeft: 0 }]}
-                        value={lastName}
-                        onChangeText={setLastName}
-                        placeholder="Last"
-                        placeholderTextColor={Colors.textMuted}
-                        autoCapitalize="words"
-                        testID="signup-lastname"
-                      />
-                    </View>
-                  </View>
-                </View>
+                </>
               )}
 
               <View style={styles.inputGroup}>

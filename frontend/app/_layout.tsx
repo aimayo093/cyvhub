@@ -71,6 +71,14 @@ function RootLayoutNav() {
         options={{ headerShown: false, gestureEnabled: false, presentation: 'modal' }}
       />
       <Stack.Screen
+        name="verify-email-sent"
+        options={{ headerShown: false, gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="verify-email"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="job-detail"
         options={{
           title: "Job Details",

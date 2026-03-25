@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { prisma } from '../index';
 import { generateToken } from '../utils/jwt';
+import { sendVerificationEmail } from '../services/email.service';
 
 // SEC-10: Email format validation helper
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,6 +34,14 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Block unverified users before checking password (avoids bcrypt cost for unverified users)
+        if (!user.emailVerified) {
+            return res.status(403).json({
+                error: 'Please verify your email address before logging in. Check your inbox for the verification link.',
+                code: 'EMAIL_NOT_VERIFIED',
+            });
+        }
+
         // Check account is active before comparing password (avoids bcrypt cost for suspended users)
         if (user.status === 'SUSPENDED' || user.status === 'INACTIVE') {
             return res.status(403).json({ error: 'Your account has been suspended. Please contact support.' });
@@ -45,10 +55,6 @@ export const login = async (req: Request, res: Response) => {
         const token = generateToken({ userId: user.id, role: user.role });
 
         // SEC-AUDIT-6: Set JWT in an HTTP-only cookie for web clients.
-        // - httpOnly: prevents JavaScript from reading the cookie (blocks XSS token theft)
-        // - secure: only sent over HTTPS in production
-        // - sameSite: 'strict' prevents CSRF attacks
-        // - The token is ALSO returned in the JSON body for mobile clients (React Native SecureStore)
         res.cookie('cyvhub_session', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -116,6 +122,12 @@ export const signup = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'First and last name cannot be blank' });
         }
 
+        const { phone } = req.body;
+        const trimmedPhone = phone ? String(phone).trim() : '';
+        if (!trimmedPhone) {
+            return res.status(400).json({ error: 'Phone number is required' });
+        }
+
         const normalizedEmail = email.toLowerCase().trim();
 
         const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -125,6 +137,10 @@ export const signup = async (req: Request, res: Response) => {
 
         const passwordHash = await bcrypt.hash(password, 12); // cost factor 12 for better security
 
+        // Generate a secure email verification token (valid for 24 hours)
+        const emailVerifyToken = crypto.randomUUID();
+        const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
         const newUser = await prisma.user.create({
             data: {
                 email: normalizedEmail,
@@ -132,25 +148,73 @@ export const signup = async (req: Request, res: Response) => {
                 firstName: trimmedFirst,
                 lastName: trimmedLast,
                 role,
+                phone: trimmedPhone,
+                status: 'PENDING',
+                emailVerified: false,
+                emailVerifyToken,
+                emailVerifyExpiry,
             }
         });
 
-        const token = generateToken({ userId: newUser.id, role: newUser.role });
+        // Send the verification email (non-blocking — don't let email failure break signup)
+        try {
+            await sendVerificationEmail(newUser.email, newUser.firstName, emailVerifyToken);
+        } catch (emailError) {
+            console.error('Verification email failed to send:', emailError);
+            // Continue — user is created; they can request a resend later
+        }
 
         res.status(201).json({
-            message: 'Signup successful',
-            token,
-            user: {
-                id: newUser.id,
-                email: newUser.email,
-                firstName: newUser.firstName,
-                lastName: newUser.lastName,
-                role: newUser.role
-            }
+            message: 'Account created! Please check your email to verify your account before logging in.',
+            email: newUser.email,
         });
 
     } catch (error) {
         console.error('Signup Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/**
+ * Verifies a user's email using the token from the verification link.
+ * GET /auth/verify-email?token=<uuid>
+ */
+export const verifyEmail = async (req: Request, res: Response) => {
+    try {
+        const { token } = req.query;
+
+        if (!token || typeof token !== 'string') {
+            return res.status(400).json({ error: 'Verification token is required' });
+        }
+
+        const user = await prisma.user.findUnique({ where: { emailVerifyToken: token } });
+
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid or expired verification link' });
+        }
+
+        if (user.emailVerifyExpiry && user.emailVerifyExpiry < new Date()) {
+            return res.status(400).json({
+                error: 'Verification link has expired. Please sign up again.',
+                code: 'TOKEN_EXPIRED',
+            });
+        }
+
+        // Mark as verified, activate account, clear token fields
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                emailVerified: true,
+                status: 'ACTIVE',
+                emailVerifyToken: null,
+                emailVerifyExpiry: null,
+            }
+        });
+
+        res.json({ message: 'Email verified successfully! You can now log in.' });
+
+    } catch (error) {
+        console.error('Verify Email Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
