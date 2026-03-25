@@ -63,7 +63,12 @@ app.use(cookieParser());
 app.use(cors({
     origin: (origin, callback) => {
         // Allow server-to-server requests (no origin) and explicit allowlist
-        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('cyvhub.com')) {
+        if (
+            !origin ||
+            allowedOrigins.includes(origin) ||
+            origin.endsWith('cyvhub.com') ||
+            origin.endsWith('.vercel.app') // Allow all Vercel preview/staging URLs
+        ) {
             callback(null, true);
         } else {
             callback(new Error(`CORS policy: Origin '${origin}' not allowed.`));
