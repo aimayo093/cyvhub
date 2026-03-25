@@ -28,16 +28,24 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    const isPublicRoute = segments[0] === '(public)' || segments[0] === 'login' || segments[0] === 'admin';
+    const seg = segments[0] as string;
+
+    const isPublicRoute = 
+      seg === '(public)' || 
+      seg === 'login' || 
+      seg === 'admin' ||
+      seg === 'verify-email-sent' ||
+      seg === 'verify-email';
 
     if (!isAuthenticated) {
       if (Platform.OS !== 'web') {
-        // Mobile platform: Unauthenticated users are always forced to the login screen
-        if (segments[0] !== 'login') {
+        // Mobile platform: unauthenticated users go to login, except verification screens
+        const isVerifyRoute = seg === 'verify-email-sent' || seg === 'verify-email';
+        if (seg !== 'login' && !isVerifyRoute) {
            router.replace('/login' as any);
         }
       } else {
-        // Web platform: Unauthenticated users can browse public marketing roots
+        // Web platform: unauthenticated users can browse public marketing routes
         if (!isPublicRoute) {
           router.replace('/(public)' as any);
         }
