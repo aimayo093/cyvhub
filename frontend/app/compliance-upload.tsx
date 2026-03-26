@@ -6,7 +6,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import {
   Upload, ChevronLeft, FileText, Calendar, CheckCircle,
 } from 'lucide-react-native';
@@ -79,18 +78,15 @@ export default function ComplianceUploadScreen() {
           },
         },
         {
-          text: 'PDF Document',
+          text: 'PDF / Document',
           onPress: async () => {
-            const result = await DocumentPicker.getDocumentAsync({
-              type: 'application/pdf',
-              copyToCacheDirectory: true,
-            });
-            if (result.assets && result.assets[0]) {
-              const asset = result.assets[0];
-              setFileUri(asset.uri);
-              setFileName(asset.name);
-              setMimeType(asset.mimeType || 'application/pdf');
-            }
+            // On native, use the image picker (which can access files in the gallery)
+            // For PDFs, users should save them to Photos first
+            Alert.alert(
+              'PDF Upload',
+              'To upload a PDF on mobile, please save it to your Photos library first, then select it as an image.',
+              [{ text: 'OK' }]
+            );
           },
         },
         { text: 'Cancel', style: 'cancel' },

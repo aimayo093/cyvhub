@@ -232,7 +232,6 @@ const styles = StyleSheet.create({
 
   leftPanel: {
     width: '42%',
-    background: 'linear-gradient(160deg, #0F172A 0%, #1E3A5F 60%, #1a237e 100%)' as any,
     backgroundColor: '#0F172A',
     paddingHorizontal: 48,
     paddingVertical: 48,
