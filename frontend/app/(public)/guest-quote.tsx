@@ -65,6 +65,8 @@ export default function GuestQuotePage() {
     const [config, setConfig] = useState<GuestQuoteConfig>(initialGuestQuote);
     const [isLoading, setIsLoading] = useState(true);
 
+    const hasParams = !!(collection && delivery);
+
     useEffect(() => {
         const loadConfig = async () => {
             try {
@@ -81,14 +83,14 @@ export default function GuestQuotePage() {
         loadConfig();
     }, []);
 
-    const handleBook = (service: string, vehicle: string, price: number) => {
+    const handleBook = (service: string, vehicleType: string, price: number) => {
         router.push({
             pathname: '/guest-checkout',
             params: {
-                collection: collection as string || 'SA11 2AY',
-                delivery: delivery as string || 'CF10 1AF',
+                collection: collection as string,
+                delivery: delivery as string,
                 serviceType: service,
-                vehicleType: vehicle,
+                vehicleType: vehicleType,
                 price: price.toString()
             }
         });
@@ -98,6 +100,25 @@ export default function GuestQuotePage() {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
+    // Missing data fallback UI
+    if (!hasParams) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 40 }]}>
+                <Truck size={64} color={Colors.primary} style={{ marginBottom: 24 }} />
+                <Text style={[styles.pageTitle, { textAlign: 'center' }]}>Quote Information Missing</Text>
+                <Text style={[styles.tierDesc, { textAlign: 'center', marginBottom: 32 }]}>
+                    To provide an accurate quote, we need your collection and delivery postcodes. Please start a new request from our home page.
+                </Text>
+                <TouchableOpacity 
+                    style={[styles.bookBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]} 
+                    onPress={() => router.push('/')}
+                >
+                    <Text style={[styles.bookBtnText, { color: '#FFF' }]}>Start New Quote</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -117,11 +138,11 @@ export default function GuestQuotePage() {
                 <View style={styles.summaryBox}>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Collection postcode:</Text>
-                        <Text style={styles.summaryValue}>{collection || 'SA11 2AY'}</Text>
+                        <Text style={styles.summaryValue}>{collection as string}</Text>
                     </View>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Delivery postcode:</Text>
-                        <Text style={styles.summaryValue}>{delivery || 'CF10 1AF'}</Text>
+                        <Text style={styles.summaryValue}>{delivery as string}</Text>
                     </View>
                     <TouchableOpacity style={styles.changeBtn} activeOpacity={0.8} onPress={() => router.back()}>
                         <Text style={styles.changeBtnText}>Change details</Text>

@@ -389,7 +389,7 @@ export const initialCta: CtaConfig = {
     title: 'Ready to upgrade your logistics?',
     desc: 'Join thousands of businesses who trust CYVhub for their crucial deliveries.',
     primaryBtnText: 'Get a Quote Now',
-    primaryBtnLink: '/guest-quote',
+    primaryBtnLink: '/',
     secondaryBtnText: 'Contact Sales',
     secondaryBtnLink: '/contact',
 };

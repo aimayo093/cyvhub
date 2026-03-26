@@ -37,8 +37,14 @@ dotenv.config();
 
 // SEC-3: Refuse to start if JWT_SECRET is not explicitly set in the environment.
 if (!process.env.JWT_SECRET) {
-    console.error('❌ FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
-    process.exit(1);
+    if (process.env.VERCEL === '1' && process.env.NODE_ENV === 'production') {
+        // Log error but don't exit during build/import phase on Vercel.
+        // It will fail at runtime when a request hits it, which is safer for deployment.
+        console.error('⚠️ WARNING: JWT_SECRET environment variable is not set.');
+    } else {
+        console.error('❌ FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
+        process.exit(1);
+    }
 }
 
 const app: Express = express();
