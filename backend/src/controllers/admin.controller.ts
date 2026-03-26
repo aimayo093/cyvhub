@@ -78,7 +78,7 @@ export const getUsersList = async (req: AuthenticatedRequest, res: Response) => 
                 status: true,
                 createdAt: true,
                 carrierProfile: { select: { companyName: true } },
-                businessProfile: { select: { companyName: true } },
+                businessAccount: { select: { companyName: true } },
             },
             orderBy: { createdAt: 'desc' }
         });

@@ -100,13 +100,13 @@ async function main() {
                     {
                         type: 'INSURANCE',
                         status: 'VALID',
-                        documentUrl: 'https://example.com/insurance.pdf',
+                        fileUrl: 'https://example.com/insurance.pdf',
                         expiryDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000)
                     },
                     {
                         type: 'LICENCE',
                         status: 'VALID',
-                        documentUrl: 'https://example.com/licence.pdf',
+                        fileUrl: 'https://example.com/licence.pdf',
                         expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
                     }
                 ]
