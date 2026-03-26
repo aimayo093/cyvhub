@@ -144,7 +144,10 @@ export const uploadComplianceDoc = async (req: Request, res: Response) => {
 // ─── ADMIN: List all pending compliance documents ────────────────────────────
 export const adminListCompliance = async (req: Request, res: Response) => {
     try {
-        const statusFilter = (req.query.status as string) || undefined;
+        const rawStatus = req.query.status;
+        const statusFilter: string | undefined = Array.isArray(rawStatus)
+            ? String(rawStatus[0])
+            : rawStatus ? String(rawStatus) : undefined;
         const where: any = {};
         if (statusFilter && statusFilter !== 'all') {
             where.status = statusFilter;
@@ -202,7 +205,7 @@ export const adminListCompliance = async (req: Request, res: Response) => {
 // ─── ADMIN: Get a specific driver's compliance ───────────────────────────────
 export const adminGetDriverCompliance = async (req: Request, res: Response) => {
     try {
-        const { driverId } = req.params;
+        const driverId = String(req.params.driverId);
         const driver = await prisma.user.findUnique({
             where: { id: driverId },
             select: { id: true, firstName: true, lastName: true, email: true, role: true },
@@ -210,7 +213,7 @@ export const adminGetDriverCompliance = async (req: Request, res: Response) => {
         if (!driver || driver.role !== 'driver') {
             return res.status(404).json({ error: 'Driver not found' });
         }
-        const { docs, overallStatus, missing } = await getDriverComplianceSummary(driverId);
+        const { docs, overallStatus, missing } = await getDriverComplianceSummary(String(driverId));
         res.json({ driver, overallStatus, requiredDocTypes: REQUIRED_DOC_TYPES, missing, documents: docs });
     } catch (err) {
         console.error('adminGetDriverCompliance error:', err);
@@ -222,7 +225,7 @@ export const adminGetDriverCompliance = async (req: Request, res: Response) => {
 export const adminApproveDoc = async (req: Request, res: Response) => {
     try {
         const adminId = (req as any).user?.userId;
-        const { docId } = req.params;
+        const docId = String(req.params.docId);
         const { adminNote } = req.body;
 
         const doc = await prisma.driverComplianceDocument.findUnique({ where: { id: docId } });
@@ -250,7 +253,7 @@ export const adminApproveDoc = async (req: Request, res: Response) => {
 export const adminRejectDoc = async (req: Request, res: Response) => {
     try {
         const adminId = (req as any).user?.userId;
-        const { docId } = req.params;
+        const docId = String(req.params.docId);
         const { rejectionReason, adminNote } = req.body;
 
         if (!rejectionReason) {

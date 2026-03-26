@@ -6,7 +6,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import {
   Upload, ChevronLeft, FileText, Calendar, CheckCircle,
 } from 'lucide-react-native';
@@ -32,7 +31,6 @@ export default function ComplianceUploadScreen() {
   const [expiryDate, setExpiryDate] = useState('');
   const [issueDate, setIssueDate] = useState('');
   const [fileName, setFileName] = useState('');
-  const [fileUri, setFileUri] = useState('');
   const [fileBase64, setFileBase64] = useState('');
   const [mimeType, setMimeType] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -40,7 +38,7 @@ export default function ComplianceUploadScreen() {
 
   const pickFile = async () => {
     if (Platform.OS === 'web') {
-      // Web: use a standard file input via a hidden input
+      // Web: use a standard HTML file input
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*,application/pdf';
@@ -49,68 +47,44 @@ export default function ComplianceUploadScreen() {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-          const base64 = (ev.target?.result as string).split(',')[1];
+          const result = ev.target?.result as string;
+          const base64 = result.split(',')[1];
           setFileBase64(base64);
           setFileName(file.name);
           setMimeType(file.type);
-          setFileUri(URL.createObjectURL(file));
         };
         reader.readAsDataURL(file);
       };
       input.click();
     } else {
-      // Native: use expo-image-picker for images or document-picker for PDFs
-      Alert.alert('Choose file type', 'What would you like to upload?', [
-        {
-          text: 'Image / Photo',
-          onPress: async () => {
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              base64: true,
-              quality: 0.8,
-            });
-            if (!result.canceled && result.assets[0]) {
-              const asset = result.assets[0];
-              setFileUri(asset.uri);
-              setFileName(asset.uri.split('/').pop() || 'document');
-              setMimeType(asset.mimeType || 'image/jpeg');
-              setFileBase64(asset.base64 || '');
-            }
-          },
-        },
-        {
-          text: 'PDF Document',
-          onPress: async () => {
-            const result = await DocumentPicker.getDocumentAsync({
-              type: 'application/pdf',
-              copyToCacheDirectory: true,
-            });
-            if (result.assets && result.assets[0]) {
-              const asset = result.assets[0];
-              setFileUri(asset.uri);
-              setFileName(asset.name);
-              setMimeType(asset.mimeType || 'application/pdf');
-            }
-          },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      // Native: use expo-image-picker (images only; PDF support via camera)
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow photo library access to upload documents.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        base64: true,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setFileName(asset.uri.split('/').pop() || 'document.jpg');
+        setMimeType(asset.mimeType || 'image/jpeg');
+        setFileBase64(asset.base64 || '');
+      }
     }
   };
 
   const handleSubmit = async () => {
     if (!selectedType) return Alert.alert('Error', 'Please select a document type');
-    if (!fileName || (!fileUri && !fileBase64)) return Alert.alert('Error', 'Please choose a file to upload');
+    if (!fileName || !fileBase64) return Alert.alert('Error', 'Please choose a file to upload');
 
     try {
       setUploading(true);
 
-      // For this implementation, we store the file as a data URL (base64) in Supabase Storage
-      // via the backend — the backend will handle the Supabase Storage upload if configured,
-      // or store the base64 URL directly for now
-      const fileUrl = fileBase64
-        ? `data:${mimeType};base64,${fileBase64}`
-        : fileUri;
+      const fileUrl = `data:${mimeType};base64,${fileBase64}`;
 
       await apiClient('/compliance/upload', {
         method: 'POST',
@@ -183,7 +157,9 @@ export default function ComplianceUploadScreen() {
             <Text style={styles.filePickerText}>
               {fileName || 'Tap to choose file'}
             </Text>
-            <Text style={styles.filePickerSub}>PDF, JPG, or PNG accepted</Text>
+            <Text style={styles.filePickerSub}>
+              {Platform.OS === 'web' ? 'PDF, JPG, or PNG accepted' : 'Photos from your library'}
+            </Text>
           </View>
           <FileText size={18} color={Colors.textMuted} />
         </TouchableOpacity>
