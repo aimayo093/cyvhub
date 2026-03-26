@@ -35,7 +35,9 @@ function RootLayoutNav() {
       seg === 'login' || 
       seg === 'admin' ||
       seg === 'verify-email-sent' ||
-      seg === 'verify-email';
+      seg === 'verify-email' ||
+      seg === 'forgot-password' ||
+      seg === 'reset-password';
 
     if (!isAuthenticated) {
       if (Platform.OS !== 'web') {
@@ -84,6 +86,14 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="verify-email"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="forgot-password"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="reset-password"
         options={{ headerShown: false }}
       />
       <Stack.Screen
