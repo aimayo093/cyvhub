@@ -43,8 +43,20 @@ if (!process.env.JWT_SECRET) {
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
-// Singleton PrismaClient — exported for use by all controllers
-export const prisma = new PrismaClient();
+// SEC-AUDIT-6: Trust Vercel's reverse proxy headers for correct IP detection
+// (required for express-rate-limit to work correctly on Vercel)
+app.set('trust proxy', 1);
+
+// Singleton PrismaClient — datasources override forces pgbouncer-compatible mode
+// (disables prepared statements which don't work with PgBouncer's transaction pooling)
+export const prisma = new PrismaClient({
+    datasources: {
+        db: {
+            url: process.env.DATABASE_URL,
+        },
+    },
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error'] : ['error'],
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORS
