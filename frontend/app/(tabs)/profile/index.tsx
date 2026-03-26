@@ -269,19 +269,23 @@ function AdminProfileSection() {
 function CarrierProfileSection() {
   const { carrier } = useAuth();
   const router = useRouter();
+  // carrier comes from the basic User auth object — not all carrier-profile fields are present
   if (!carrier) return null;
+  const c = carrier as any;
 
   return (
     <>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Company Details</Text>
         <View style={styles.detailCard}>
-          <DetailRow icon={Mail} label="Email" value={carrier.email} />
-          <DetailRow icon={Phone} label="Phone" value={carrier.phone} />
-          <DetailRow icon={CreditCard} label="Registration" value={carrier.registrationNumber} />
-          <DetailRow icon={Shield} label="VAT Number" value={carrier.vatNumber} />
-          <DetailRow icon={FileText} label="Operator Licence" value={carrier.operatorLicence} />
-          <DetailRow icon={MapPin} label="Coverage" value={carrier.coverageRegions.slice(0, 3).join(', ')} last />
+          <DetailRow icon={Mail} label="Email" value={c.email || '—'} />
+          <DetailRow icon={Phone} label="Phone" value={c.phone || '—'} />
+          {c.registrationNumber ? <DetailRow icon={CreditCard} label="Registration" value={c.registrationNumber} /> : null}
+          {c.vatNumber ? <DetailRow icon={Shield} label="VAT Number" value={c.vatNumber} /> : null}
+          {c.operatorLicence ? <DetailRow icon={FileText} label="Operator Licence" value={c.operatorLicence} /> : null}
+          {Array.isArray(c.coverageRegions) && c.coverageRegions.length > 0 ? (
+            <DetailRow icon={MapPin} label="Coverage" value={c.coverageRegions.slice(0, 3).join(', ')} last />
+          ) : null}
         </View>
       </View>
 
@@ -355,8 +359,12 @@ export default function ProfileScreen() {
         : Colors.customerPrimary;
 
   const profile = isDriver ? driver : isAdmin ? admin : isCarrier ? carrier : customer;
-  const firstName = isCarrier ? (carrier?.contactFirstName ?? '') : (profile as any)?.firstName ?? '';
-  const lastName = isCarrier ? (carrier?.contactLastName ?? '') : (profile as any)?.lastName ?? '';
+  const firstName = isCarrier
+    ? ((carrier as any)?.contactFirstName ?? (carrier as any)?.firstName ?? '')
+    : (profile as any)?.firstName ?? '';
+  const lastName = isCarrier
+    ? ((carrier as any)?.contactLastName ?? (carrier as any)?.lastName ?? '')
+    : (profile as any)?.lastName ?? '';
 
   const roleName = isDriver ? 'Driver' : isAdmin ? 'Admin' : isCarrier ? 'Carrier' : 'Customer';
 
