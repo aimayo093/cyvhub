@@ -21,7 +21,13 @@ export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
                 status: true,
                 phone: true,
                 avatar: true,
-                createdAt: true
+                createdAt: true,
+                businessAccount: true,
+                carrierProfile: {
+                    include: {
+                        complianceDocs: true
+                    }
+                }
             }
         });
 

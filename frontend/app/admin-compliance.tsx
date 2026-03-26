@@ -77,7 +77,7 @@ export default function AdminComplianceScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ChevronLeft size={22} color={Colors.textInverse} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Driver Compliance</Text>
+        <Text style={styles.headerTitle}>Compliance Review</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -127,7 +127,7 @@ export default function AdminComplianceScreen() {
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      ) : (data?.drivers ?? []).length === 0 ? (
+      ) : (data?.items ?? []).length === 0 ? (
         <View style={styles.center}>
           <FileCheck size={48} color={Colors.textMuted} style={{ opacity: 0.3 }} />
           <Text style={styles.emptyTitle}>No documents found</Text>
@@ -142,37 +142,48 @@ export default function AdminComplianceScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-          {(data?.drivers ?? []).map((entry: any) => {
-            const badge = getOverallBadgeStyle(entry.overallStatus);
-            const pendingCount = (entry.documents ?? []).filter((d: any) => d.status === 'pending_review').length;
+          {(data?.items ?? []).map((item: any) => {
+            const { Icon: StatusIcon, color } = getStatusIcon(item.status);
+            const isCarrier = item.entityType === 'carrier';
+            
             return (
               <TouchableOpacity
-                key={entry.driver.id}
+                key={`${item.entityType}-${item.id}`}
                 style={styles.driverCard}
-                onPress={() => router.push((`/admin-compliance-detail?driverId=${entry.driver.id}`) as any)}
+                onPress={() => router.push((`/admin-compliance-detail?docId=${item.id}&entityType=${item.entityType}&entityId=${item.entityId}`) as any)}
                 activeOpacity={0.7}
               >
-                {/* Driver Avatar */}
-                <View style={[styles.driverAvatar, { backgroundColor: Colors.adminPrimary + '20' }]}>
-                  <Text style={styles.driverAvatarText}>
-                    {entry.driver.firstName?.[0]}{entry.driver.lastName?.[0]}
-                  </Text>
+                {/* Entity Avatar */}
+                <View style={[styles.driverAvatar, { backgroundColor: isCarrier ? Colors.carrierPrimary + '20' : Colors.adminPrimary + '20' }]}>
+                  {isCarrier ? (
+                    <Shield size={20} color={Colors.carrierPrimary} />
+                  ) : (
+                    <Text style={[styles.driverAvatarText, { color: Colors.adminPrimary }]}>
+                      {item.entityName?.[0]}
+                    </Text>
+                  )}
                 </View>
 
                 {/* Info */}
                 <View style={styles.driverInfo}>
-                  <Text style={styles.driverName}>
-                    {entry.driver.firstName} {entry.driver.lastName}
-                  </Text>
-                  <Text style={styles.driverEmail}>{entry.driver.email}</Text>
-                  <View style={[styles.overallBadge, { backgroundColor: badge.bg }]}>
-                    <Text style={[styles.overallBadgeText, { color: badge.text }]}>
-                      {badge.label}
+                  <View style={styles.entityHeader}>
+                    <Text style={styles.driverName}>{item.entityName}</Text>
+                    <View style={[styles.typeBadge, { backgroundColor: isCarrier ? Colors.carrierPrimary + '15' : Colors.adminPrimary + '15' }]}>
+                      <Text style={[styles.typeBadgeText, { color: isCarrier ? Colors.carrierPrimary : Colors.adminPrimary }]}>
+                        {isCarrier ? 'Carrier' : 'Driver'}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.docTypeLabel}>{item.fileName || item.docType.replace('_', ' ')}</Text>
+                  
+                  <View style={styles.statusRow}>
+                    <StatusIcon size={12} color={color} />
+                    <Text style={[styles.statusText, { color }]}>
+                      {item.status.replace('_', ' ')}
+                      {item.createdAt && ` · ${new Date(item.createdAt).toLocaleDateString()}`}
                     </Text>
                   </View>
-                  {pendingCount > 0 && (
-                    <Text style={styles.pendingNote}>{pendingCount} doc{pendingCount > 1 ? 's' : ''} awaiting review</Text>
-                  )}
                 </View>
 
                 {/* Arrow */}
@@ -235,12 +246,11 @@ const styles = StyleSheet.create({
   },
   driverAvatarText: { fontSize: 16, fontWeight: '700' as const, color: Colors.adminPrimary },
   driverInfo: { flex: 1 },
+  entityHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   driverName: { fontSize: 15, fontWeight: '700' as const, color: Colors.text },
-  driverEmail: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  overallBadge: {
-    alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 10, marginTop: 6,
-  },
-  overallBadgeText: { fontSize: 11, fontWeight: '700' as const },
-  pendingNote: { fontSize: 11, color: Colors.warning, fontWeight: '500' as const, marginTop: 4 },
+  typeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  typeBadgeText: { fontSize: 10, fontWeight: '700' as const, textTransform: 'uppercase' as const },
+  docTypeLabel: { fontSize: 14, fontWeight: '600' as const, color: Colors.text, marginTop: 4 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  statusText: { fontSize: 12, fontWeight: '500' as const },
 });

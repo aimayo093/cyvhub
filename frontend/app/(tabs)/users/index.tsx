@@ -31,14 +31,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { UserRecord } from '@/types';
 
-const MOCK_USERS = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', role: 'driver', status: 'ACTIVE', totalActivity: 1250 },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'customer', status: 'PENDING', totalActivity: 45 },
-  { id: '3', name: 'Bob Jones', email: 'bob@example.com', role: 'driver', status: 'SUSPENDED', totalActivity: 850 },
-  { id: '4', name: 'Alice Williams', email: 'alice@example.com', role: 'customer', status: 'ACTIVE', totalActivity: 320 },
-];
-
-type UserFilter = 'all' | 'driver' | 'customer';
+type UserFilter = 'all' | 'driver' | 'customer' | 'carrier';
 
 function getStatusStyle(status: string) {
   switch (status) {
@@ -53,45 +46,71 @@ function getStatusStyle(status: string) {
 function getRoleIcon(role: string) {
   switch (role) {
     case 'driver': return { Icon: Truck, color: Colors.primary };
+    case 'carrier': return { Icon: ShieldCheck, color: Colors.carrierPrimary };
     case 'customer': return { Icon: ShoppingBag, color: Colors.customerPrimary };
     default: return { Icon: Users, color: Colors.textMuted };
   }
 }
+
+import { apiClient } from '@/services/api';
 
 export default function UsersScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<UserFilter>('all');
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const data = await apiClient('/admin/users');
+      setUsers(data || []);
+    } catch (err) {
+      console.error('fetchUsers error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
   const filteredUsers = useMemo(() => {
-    let users = MOCK_USERS;
+    let result = users;
     if (activeFilter !== 'all') {
-      users = users.filter((u: any) => u.role === activeFilter);
+      result = result.filter((u: any) => u.role === activeFilter);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      users = users.filter((u: any) =>
-        u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      result = result.filter((u: any) =>
+        `${u.firstName} ${u.lastName}`.toLowerCase().includes(q) || 
+        u.email.toLowerCase().includes(q) ||
+        u.carrierProfile?.companyName?.toLowerCase().includes(q) ||
+        u.businessProfile?.companyName?.toLowerCase().includes(q)
       );
     }
-    return users;
-  }, [activeFilter, searchQuery]);
+    return result;
+  }, [users, activeFilter, searchQuery]);
 
   const counts: Record<UserFilter, number> = useMemo(() => ({
-    all: MOCK_USERS.length,
-    driver: MOCK_USERS.filter((u: any) => u.role === 'driver').length,
-    customer: MOCK_USERS.filter((u: any) => u.role === 'customer').length,
-  }), []);
+    all: users.length,
+    driver: users.filter((u: any) => u.role === 'driver').length,
+    customer: users.filter((u: any) => u.role === 'customer').length,
+    carrier: users.filter((u: any) => u.role === 'carrier').length,
+  }), [users]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleUserAction = useCallback((user: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const userName = `${user.firstName} ${user.lastName}`;
     const actions = user.status === 'SUSPENDED'
       ? [
         { text: 'Reactivate', onPress: () => { } },
@@ -105,12 +124,13 @@ export default function UsersScreen() {
         { text: 'View Details', onPress: () => { } },
         { text: 'Cancel', style: 'cancel' as const },
       ];
-    Alert.alert(user.name, `Role: ${user.role} | Status: ${user.status}`, actions);
+    Alert.alert(userName, `Role: ${user.role} | Status: ${user.status}`, actions);
   }, []);
 
   const filters: { key: UserFilter; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'driver', label: 'Drivers' },
+    { key: 'carrier', label: 'Carriers' },
     { key: 'customer', label: 'Customers' },
   ];
 
@@ -120,7 +140,7 @@ export default function UsersScreen() {
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.headerTitle}>User Management</Text>
-            <Text style={styles.headerSubtitle}>{MOCK_USERS.length} total users</Text>
+            <Text style={styles.headerSubtitle}>{counts.all} total users</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity
@@ -138,7 +158,7 @@ export default function UsersScreen() {
               <ShieldCheck size={20} color={Colors.danger} />
             </TouchableOpacity>
             <View style={styles.headerIconWrap}>
-              <Users size={20} color={Colors.adminPrimary} />
+              <Users size={20} color={loading ? Colors.textMuted : Colors.adminPrimary} />
             </View>
           </View>
 
@@ -213,14 +233,14 @@ export default function UsersScreen() {
                   <RoleIcon size={18} color={roleInfo.color} />
                 </View>
                 <View style={styles.userInfo}>
-                  <Text style={styles.userName} numberOfLines={1}>{user.name}</Text>
+                  <Text style={styles.userName} numberOfLines={1}>{user.firstName} {user.lastName}</Text>
                   <Text style={styles.userEmail} numberOfLines={1}>{user.email}</Text>
                   <View style={styles.userMeta}>
                     <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
                       <StatusIcon size={10} color={statusStyle.color} />
                       <Text style={[styles.statusText, { color: statusStyle.color }]}>{user.status}</Text>
                     </View>
-                    <Text style={styles.activityText}>{user.totalActivity} actions</Text>
+                    <Text style={styles.activityText}>{user.role.toUpperCase()}</Text>
                   </View>
                 </View>
               </View>

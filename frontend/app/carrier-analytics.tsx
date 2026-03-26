@@ -24,42 +24,32 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 
-const MOCK_CARRIER_PERFORMANCE = [
-  { month: 'Oct', slaCompliance: 96, onTimePercent: 94, revenue: 14200, avgRating: 4.7, jobsCompleted: 142 },
-  { month: 'Nov', slaCompliance: 94, onTimePercent: 92, revenue: 13800, avgRating: 4.6, jobsCompleted: 135 },
-  { month: 'Dec', slaCompliance: 98, onTimePercent: 97, revenue: 16500, avgRating: 4.9, jobsCompleted: 184 },
-];
-
-const MOCK_CARRIER_DELAY_BREAKDOWN = [
-  { reason: 'Traffic / Weather', count: 18, avgDelayMins: 35, routes: ['A465', 'M4 East'] },
-  { reason: 'Customer Unavailable', count: 12, avgDelayMins: 15, routes: ['City Centre'] },
-  { reason: 'Vehicle Issue', count: 3, avgDelayMins: 85, routes: ['Rural'] },
-];
-
-const MOCK_CARRIER_AI_SUGGESTIONS = [
-  { id: '1', title: 'Route Optimization', description: 'Consolidate afternoon Swansea runs to save 14% on fuel.', impact: 'HIGH' },
-  { id: '2', title: 'SLA Warning', description: 'M4 delays are causing 12% of missed targets. Pre-route via A48.', impact: 'MEDIUM' },
-];
 type AnalyticsTab = 'performance' | 'delays' | 'ai';
 
 export default function CarrierAnalyticsScreen() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('performance');
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Real data state
+  const [performance, setPerformance] = useState<any[]>([
+    { month: new Date().toLocaleDateString('en-GB', { month: 'short' }), slaCompliance: 100, onTimePercent: 100, revenue: 0, avgRating: 5.0, jobsCompleted: 0 }
+  ]);
+  const [delays, setDelays] = useState<any[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 800);
   }, []);
 
-  const performance = MOCK_CARRIER_PERFORMANCE;
   const latest = performance[performance.length - 1];
-  const previous = performance[performance.length - 2];
+  const previous = performance[performance.length - 2] || latest;
 
   const slaDelta = latest.slaCompliance - previous.slaCompliance;
   const onTimeDelta = latest.onTimePercent - previous.onTimePercent;
-  const revenueDelta = ((latest.revenue - previous.revenue) / previous.revenue * 100);
+  const revenueDelta = previous.revenue > 0 ? ((latest.revenue - previous.revenue) / previous.revenue * 100) : 0;
 
-  const maxRevenue = Math.max(...performance.map((p: any) => p.revenue));
+  const maxRevenue = Math.max(...performance.map((p: any) => p.revenue)) || 1000;
 
   return (
     <View style={styles.container}>
@@ -197,12 +187,12 @@ export default function CarrierAnalyticsScreen() {
               <AlertTriangle size={20} color={Colors.warning} />
               <View>
                 <Text style={styles.delayHeaderTitle}>Delay Breakdown</Text>
-                <Text style={styles.delayHeaderSub}>Last 30 days · {MOCK_CARRIER_DELAY_BREAKDOWN.reduce((a: number, b: any) => a + b.count, 0)} total incidents</Text>
+                <Text style={styles.delayHeaderSub}>Last 30 days · {delays.reduce((a: number, b: any) => a + b.count, 0)} total incidents</Text>
               </View>
             </View>
 
-            {MOCK_CARRIER_DELAY_BREAKDOWN.map((delay: any, i: number) => {
-              const maxCount = Math.max(...MOCK_CARRIER_DELAY_BREAKDOWN.map((d: any) => d.count));
+            {delays.map((delay: any, i: number) => {
+              const maxCount = Math.max(...delays.map((d: any) => d.count)) || 1;
               const pct = (delay.count / maxCount) * 100;
               return (
                 <View key={i} style={styles.delayCard}>
@@ -222,12 +212,18 @@ export default function CarrierAnalyticsScreen() {
                     </View>
                     <View style={styles.delayMetaItem}>
                       <MapPin size={11} color={Colors.textMuted} />
-                      <Text style={styles.delayMetaText}>{delay.routes.join(', ')}</Text>
+                      <Text style={styles.delayMetaText}>{(delay.routes || []).join(', ')}</Text>
                     </View>
                   </View>
                 </View>
               );
             })}
+            {delays.length === 0 && (
+              <View style={styles.emptyState}>
+                <Clock size={40} color={Colors.textMuted} />
+                <Text style={styles.emptyTitle}>No delays recorded</Text>
+              </View>
+            )}
           </>
         )}
 
@@ -243,7 +239,7 @@ export default function CarrierAnalyticsScreen() {
               </Text>
             </View>
 
-            {MOCK_CARRIER_AI_SUGGESTIONS.map((suggestion: any) => {
+            {aiSuggestions.map((suggestion: any) => {
               const impactColor = suggestion.impact === 'HIGH'
                 ? Colors.danger
                 : suggestion.impact === 'MEDIUM'
@@ -269,6 +265,12 @@ export default function CarrierAnalyticsScreen() {
                 </View>
               );
             })}
+            {aiSuggestions.length === 0 && (
+              <View style={styles.emptyState}>
+                <Brain size={40} color={Colors.textMuted} />
+                <Text style={styles.emptyTitle}>No AI suggestions yet</Text>
+              </View>
+            )}
           </>
         )}
 
@@ -628,5 +630,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 19,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+    marginTop: 20,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    fontWeight: '600',
+    marginTop: 12,
   },
 });

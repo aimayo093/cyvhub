@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import {
@@ -23,29 +24,7 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-
-const MOCK_AI_SUMMARY = {
-  monthlySummary: 'Your deliveries are running smoothly. 96.5% of jobs met SLA targets this month, with an average cost per route of £42 - down 5% from last month.',
-  suggestions: [
-    'Consolidate Tuesday shipments to Cardiff to save ~12%',
-    'Use electric vans for city-center drops to boost green rating',
-    'Pre-approve driver overtime for upcoming bank holiday weekend'
-  ]
-};
-
-const MOCK_CUSTOMER_ANALYTICS = {
-  slaByMonth: [{ month: 'Oct', compliance: 95, target: 92 }, { month: 'Nov', compliance: 93.2, target: 92 }, { month: 'Dec', compliance: 97.1, target: 92 }],
-  costByRoute: [{ route: 'Swansea → Cardiff', avgCost: 145.50, trips: 24 }],
-  emissionsMonthly: [{ month: 'Oct', kgCO2: 120 }, { month: 'Nov', kgCO2: 110 }, { month: 'Dec', kgCO2: 105 }]
-};
-
-const MOCK_BUSINESS_PROFILE = {
-  companyName: 'Sample Business',
-  slaCompliance: 96,
-  totalJobs: 142,
-  totalSpend: 15400,
-  currentBalance: 1250
-};
+import { apiClient } from '@/services/api';
 
 interface ChatMessage {
   id: string;
@@ -61,48 +40,52 @@ const SUGGESTED_QUESTIONS = [
   { icon: TrendingUp, text: 'Summarise this month\'s performance', color: Colors.success },
 ];
 
-function generateAIResponse(query: string): string {
-  const q = query.toLowerCase();
-  const profile = MOCK_BUSINESS_PROFILE;
-  const analytics = MOCK_CUSTOMER_ANALYTICS;
-
-  if (q.includes('sla') || q.includes('performance') || q.includes('compliance')) {
-    const latest = analytics.slaByMonth[analytics.slaByMonth.length - 1];
-    return `Your current SLA compliance is ${latest.compliance}% (target: ${latest.target}%). Over the last 6 months:\n\n${analytics.slaByMonth.map((m: any) => `• ${m.month}: ${m.compliance}%${m.compliance >= m.target ? ' ✓' : ' ⚠'}`).join('\n')}\n\nYou're performing above the platform average of 91.5%. Your best month was December at 97.1%. November was slightly below target at 93.2% — this was likely due to seasonal delays on the Swansea-Cardiff corridor.`;
-  }
-
-  if (q.includes('route') || q.includes('cost') || q.includes('expensive')) {
-    return `Here are your top routes by cost:\n\n${analytics.costByRoute.slice(0, 5).map((r: any, i: number) => `${i + 1}. ${r.route} — £${r.avgCost.toFixed(2)} avg (${r.trips} trips)`).join('\n')}\n\nThe Swansea → Cardiff route is your most expensive at £145.50 average. Consider consolidating Tuesday/Thursday shipments to reduce per-unit costs by ~12%.`;
-  }
-
-  if (q.includes('invoice') || q.includes('unpaid') || q.includes('overdue') || q.includes('payment')) {
-    return `You have 2 outstanding invoices:\n\n• CYV-INV-2026-0087 — £1,245.00 (Due: 15 Mar 2026) — Pending\n• CYV-INV-2025-0412 — £875.00 (Due: 15 Jan 2026) — OVERDUE\n\nTotal outstanding: £2,120.00\nTotal overdue: £875.00\n\nThe December invoice (£875.00) is now 37 days overdue. Please arrange payment to avoid any service disruptions.`;
-  }
-
-  if (q.includes('summar') || q.includes('month') || q.includes('overview')) {
-    return MOCK_AI_SUMMARY.monthlySummary;
-  }
-
-  if (q.includes('emission') || q.includes('carbon') || q.includes('green') || q.includes('sustain')) {
-    const total = analytics.emissionsMonthly.reduce((s, d) => s + d.kgCO2, 0);
-    return `Your carbon footprint over the last 6 months:\n\nTotal: ${total.toLocaleString()} kg CO₂\n\n${analytics.emissionsMonthly.map((m: any) => `• ${m.month}: ${m.kgCO2} kg`).join('\n')}\n\nEmissions are trending 4.3% lower than the previous period. Route optimisation and carrier selection improvements have contributed to this reduction.`;
-  }
-
-  if (q.includes('suggest') || q.includes('improve') || q.includes('optimis') || q.includes('save')) {
-    return `Here are my suggestions to improve your operations:\n\n${MOCK_AI_SUMMARY.suggestions.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n\n')}\n\nWould you like me to elaborate on any of these?`;
-  }
-
-  return `Based on your account data for ${profile.companyName}:\n\n• SLA Compliance: ${profile.slaCompliance}%\n• Total Jobs: ${profile.totalJobs}\n• Total Spend: £${profile.totalSpend.toLocaleString()}\n• Current Balance: £${profile.currentBalance.toLocaleString()}\n\nI can help you with SLA performance analysis, route cost breakdowns, invoice queries, emissions tracking, and optimisation suggestions. What would you like to know more about?`;
-}
-
 export default function CustomerAIScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<any>(null);
+  
   const scrollRef = useRef<ScrollView>(null);
   const typingAnim = useRef(new Animated.Value(0)).current;
 
-  const sendMessage = useCallback((text: string) => {
+  const loadInitialData = async () => {
+    try {
+      const res = await apiClient('/ai/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'summarise my performance this month' })
+      });
+      setSummary({
+        monthlySummary: res.response,
+        suggestions: [
+          'Consolidate peak-time deliveries to save costs',
+          'Review SLA for long-haul routes to ensure compliance',
+          'Optimize vehicle selection for small parcels to reduce emissions'
+        ]
+      });
+    } catch (e) {
+      console.error('Failed to load AI summary:', e);
+      // Fallback if AI fails or no data yet
+      setSummary({
+        monthlySummary: 'Welcome to your AI Assistant. I can help you analyze your delivery performance, costs, and sustainability metrics.',
+        suggestions: [
+          'Show my SLA performance',
+          'Which routes cost the most?',
+          'What invoices are unpaid?'
+        ]
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -123,27 +106,48 @@ export default function CustomerAIScreen() {
       ])
     ).start();
 
-    setTimeout(() => {
-      const response = generateAIResponse(text);
+    try {
+      const res = await apiClient('/ai/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text.trim() })
+      });
+
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now()}-ai`,
         role: 'assistant',
-        text: response,
+        text: res.response,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiMsg]);
+    } catch (error) {
+      console.error(error);
+      const errorMsg: ChatMessage = {
+        id: `msg-${Date.now()}-error`,
+        role: 'assistant',
+        text: 'Sorry, I encountered an error communicating with the AI. Please try again later.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
       typingAnim.stopAnimation();
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-    }, 1200 + Math.random() * 800);
-
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }
   }, [typingAnim]);
 
   const handleSuggestion = useCallback((text: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     sendMessage(text);
   }, [sendMessage]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.customerPrimary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -163,7 +167,7 @@ export default function CustomerAIScreen() {
           contentContainerStyle={styles.chatContent}
           showsVerticalScrollIndicator={false}
         >
-          {messages.length === 0 && (
+          {messages.length === 0 && summary && (
             <View style={styles.welcomeSection}>
               <View style={styles.aiIconWrap}>
                 <Brain size={32} color={Colors.customerPrimary} />
@@ -176,9 +180,9 @@ export default function CustomerAIScreen() {
               <View style={styles.summaryCard}>
                 <View style={styles.summaryHeader}>
                   <Sparkles size={14} color={Colors.customerPrimary} />
-                  <Text style={styles.summaryTitle}>AI Monthly Summary</Text>
+                  <Text style={styles.summaryTitle}>AI Analysis</Text>
                 </View>
-                <Text style={styles.summaryText}>{MOCK_AI_SUMMARY.monthlySummary}</Text>
+                <Text style={styles.summaryText}>{summary.monthlySummary}</Text>
               </View>
 
               <View style={styles.suggestionsSection}>
@@ -186,7 +190,7 @@ export default function CustomerAIScreen() {
                   <Lightbulb size={14} color={Colors.warning} />
                   <Text style={styles.suggestionsTitle}>AI Suggestions</Text>
                 </View>
-                {MOCK_AI_SUMMARY.suggestions.map((s: string, i: number) => (
+                {summary.suggestions.map((s: string, i: number) => (
                   <View key={i} style={styles.suggestionItem}>
                     <View style={styles.suggestionDot} />
                     <Text style={styles.suggestionText}>{s}</Text>

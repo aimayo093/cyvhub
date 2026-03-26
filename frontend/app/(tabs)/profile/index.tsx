@@ -52,14 +52,6 @@ const REQUIRED_DOC_TYPES = [
   { slug: 'vehicle_registration',  label: 'Vehicle Registration (V5)' },
 ];
 
-const MOCK_CARRIER_COMPLIANCE = [
-  { id: '1', type: 'Operator Licence', status: 'VALID', expiryDate: '2027-05-12' },
-  { id: '2', type: 'Fleet Insurance', status: 'VALID', expiryDate: '2025-02-28' },
-  { id: '3', type: 'Goods in Transit (£100k)', status: 'EXPIRING_SOON', expiryDate: '2024-04-15' },
-  { id: '4', type: 'Public Liability (£5M)', status: 'VALID', expiryDate: '2025-08-30' },
-  { id: '5', type: 'Employer Liability', status: 'VALID', expiryDate: '2025-08-30' },
-];
-
 function getComplianceIcon(status: string) {
   switch (status) {
     case 'VALID':
@@ -137,6 +129,16 @@ function DriverProfileSection() {
           <DetailRow icon={Phone} label="Phone" value={driver.phone || '—'} />
           <DetailRow icon={CreditCard} label="Licence" value={driver.licenceNumber || '—'} />
           <DetailRow icon={Clock} label="Licence Expiry" value={driver.licenceExpiry ? formatDate(driver.licenceExpiry) : '—'} last />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Driver Management</Text>
+        <View style={styles.menuCard}>
+          <MenuItem icon={Brain} label="AI Assistant" accent={Colors.primary} onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/driver-ai' as any);
+          }} last />
         </View>
       </View>
 
@@ -251,27 +253,56 @@ function CustomerProfileSection() {
 
 function AdminProfileSection() {
   const { admin } = useAuth();
+  const router = useRouter();
   if (!admin) return null;
 
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Admin Details</Text>
-      <View style={styles.detailCard}>
-        <DetailRow icon={Mail} label="Email" value={admin.email} />
-        <DetailRow icon={Phone} label="Phone" value={admin.phone} />
-        <DetailRow icon={Shield} label="Role" value={admin.role.replace('_', ' ').toUpperCase()} />
-        <DetailRow icon={Clock} label="Member Since" value={formatDate(admin.memberSince)} last />
+    <>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Personal Details</Text>
+        <View style={styles.detailCard}>
+          <DetailRow icon={Mail} label="Email" value={admin.email} />
+          <DetailRow icon={Phone} label="Phone" value={admin.phone} />
+          <DetailRow icon={Shield} label="Role" value={admin.role.replace('_', ' ').toUpperCase()} />
+          <DetailRow icon={Clock} label="Member Since" value={formatDate(admin.memberSince)} last />
+        </View>
       </View>
-    </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Admin Control</Text>
+        <View style={styles.menuCard}>
+          <MenuItem icon={Brain} label="AI Command Center" accent={Colors.adminPrimary} onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/admin-ai' as any);
+          }} last />
+        </View>
+      </View>
+    </>
   );
 }
 
 function CarrierProfileSection() {
   const { carrier } = useAuth();
   const router = useRouter();
-  // carrier comes from the basic User auth object — not all carrier-profile fields are present
+  const [compliance, setCompliance] = useState<any>(null);
+  const [loadingCompliance, setLoadingCompliance] = useState(true);
+
+  const loadCompliance = async () => {
+    try {
+      const res = await apiClient('/compliance/carrier');
+      setCompliance(res);
+    } catch (e) {
+      console.error('Failed to load carrier compliance:', e);
+    } finally {
+      setLoadingCompliance(false);
+    }
+  };
+
+  useEffect(() => { loadCompliance(); }, []);
+
   if (!carrier) return null;
   const c = carrier as any;
+  const overallBadge = getOverallBadge(compliance?.overallStatus || 'not_submitted');
 
   return (
     <>
@@ -312,31 +343,54 @@ function CarrierProfileSection() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Compliance Documents</Text>
-        <View style={styles.complianceList}>
-          {MOCK_CARRIER_COMPLIANCE.map((item: any, index: number) => {
-            const { Icon: StatusIcon, color } = getComplianceIcon(item.status);
-            return (
-              <View key={item.id} style={[styles.complianceRow, index === MOCK_CARRIER_COMPLIANCE.length - 1 && { borderBottomWidth: 0 }]}>
-                <Shield size={16} color={Colors.textMuted} />
-                <View style={styles.complianceInfo}>
-                  <Text style={styles.complianceType}>{item.type}</Text>
-                  {item.expiryDate && (
-                    <Text style={[
-                      styles.complianceExpiry,
-                      item.status === 'EXPIRED' && { color: Colors.danger },
-                      item.status === 'EXPIRING_SOON' && { color: Colors.warning },
-                    ]}>
-                      {item.status === 'EXPIRED' ? 'Expired ' : 'Expires '}
-                      {formatDate(item.expiryDate)}
-                    </Text>
-                  )}
-                </View>
-                <StatusIcon size={18} color={color} />
-              </View>
-            );
-          })}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Compliance Documents</Text>
+          <View style={[styles.overallBadge, { backgroundColor: overallBadge.bg }]}>
+            <Text style={[styles.overallBadgeText, { color: overallBadge.text }]}>
+              {overallBadge.label}
+            </Text>
+          </View>
         </View>
+
+        {loadingCompliance ? (
+          <ActivityIndicator size="small" color={Colors.carrierPrimary} style={{ marginTop: 16 }} />
+        ) : (
+          <View style={styles.complianceList}>
+            {(compliance?.documents || []).length > 0 ? (
+              compliance.documents.map((item: any, index: number) => {
+                const { Icon: StatusIcon, color } = getComplianceIcon(item.status);
+                const isLast = index === compliance.documents.length - 1;
+                return (
+                  <View key={item.id} style={[styles.complianceRow, isLast && { borderBottomWidth: 0 }]}>
+                    <Shield size={16} color={Colors.textMuted} />
+                    <View style={styles.complianceInfo}>
+                      <Text style={styles.complianceType}>{item.fileName || item.type.replace('_', ' ')}</Text>
+                      <Text style={[styles.complianceStatus, { color }]}>
+                        {getStatusLabel(item.status)}
+                      </Text>
+                      {item.expiryDate && (
+                        <Text style={styles.complianceExpiry}>
+                          Expires {formatDate(item.expiryDate)}
+                        </Text>
+                      )}
+                    </View>
+                    <StatusIcon size={18} color={color} />
+                  </View>
+                );
+              })
+            ) : (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No documents uploaded yet.</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/carrier-profile' as any)}
+                  style={{ marginTop: 10 }}
+                >
+                  <Text style={{ color: Colors.carrierPrimary, fontWeight: '600' }}>Manage Compliance</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </>
   );
@@ -510,17 +564,13 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support & Legal</Text>
           <View style={styles.menuCard}>
-            <MenuItem icon={HelpCircle} label="Help Centre" accent={accent} onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/support' as any);
-            }} />
-            <MenuItem icon={FileText} label="Terms & Conditions" accent={accent} onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/terms' as any);
-            }} />
-            <MenuItem icon={Shield} label="Privacy Policy" accent={accent} last onPress={() => {
+            <MenuItem icon={Shield} label="Privacy Policy" accent={accent} onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push('/privacy-policy' as any);
+            }} />
+            <MenuItem icon={FileText} label="Terms & Conditions" accent={accent} last onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/terms' as any);
             }} />
           </View>
         </View>

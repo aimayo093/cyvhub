@@ -13,6 +13,9 @@ router.get('/my/fleet', authenticate, CarrierController.getMyFleet);
 router.post('/my/fleet', authenticate, CarrierController.addVehicle);
 router.patch('/my/fleet/:id', authenticate, CarrierController.updateVehicle);
 router.get('/my/drivers', authenticate, CarrierController.getMyDrivers);
+router.get('/my/rates', authenticate, CarrierController.getMyRates);
+router.post('/my/rates', authenticate, CarrierController.addRate);
+router.patch('/my/rates/:id', authenticate, CarrierController.updateRate);
 
 // Retrieve a specific carrier block by ID
 router.get('/:id', authenticate, CarrierController.getCarrierById);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,14 +17,9 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
+import { apiClient } from '@/services/api';
+import { ActivityIndicator, RefreshControl } from 'react-native';
 
-const MOCK_CUSTOMER_ANALYTICS = {
-  slaByMonth: [{ month: 'Oct', compliance: 95, target: 92 }, { month: 'Nov', compliance: 93.2, target: 92 }, { month: 'Dec', compliance: 97.1, target: 92 }],
-  deliveryVolume: [{ month: 'Oct', count: 420 }, { month: 'Nov', count: 450 }, { month: 'Dec', count: 485 }],
-  costByRoute: [{ route: 'Swansea → Cardiff', avgCost: 145.50, trips: 24 }],
-  emissionsMonthly: [{ month: 'Oct', kgCO2: 120 }, { month: 'Nov', kgCO2: 110 }, { month: 'Dec', kgCO2: 105 }],
-  performanceComparison: [{ metric: 'On-Time Delivery', yours: 97, average: 92 }]
-};
 type TabType = 'sla' | 'volume' | 'cost' | 'emissions' | 'comparison';
 
 const TABS: { key: TabType; label: string; icon: typeof BarChart3 }[] = [
@@ -37,10 +32,58 @@ const TABS: { key: TabType; label: string; icon: typeof BarChart3 }[] = [
 
 export default function CustomerAnalyticsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('sla');
-  const data = MOCK_CUSTOMER_ANALYTICS;
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [data, setData] = useState<any>({
+    slaByMonth: [],
+    deliveryVolume: [],
+    costByRoute: [],
+    emissionsMonthly: [],
+    performanceComparison: []
+  });
 
-  const maxVolume = Math.max(...data.deliveryVolume.map((d: any) => d.count));
-  const maxEmissions = Math.max(...data.emissionsMonthly.map((d: any) => d.kgCO2));
+  const loadData = useCallback(async () => {
+    try {
+      const res = await apiClient('/analytics/earnings');
+      if (res && res.data) {
+        const dv = res.data.deliveryVolume || [];
+        // Map backend to frontend chart structure
+        setData({
+          slaByMonth: dv.map((i: any) => ({ month: i.name, compliance: i.sla || 100, target: 95 })),
+          deliveryVolume: dv.map((i: any) => ({ month: i.name, count: i.volume || 0 })),
+          costByRoute: [], // Placeholder for future route-specific endpoint
+          emissionsMonthly: dv.map((i: any) => ({ month: i.name, kgCO2: (i.volume || 0) * 0.25 })), // Mocked based on volume
+          performanceComparison: [{ metric: 'On-Time Delivery', yours: res.data.slaCompliance || 100, average: 95 }]
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to load customer analytics', e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+  }, [loadData]);
+
+  const maxVolume = Math.max(...(data.deliveryVolume || []).map((d: any) => d.count), 0) || 100;
+  const maxEmissions = Math.max(...(data.emissionsMonthly || []).map((d: any) => d.kgCO2), 0) || 100;
+
+  if (loading && !refreshing) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.customerPrimary} />
+        <Text style={{ marginTop: 12, color: Colors.textSecondary }}>Loading analytics...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -70,7 +113,12 @@ export default function CustomerAnalyticsScreen() {
         })}
       </ScrollView>
 
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.customerPrimary} />}
+      >
         {activeTab === 'sla' && (
           <>
             <Text style={styles.chartTitle}>SLA Compliance by Month</Text>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import {
@@ -28,75 +30,115 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
+import { apiClient } from '@/services/api';
 
-const MOCK_BUSINESS_PROFILE = {
-  companyName: 'Lumber & Logs Co.',
-  tradingName: 'LumberLogs',
-  status: 'ACTIVE',
-  registrationNumber: '09876543',
-  vatNumber: 'GB 987 6543 21',
-  industryProfile: 'Construction',
-  joinDate: '2023-01-15T00:00:00Z',
-  billingTerms: 'Net 30',
-  creditLimit: 50000,
-  creditUsed: 12500,
-  currentBalance: 3500.50,
-  contactName: 'David Wood',
-  contactEmail: 'david@lumberlogs.co.uk',
-  contactPhone: '07890 123456',
-  billingAddress: '45 Timber Yard',
-  billingCity: 'Newport',
-  billingPostcode: 'NP20 2AB',
-  totalJobs: 1240,
-  totalSpend: 145000,
-  slaCompliance: 96,
-};
-
-const MOCK_SAVED_LOCATIONS = [
-  { id: '1', label: 'Main Depot', address: '45 Timber Yard', city: 'Newport', postcode: 'NP20 2AB', contactName: 'Site Manager', contactPhone: '01633 123456', isDefault: true },
-  { id: '2', label: 'Cardiff Branch', address: '12 Bay View Road', city: 'Cardiff', postcode: 'CF10 1AA', contactName: 'Branch Manager', contactPhone: '029 2012 3456', isDefault: false },
-];
 const INDUSTRY_OPTIONS = ['IT / Technology', 'Construction', 'Manufacturing', 'Wholesale / Distribution', 'Medical', 'Furniture', 'Custom'];
 
 function formatCurrency(amount: number): string {
-  return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `£${(amount || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function CompanyProfileScreen() {
   const router = useRouter();
-  const [profile, setProfile] = useState(MOCK_BUSINESS_PROFILE);
+  const [userData, setUserData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editCompanyName, setEditCompanyName] = useState(profile.companyName);
-  const [editTradingName, setEditTradingName] = useState(profile.tradingName);
-  const [editContactName, setEditContactName] = useState(profile.contactName);
-  const [editContactEmail, setEditContactEmail] = useState(profile.contactEmail);
-  const [editContactPhone, setEditContactPhone] = useState(profile.contactPhone);
-  const [editBillingAddress, setEditBillingAddress] = useState(profile.billingAddress);
-  const [editBillingCity, setEditBillingCity] = useState(profile.billingCity);
-  const [editBillingPostcode, setEditBillingPostcode] = useState(profile.billingPostcode);
-  const [editIndustry, setEditIndustry] = useState(profile.industryProfile);
+  const [saving, setSaving] = useState(false);
+
+  // Editable fields
+  const [editContactName, setEditContactName] = useState('');
+  const [editContactEmail, setEditContactEmail] = useState('');
+  const [editContactPhone, setEditContactPhone] = useState('');
+  const [editBillingAddress, setEditBillingAddress] = useState('');
+  const [editBillingCity, setEditBillingCity] = useState('');
+  const [editBillingPostcode, setEditBillingPostcode] = useState('');
+  const [editIndustry, setEditIndustry] = useState('');
   const [showIndustryPicker, setShowIndustryPicker] = useState(false);
 
-  const handleSave = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setProfile(prev => ({
-      ...prev,
-      companyName: editCompanyName,
-      tradingName: editTradingName,
-      contactName: editContactName,
-      contactEmail: editContactEmail,
-      contactPhone: editContactPhone,
-      billingAddress: editBillingAddress,
-      billingCity: editBillingCity,
-      billingPostcode: editBillingPostcode,
-      industryProfile: editIndustry,
-    }));
-    setIsEditing(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Profile Updated', 'Your company profile has been saved.');
-  }, [editCompanyName, editTradingName, editContactName, editContactEmail, editContactPhone, editBillingAddress, editBillingCity, editBillingPostcode, editIndustry]);
+  const fetchProfile = useCallback(async () => {
+    try {
+      const data = await apiClient('/profile');
+      setUserData(data);
+      // Seed editable state
+      const biz = data.businessAccount;
+      setEditContactName(data.firstName + ' ' + data.lastName);
+      setEditContactEmail(data.email || '');
+      setEditContactPhone(data.phone || biz?.contactPhone || '');
+      setEditBillingAddress(biz?.billingAddress || '');
+      setEditBillingCity(biz?.billingCity || '');
+      setEditBillingPostcode(biz?.billingPostcode || '');
+      setEditIndustry(biz?.industryProfile || '');
+    } catch (err) {
+      console.error('CompanyProfile fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
-  const creditPercent = Math.round((profile.creditUsed / profile.creditLimit) * 100);
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchProfile();
+  }, [fetchProfile]);
+
+  const biz = userData?.businessAccount;
+
+  const profile = useMemo(() => ({
+    companyName: biz?.companyName || userData?.firstName + ' ' + userData?.lastName || '—',
+    tradingName: biz?.tradingName || '—',
+    status: biz?.status || userData?.status || 'ACTIVE',
+    registrationNumber: biz?.registrationNumber || '—',
+    vatNumber: biz?.vatNumber || '—',
+    industryProfile: biz?.industryProfile || '—',
+    joinDate: userData?.createdAt || new Date().toISOString(),
+    billingTerms: biz?.billingTerms || 'Net 30',
+    creditLimit: biz?.creditLimit || 0,
+    creditUsed: biz?.currentBalance || 0,
+    currentBalance: biz?.currentBalance || 0,
+    contactName: (userData?.firstName || '') + ' ' + (userData?.lastName || ''),
+    contactEmail: userData?.email || '—',
+    contactPhone: userData?.phone || biz?.contactPhone || '—',
+    billingAddress: biz?.billingAddress || '—',
+    billingCity: biz?.billingCity || '—',
+    billingPostcode: biz?.billingPostcode || '—',
+    totalJobs: biz?.totalJobs || 0,
+    totalSpend: biz?.totalSpend || 0,
+    slaCompliance: biz?.slaCompliance || 100,
+  }), [userData, biz]);
+
+  const handleSave = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSaving(true);
+    try {
+      // Update own user profile fields
+      await apiClient(`/profile/${userData?.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ phone: editContactPhone }),
+      });
+      await fetchProfile();
+      setIsEditing(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Profile Updated', 'Your details have been saved.');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to save changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }, [userData?.id, editContactPhone, fetchProfile]);
+
+  const creditPercent = profile.creditLimit > 0 ? Math.round((profile.creditUsed / profile.creditLimit) * 100) : 0;
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.customerPrimary} />
+        <Text style={{ marginTop: 12, color: Colors.textMuted }}>Loading profile...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -114,15 +156,22 @@ export default function CompanyProfileScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               style={styles.headerBtn}
+              disabled={saving}
             >
-              {isEditing ? <Save size={18} color={Colors.customerPrimary} /> : <Edit3 size={18} color={Colors.textInverse} />}
+              {saving ? <ActivityIndicator size={18} color={Colors.customerPrimary} /> : isEditing ? <Save size={18} color={Colors.customerPrimary} /> : <Edit3 size={18} color={Colors.textInverse} />}
             </TouchableOpacity>
           ),
         }}
       />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.customerPrimary} />}
+        >
           <View style={styles.companyHeader}>
             <View style={styles.companyIcon}>
               <Building2 size={28} color={Colors.customerPrimary} />
@@ -220,22 +269,15 @@ export default function CompanyProfileScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Saved Locations</Text>
-            {MOCK_SAVED_LOCATIONS.map((loc: any) => (
-              <View key={loc.id} style={styles.locationCard}>
-                <View style={styles.locationTop}>
-                  <MapPin size={14} color={Colors.customerPrimary} />
-                  <Text style={styles.locationLabel}>{loc.label}</Text>
-                  {loc.isDefault && (
-                    <View style={styles.defaultBadge}>
-                      <Text style={styles.defaultBadgeText}>Default</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.locationAddress}>{loc.address}, {loc.city} {loc.postcode}</Text>
-                <Text style={styles.locationContact}>{loc.contactName} · {loc.contactPhone}</Text>
+            <Text style={styles.sectionTitle}>Billing Address</Text>
+            <View style={styles.locationCard}>
+              <View style={styles.locationTop}>
+                <MapPin size={14} color={Colors.customerPrimary} />
+                <Text style={styles.locationLabel}>{profile.billingAddress}</Text>
               </View>
-            ))}
+              <Text style={styles.locationAddress}>{profile.billingCity}, {profile.billingPostcode}</Text>
+              <Text style={styles.locationContact}>{profile.contactName} · {profile.contactPhone}</Text>
+            </View>
           </View>
 
           <View style={styles.section}>

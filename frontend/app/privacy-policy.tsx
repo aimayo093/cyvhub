@@ -64,6 +64,19 @@ export default function PrivacyPolicyPage() {
                         </>
                     )}
 
+                    {(!isDriver && !isCarrier) && (
+                        <>
+                            <Text style={styles.h2}>1. Business & Booking Data</Text>
+                            <Text style={styles.p}>
+                                We collect information about your company's delivery patterns, frequently used routes, and package specifications. This helps us provide more accurate instant quotes and optimize carrier availability.
+                            </Text>
+                            <Text style={styles.h2}>2. Payment Security</Text>
+                            <Text style={styles.p}>
+                                For business accounts, we monitor transaction patterns to detect and prevent fraudulent bookings. We store billing addresses and VAT details to comply with UK tax regulations.
+                            </Text>
+                        </>
+                    )}
+
                     <Text style={styles.h2}>Data Sharing</Text>
                     <Text style={styles.p}>
                         We never sell your data to third parties. We share data only with service providers (e.g., Stripe, AWS, Resend) necessary to operate the platform.

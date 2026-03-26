@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { Job, JobStatus, FleetVehicle, CarrierRateCard } from '@/types';
+import { apiClient } from '@/services/api';
 
 const NEXT_STATUS_MAP: Partial<Record<JobStatus, JobStatus>> = {
   ASSIGNED: 'EN_ROUTE_TO_PICKUP',
@@ -40,14 +41,16 @@ export const [CarrierProvider, useCarrier] = createContextHook(() => {
   const loadCarrierData = useCallback(async () => {
     try {
       // Assuming api wrapper returns { data: ... } 
-      const [fleetRes, driversRes, jobsRes] = await Promise.all([
+      const [fleetRes, driversRes, jobsRes, ratesRes] = await Promise.all([
         apiClient('/carriers/my/fleet').catch(() => ({ data: [] })),
         apiClient('/carriers/my/drivers').catch(() => ({ data: [] })),
-        apiClient('/jobs').catch(() => ({ jobs: [] }))
+        apiClient('/jobs').catch(() => ({ jobs: [] })),
+        apiClient('/carriers/my/rates').catch(() => ({ data: [] }))
       ]);
       
       setFleet(fleetRes.data || []);
       setDrivers(driversRes.data || []);
+      setRateCards(ratesRes.data || []);
       
       if (jobsRes.jobs) {
          setCarrierJobs(jobsRes.jobs.filter((j: Job) => j.status !== 'PENDING_DISPATCH'));
@@ -154,16 +157,32 @@ export const [CarrierProvider, useCarrier] = createContextHook(() => {
     }
   }, []);
 
-  const addRateCard = useCallback((rateCard: Omit<CarrierRateCard, 'id'>) => {
-    const newCard: CarrierRateCard = {
-      ...rateCard,
-      id: `rc-${Date.now()}`,
-    };
-    setRateCards(prev => [newCard, ...prev]);
+  const addRateCard = useCallback(async (rateCard: Omit<CarrierRateCard, 'id'>) => {
+    try {
+        const res = await apiClient('/carriers/my/rates', {
+            method: 'POST',
+            body: JSON.stringify(rateCard)
+        });
+        if (res.data) {
+            setRateCards(prev => [res.data, ...prev]);
+        }
+    } catch (e) {
+        console.error('Failed to add rate card', e);
+    }
   }, []);
 
-  const updateRateCard = useCallback((id: string, updates: Partial<CarrierRateCard>) => {
-    setRateCards(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+  const updateRateCard = useCallback(async (id: string, updates: Partial<CarrierRateCard>) => {
+    try {
+        const res = await apiClient(`/carriers/my/rates/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(updates)
+        });
+        if (res.data) {
+            setRateCards(prev => prev.map(r => r.id === id ? res.data : r));
+        }
+    } catch (e) {
+        console.error('Failed to update rate card', e);
+    }
   }, []);
 
   const assignDriverToJob = useCallback((jobId: string, driverId: string) => {

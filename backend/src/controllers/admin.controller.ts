@@ -63,3 +63,29 @@ export const getHRList = async (req: AuthenticatedRequest, res: Response) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+export const getUsersList = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true,
+                status: true,
+                createdAt: true,
+                carrierProfile: { select: { companyName: true } },
+                businessProfile: { select: { companyName: true } },
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(users);
+    } catch (error) {
+        console.error('Admin Users List Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};

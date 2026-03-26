@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
+import { apiClient } from '@/services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -29,35 +31,6 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { Job } from '@/types';
 
-const MOCK_JOBS: any[] = [
-  {
-    id: '1',
-    jobNumber: 'CYV-2023-8901',
-    pickupCity: 'London',
-    dropoffCity: 'Manchester',
-    status: 'ACTIVE',
-    businessName: 'TechCorp Ltd',
-    calculatedPrice: 145.00,
-  },
-  {
-    id: '2',
-    jobNumber: 'CYV-2023-8902',
-    pickupCity: 'Birmingham',
-    dropoffCity: 'Bristol',
-    status: 'DELIVERED',
-    categoryName: 'Medical',
-    calculatedPrice: 85.00,
-  },
-  {
-    id: '3',
-    jobNumber: 'CYV-2023-8903',
-    pickupCity: 'Leeds',
-    dropoffCity: 'Newcastle',
-    status: 'CANCELLED',
-    businessName: 'BuildCo Supplies',
-    calculatedPrice: 110.00,
-  },
-];
 
 type JobFilter = 'all' | 'active' | 'completed' | 'cancelled';
 
@@ -86,7 +59,27 @@ export default function ManageJobsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const allJobs = MOCK_JOBS;
+  const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchJobs = useCallback(async () => {
+    try {
+      const res = await apiClient('/jobs');
+      setAllJobs(res.jobs || res || []);
+    } catch (err) {
+      console.error('ManageJobs fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchJobs(); }, [fetchJobs]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchJobs();
+  }, [fetchJobs]);
 
   const filteredJobs = useMemo(() => {
     let result = allJobs;
@@ -121,11 +114,6 @@ export default function ManageJobsScreen() {
     completed: allJobs.filter((j: any) => j.status === 'DELIVERED').length,
     revenue: allJobs.reduce((sum: number, j: any) => sum + j.calculatedPrice, 0),
   }), [allJobs]);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
 
   const filters: { key: JobFilter; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: allJobs.length },

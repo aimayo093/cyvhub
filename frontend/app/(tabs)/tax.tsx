@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -28,17 +29,7 @@ import Colors from '@/constants/colors';
 import { useAuth } from '@/providers/AuthProvider';
 
 // Dummy 9-box VAT return data based on our mock finances
-const MOCK_VAT_RETURN = {
-  box1: 52400.00, // VAT due on sales
-  box2: 0.00,     // VAT due on acquisitions from EU
-  box3: 52400.00, // Total output tax (Box 1 + 2)
-  box4: 12150.00, // VAT reclaimed on purchases
-  box5: 40250.00, // Net VAT to pay (Box 3 - 4)
-  box6: 262000.00,// Total value of sales excl. VAT
-  box7: 60750.00, // Total value of purchases excl. VAT
-  box8: 0.00,     // Total value of dispatched goods to EU
-  box9: 0.00,     // Total value of acquisitions from EU
-};
+import { apiClient } from '@/services/api';
 
 export default function TaxComplianceScreen() {
   const insets = useSafeAreaInsets();
@@ -46,11 +37,49 @@ export default function TaxComplianceScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [vatRate, setVatRate] = useState('20.0');
   const [mtdConnected, setMtdConnected] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await apiClient('/analytics/platform');
+      setStats(res.stats);
+    } catch (err) {
+      console.error('fetchData error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const vatData = useMemo(() => {
+    const revenue = stats?.totalRevenue || 0;
+    const rate = parseFloat(vatRate) / 100;
+    const vatDue = revenue * rate;
+    const mockPurchases = revenue * 0.25; // Estimate
+    const vatReclaimed = mockPurchases * rate;
+
+    return {
+      box1: vatDue,
+      box2: 0,
+      box3: vatDue,
+      box4: vatReclaimed,
+      box5: vatDue - vatReclaimed,
+      box6: revenue,
+      box7: mockPurchases,
+      box8: 0,
+      box9: 0,
+    };
+  }, [stats, vatRate]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const handleExportCSV = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -122,11 +151,11 @@ export default function TaxComplianceScreen() {
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Registered Name</Text>
-            <Text style={styles.detailValue}>CYVhub Logistics Ltd</Text>
+            <Text style={styles.detailValue}>Cyvrix Limited (CYVhub)</Text>
           </View>
           <View style={[styles.detailRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
             <Text style={styles.detailLabel}>VAT Registration No.</Text>
-            <Text style={styles.detailValue}>GB 123 4567 89</Text>
+            <Text style={styles.detailValue}>GB 384 9210 55</Text>
           </View>
         </View>
 
@@ -157,22 +186,17 @@ export default function TaxComplianceScreen() {
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <RefreshCw size={18} color={Colors.adminPrimary} />
-            <Text style={styles.sectionTitle}>Reporting Period: Q4 2023</Text>
+            <Text style={styles.sectionTitle}>Reporting Period: Current Quarter</Text>
           </View>
           <View style={styles.periodRow}>
             <View>
-              <Text style={styles.periodLabel}>Period Start</Text>
-              <Text style={styles.periodValue}>01 Oct 2023</Text>
+              <Text style={styles.periodLabel}>Total Revenue</Text>
+              <Text style={styles.periodValue}>£{(stats?.totalRevenue || 0).toLocaleString()}</Text>
             </View>
             <View style={styles.periodDivider} />
             <View>
-              <Text style={styles.periodLabel}>Period End</Text>
-              <Text style={styles.periodValue}>31 Dec 2023</Text>
-            </View>
-            <View style={styles.periodDivider} />
-            <View>
-              <Text style={styles.periodLabel}>Deadline</Text>
-              <Text style={[styles.periodValue, { color: Colors.warning }]}>07 Feb 2024</Text>
+              <Text style={styles.periodLabel}>Period Status</Text>
+              <Text style={[styles.periodValue, { color: Colors.success }]}>OPEN</Text>
             </View>
           </View>
         </View>
@@ -185,54 +209,58 @@ export default function TaxComplianceScreen() {
           </View>
           <Text style={styles.helperText}>These figures are automatically calculated from your cleared platform payouts, fleet expenses, and rendered invoices for connected carriers and customers.</Text>
 
-          <View style={styles.boxGrid}>
-            <View style={styles.boxRow}>
-              <View style={styles.boxCell}>
-                <Text style={styles.boxLabel}>Box 1: VAT due on sales</Text>
-                <Text style={styles.boxValue}>£{MOCK_VAT_RETURN.box1.toLocaleString()}</Text>
+          {loading ? (
+            <ActivityIndicator size="small" color={Colors.adminPrimary} style={{ margin: 20 }} />
+          ) : (
+            <View style={styles.boxGrid}>
+              <View style={styles.boxRow}>
+                <View style={styles.boxCell}>
+                  <Text style={styles.boxLabel}>Box 1: VAT due on sales</Text>
+                  <Text style={styles.boxValue}>£{vatData.box1.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+                <View style={styles.boxCell}>
+                  <Text style={styles.boxLabel}>Box 2: VAT on EU acqs.</Text>
+                  <Text style={styles.boxValue}>£{vatData.box2.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
               </View>
-              <View style={styles.boxCell}>
-                <Text style={styles.boxLabel}>Box 2: VAT on EU acqs.</Text>
-                <Text style={styles.boxValue}>£{MOCK_VAT_RETURN.box2.toLocaleString()}</Text>
+              <View style={styles.boxRow}>
+                <View style={[styles.boxCell, styles.boxHighlight]}>
+                  <Text style={[styles.boxLabel, styles.boxLabelHighlight]}>Box 3: Total VAT due</Text>
+                  <Text style={[styles.boxValue, styles.boxValueHighlight]}>£{vatData.box3.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+                <View style={styles.boxCell}>
+                  <Text style={styles.boxLabel}>Box 4: VAT reclaimed</Text>
+                  <Text style={styles.boxValue}>£{vatData.box4.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+              </View>
+              <View style={styles.boxRow}>
+                <View style={[styles.boxCell, styles.boxCritical]}>
+                  <Text style={[styles.boxLabel, styles.boxLabelHighlight]}>Box 5: Net VAT to pay</Text>
+                  <Text style={[styles.boxValue, styles.boxValueHighlight]}>£{vatData.box5.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+                <View style={styles.boxCell}>
+                  <Text style={styles.boxLabel}>Box 6: Total sales (ex VAT)</Text>
+                  <Text style={styles.boxValue}>£{vatData.box6.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+              </View>
+              <View style={styles.boxRow}>
+                <View style={styles.boxCell}>
+                  <Text style={styles.boxLabel}>Box 7: Total purchases (ex VAT)</Text>
+                  <Text style={styles.boxValue}>£{vatData.box7.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+                <View style={styles.boxCell}>
+                  <Text style={styles.boxLabel}>Box 8: Dispatch to EU</Text>
+                  <Text style={styles.boxValue}>£{vatData.box8.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
+              </View>
+              <View style={[styles.boxRow, { borderBottomWidth: 0 }]}>
+                <View style={styles.boxCell}>
+                  <Text style={styles.boxLabel}>Box 9: Acqs. from EU</Text>
+                  <Text style={styles.boxValue}>£{vatData.box9.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                </View>
               </View>
             </View>
-            <View style={styles.boxRow}>
-              <View style={[styles.boxCell, styles.boxHighlight]}>
-                <Text style={[styles.boxLabel, styles.boxLabelHighlight]}>Box 3: Total VAT due</Text>
-                <Text style={[styles.boxValue, styles.boxValueHighlight]}>£{MOCK_VAT_RETURN.box3.toLocaleString()}</Text>
-              </View>
-              <View style={styles.boxCell}>
-                <Text style={styles.boxLabel}>Box 4: VAT reclaimed</Text>
-                <Text style={styles.boxValue}>£{MOCK_VAT_RETURN.box4.toLocaleString()}</Text>
-              </View>
-            </View>
-            <View style={styles.boxRow}>
-              <View style={[styles.boxCell, styles.boxCritical]}>
-                <Text style={[styles.boxLabel, styles.boxLabelHighlight]}>Box 5: Net VAT to pay</Text>
-                <Text style={[styles.boxValue, styles.boxValueHighlight]}>£{MOCK_VAT_RETURN.box5.toLocaleString()}</Text>
-              </View>
-              <View style={styles.boxCell}>
-                <Text style={styles.boxLabel}>Box 6: Total sales (ex VAT)</Text>
-                <Text style={styles.boxValue}>£{MOCK_VAT_RETURN.box6.toLocaleString()}</Text>
-              </View>
-            </View>
-            <View style={styles.boxRow}>
-              <View style={styles.boxCell}>
-                <Text style={styles.boxLabel}>Box 7: Total purchases (ex VAT)</Text>
-                <Text style={styles.boxValue}>£{MOCK_VAT_RETURN.box7.toLocaleString()}</Text>
-              </View>
-              <View style={styles.boxCell}>
-                <Text style={styles.boxLabel}>Box 8: Dispatch to EU</Text>
-                <Text style={styles.boxValue}>£{MOCK_VAT_RETURN.box8.toLocaleString()}</Text>
-              </View>
-            </View>
-            <View style={[styles.boxRow, { borderBottomWidth: 0 }]}>
-              <View style={styles.boxCell}>
-                <Text style={styles.boxLabel}>Box 9: Acqs. from EU</Text>
-                <Text style={styles.boxValue}>£{MOCK_VAT_RETURN.box9.toLocaleString()}</Text>
-              </View>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Actions */}

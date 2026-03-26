@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import {
   Building2,
   Mail,
@@ -28,6 +28,8 @@ import {
   Save,
   X,
   Globe,
+  Brain,
+  ChevronRight,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -39,36 +41,44 @@ const AVAILABLE_COVERAGE_REGIONS = [
   'Carmarthen', 'Pembrokeshire', 'Bridgend', 'Merthyr Tydfil'
 ];
 
-const MOCK_CARRIER_COMPLIANCE = [
-  { id: '1', type: 'Operator Licence', status: 'VALID', expiryDate: '2027-04-15' },
-  { id: '2', type: 'Goods in Transit Insurance', status: 'EXPIRING_SOON', expiryDate: '2026-04-01' },
-  { id: '3', type: 'Public Liability', status: 'VALID', expiryDate: '2026-11-20' },
-  { id: '4', type: 'Driver Background Checks', status: 'EXPIRED', expiryDate: '2026-02-15' },
+import * as ImagePicker from 'expo-image-picker';
+import { apiClient, API_URL, getToken } from '@/services/api';
+
+const CARRIER_REQUIRED_DOCS = [
+  { slug: 'operator_licence', label: 'Operator Licence' },
+  { slug: 'git_insurance', label: 'Goods in Transit Insurance' },
+  { slug: 'public_liability', label: 'Public Liability Insurance' },
+  { slug: 'background_checks', label: 'Driver Background Checks' },
 ];
+
 function getComplianceIcon(status: string) {
   switch (status) {
-    case 'VALID': return { Icon: CheckCircle, color: Colors.success };
-    case 'EXPIRING_SOON': return { Icon: AlertTriangle, color: Colors.warning };
-    case 'EXPIRED': return { Icon: XCircle, color: Colors.danger };
+    case 'verified': return { Icon: CheckCircle, color: Colors.success };
+    case 'pending_review': return { Icon: Clock, color: Colors.warning };
+    case 'rejected': return { Icon: XCircle, color: Colors.danger };
+    case 'expired': return { Icon: AlertTriangle, color: Colors.danger };
     default: return { Icon: Clock, color: Colors.textMuted };
   }
 }
 
 function getComplianceBg(status: string) {
   switch (status) {
-    case 'VALID': return Colors.successLight;
-    case 'EXPIRING_SOON': return Colors.warningLight;
-    case 'EXPIRED': return Colors.dangerLight;
+    case 'verified': return Colors.successLight;
+    case 'pending_review': return Colors.warningLight;
+    case 'rejected': return Colors.dangerLight;
+    case 'expired': return Colors.dangerLight;
     default: return Colors.surfaceAlt;
   }
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return 'Not set';
   const d = new Date(dateStr);
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function CarrierProfileScreen() {
+  const router = useRouter();
   const { carrier, updateProfile } = useAuth();
   const { coverageRegions, updateCoverageRegions } = useCarrier();
   const [isEditing, setIsEditing] = useState(false);
@@ -78,6 +88,27 @@ export default function CarrierProfileScreen() {
   const [contactPhone, setContactPhone] = useState(carrier?.phone ?? '');
   const [showRegionPicker, setShowRegionPicker] = useState(false);
   const [selectedRegions, setSelectedRegions] = useState<string[]>(coverageRegions);
+
+  // Compliance state
+  const [complianceDocs, setComplianceDocs] = useState<any[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+  const [isUploading, setIsUploading] = useState<string | null>(null);
+
+  const fetchCompliance = useCallback(async () => {
+    setIsLoadingDocs(true);
+    try {
+      const data = await apiClient('/compliance/carrier');
+      setComplianceDocs(data.documents || []);
+    } catch (err) {
+      console.error('fetchCompliance error:', err);
+    } finally {
+      setIsLoadingDocs(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchCompliance();
+  }, [fetchCompliance]);
 
   const handleSave = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -92,14 +123,67 @@ export default function CarrierProfileScreen() {
     Alert.alert('Saved', 'Company profile updated successfully.');
   }, [companyName, tradingName, contactEmail, contactPhone, selectedRegions, updateProfile, updateCoverageRegions]);
 
-  const handleUploadDoc = useCallback((docType: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert('Upload Document', `Select a file to upload for ${docType}`, [
-      { text: 'Camera', onPress: () => Alert.alert('Info', 'Camera capture would open here') },
-      { text: 'Gallery', onPress: () => Alert.alert('Info', 'File picker would open here') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  }, []);
+  const handleUploadDoc = useCallback(async (docSlug: string, docLabel: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // 1. Pick Image
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    setIsUploading(docSlug);
+    try {
+      const selectedFile = result.assets[0];
+      const formData = new FormData();
+      
+      const fileToUpload = {
+        uri: Platform.OS === 'ios' ? selectedFile.uri.replace('file://', '') : selectedFile.uri,
+        type: 'image/jpeg',
+        name: `${docSlug}.jpg`,
+      } as any;
+
+      formData.append('media', fileToUpload);
+
+      // 2. Upload to Media Service
+      const token = await getToken();
+      const uploadResp = await fetch(`${API_URL}/media/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          // Note: Do NOT set Content-Type header when sending FormData
+        },
+      });
+
+      if (!uploadResp.ok) throw new Error('Media upload failed');
+      const { asset } = await uploadResp.json();
+
+      // 3. Link to Compliance
+      await apiClient('/compliance/carrier/upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          documentType: docSlug,
+          fileName: `${docLabel}.jpg`,
+          fileUrl: asset.url,
+          mimeType: 'image/jpeg',
+          fileSize: selectedFile.fileSize || 0,
+        }),
+      });
+
+      Alert.alert('Success', `${docLabel} uploaded successfully. It is now pending review.`);
+      fetchCompliance();
+    } catch (err: any) {
+      console.error('Upload Error:', err);
+      Alert.alert('Error', err.message || 'Failed to upload document.');
+    } finally {
+      setIsUploading(null);
+    }
+  }, [fetchCompliance]);
 
   const toggleRegion = useCallback((region: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -157,6 +241,21 @@ export default function CarrierProfileScreen() {
             {isEditing ? <X size={18} color={Colors.danger} /> : <Edit3 size={18} color={Colors.carrierPrimary} />}
           </TouchableOpacity>
         </View>
+
+        {!isEditing && (
+          <TouchableOpacity
+            style={styles.aiButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/carrier-ai' as any);
+            }}
+            activeOpacity={0.7}
+          >
+            <Brain size={18} color={Colors.carrierPrimary} />
+            <Text style={styles.aiButtonText}>Chat with AI Assistant</Text>
+            <ChevronRight size={16} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Company Details</Text>
@@ -268,29 +367,34 @@ export default function CarrierProfileScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Compliance Documents</Text>
-          {MOCK_CARRIER_COMPLIANCE.map((doc: any) => {
-            const { Icon: StatusIcon, color } = getComplianceIcon(doc.status);
-            const bg = getComplianceBg(doc.status);
+          {CARRIER_REQUIRED_DOCS.map((reqDoc) => {
+            const uploaded = complianceDocs.find((d: any) => d.type === reqDoc.slug);
+            const status = uploaded?.status || 'not_submitted';
+            const { Icon: StatusIcon, color } = getComplianceIcon(status);
+            const bg = getComplianceBg(status);
+            const uploading = isUploading === reqDoc.slug;
+
             return (
-              <View key={doc.id} style={styles.complianceCard}>
+              <View key={reqDoc.slug} style={styles.complianceCard}>
                 <View style={styles.complianceTop}>
                   <View style={[styles.complianceIconWrap, { backgroundColor: bg }]}>
                     <StatusIcon size={16} color={color} />
                   </View>
                   <View style={styles.complianceInfo}>
-                    <Text style={styles.complianceType}>{doc.type}</Text>
+                    <Text style={styles.complianceType}>{reqDoc.label}</Text>
                     <Text style={[styles.complianceStatus, { color }]}>
-                      {doc.status.replace('_', ' ')}
-                      {doc.expiryDate && ` · ${formatDate(doc.expiryDate)}`}
+                      {status.replace('_', ' ')}
+                      {uploaded?.expiryDate && ` · Expires ${formatDate(uploaded.expiryDate)}`}
                     </Text>
                   </View>
                   <TouchableOpacity
-                    style={styles.uploadBtn}
-                    onPress={() => handleUploadDoc(doc.type)}
+                    style={[styles.uploadBtn, uploading && { opacity: 0.5 }]}
+                    onPress={() => !uploading && handleUploadDoc(reqDoc.slug, reqDoc.label)}
                     activeOpacity={0.7}
+                    disabled={uploading}
                   >
                     <Upload size={14} color={Colors.carrierPrimary} />
-                    <Text style={styles.uploadBtnText}>Upload</Text>
+                    <Text style={styles.uploadBtnText}>{uploading ? 'Uploading...' : 'Upload'}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -570,5 +674,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: '#FFFFFF',
+  },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 12,
+  },
+  aiButtonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
   },
 });

@@ -76,6 +76,7 @@ export type WhyUsConfig = {
 export type ServicesConfig = {
     title: string;
     subtitle: string;
+    showSlider: boolean;
     banners: ServiceBannerConfig[];
 };
 
@@ -90,6 +91,7 @@ export type IndustryConfig = { id: string; title: string; desc: string; imageUrl
 export type IndustriesConfig = {
     title: string;
     subtitle: string;
+    showSlider: boolean;
     industries: IndustryConfig[];
 };
 
@@ -275,9 +277,9 @@ export const initialHero: HeroConfig = {
     ctaText: 'Get an Instant Quote',
     ctaLink: '/guest-quote',
     bgImages: [
-        'https://cyvhub.com/hero_sameday_van_v2.png',
-        'https://cyvhub.com/hero_b2b_courier.png',
-        'https://cyvhub.com/hero_green_fleet_v2.png',
+        'https://images.unsplash.com/photo-1586528116311-ad8669966155?auto=format&fit=crop&q=80&w=2000',
+        'https://images.unsplash.com/photo-1519003722824-192d992a6058?auto=format&fit=crop&q=80&w=2000',
+        'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=2000'
     ],
     animated: true,
     showGuestWidget: true,
@@ -335,12 +337,14 @@ export const initialWhyUs: WhyUsConfig = {
 export const initialServices: ServicesConfig = {
     title: 'Our Services',
     subtitle: 'Tailored solutions for every delivery requirement.',
+    showSlider: false,
     banners: [
         { id: '1', title: 'Same Day Delivery', desc: 'Direct, dedicated vehicles when speed is critical.', imageUrl: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c', link: '/services' },
         { id: '2', title: 'B2B Logistics', desc: 'Scalable solutions for modern supply chains.', imageUrl: 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55', link: '/services' },
         { id: '3', title: 'Green Fleet', desc: 'Eco-friendly delivery options for a sustainable future.', imageUrl: 'https://images.unsplash.com/photo-1509391366360-2e959784a276', link: '/services' },
         { id: '4', title: 'Medical & Healthcare', desc: 'Specialist handling for time-sensitive medical goods.', imageUrl: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f', link: '/services' },
         { id: '5', title: 'Scheduled Routes', desc: 'Regular, reliable deliveries for your recurring needs.', imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8669966155', link: '/services' },
+        { id: '6', title: 'AOG & Aviation', desc: 'Time-critical parts delivery for aircraft on ground support.', imageUrl: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1', link: '/services/aviation-aog' },
     ]
 };
 
@@ -358,12 +362,14 @@ export const initialStats: StatsConfig = {
 export const initialIndustries: IndustriesConfig = {
     title: 'Industries We Serve',
     subtitle: 'Specialised logistics solutions for your sector.',
+    showSlider: false,
     industries: [
         { id: 'construction', title: 'Construction & Trade', desc: 'From heavy machinery parts to architectural plans, we keep your site moving.', imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd' },
         { id: 'it-tech', title: 'IT & Spare Parts', desc: 'Secure, high-value tech dispatches and mission-critical component delivery.', imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475' },
         { id: 'medical', title: 'Medical & Healthcare', desc: 'Time-critical healthcare logistics for the NHS and private medical sectors.', imageUrl: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d' },
         { id: 'manufacturing', title: 'Manufacturing & Wholesale', desc: 'Just-in-time replenishment for production lines and bulk distribution.', imageUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158' },
         { id: 'reverse', title: 'Reverse Logistics', desc: 'Efficient returns management, asset recovery, and recycling collections.', imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b' },
+        { id: 'aviation', title: 'Aviation & AOG', desc: 'Mission-critical aerospace logistics, supporting grounded aircraft nationwide.', imageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109c0f3' },
     ]
 };
 
@@ -399,7 +405,7 @@ export const initialFooter: FooterConfig = {
     copyright: `© ${new Date().getFullYear()} CYVhub (a Cyvrix Limited brand). All rights reserved.`,
     companyLinks: [
         { id: '1', label: 'About Us', url: '/about' },
-        { id: '2', label: 'Contact', url: '/contact' },
+        { id: '2', label: 'Privacy Policy', url: '/privacy-policy' },
         { id: '3', label: 'Services', url: '/services' },
         { id: '4', label: 'Careers', url: '/careers' },
     ],
@@ -520,6 +526,19 @@ export const initialServicesPage: ServicesPageConfig = {
                 'End-of-life asset disposal'
             ],
             imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b'
+        },
+        {
+            id: 'aviation',
+            title: 'AOG & Aviation',
+            description: 'Time-critical aerospace support and parts delivery. We understand that every second an aircraft is on the ground, revenue is flying away. Our AOG desk is active 24/7.',
+            icon: 'Plane',
+            features: [
+                '60-minute AOG breakout',
+                'Airside security clearance',
+                'Dangerous goods certified',
+                'Direct-to-hangar delivery'
+            ],
+            imageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109c0f3'
         }
     ],
     whatWeDeliverTitle: 'Our Specialist Capabilities',
@@ -860,5 +879,40 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
         caseStudyTitle: 'Case Study: Tech Refresh Programme',
         caseStudyQuote: 'We recovered 2,500 laptops from remote staff in 14 days using CYVhub, saving £150k in potential asset write-offs.',
         caseStudyAuthor: 'IT Procurement Manager'
+    },
+    'aviation-aog': {
+        id: 'aviation-aog',
+        title: 'Aviation & AOG Logistics',
+        subtitle: 'Mission-critical aerospace support for a grounded-free fleet.',
+        heroImageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109c0f3',
+        icon: 'Plane',
+        problemTitle: 'The AOG (Aircraft On Ground) Emergency',
+        problemContent: 'An aircraft on the ground is one of the most expensive downtime events in the global economy. Every minute a part is missing, thousands of pounds in revenue are lost and flight schedules across continents are disrupted.',
+        solutionTitle: 'Hyper-Speed Aerospace Logistics',
+        solutionContent: 'We provide dedicated AOG support with 60-minute collections from any UK aerospace hub or manufacturing site. Our drivers are trained in airside logistics and security protocols for rapid airport delivery.',
+        features: [
+            '24/7/365 Dedicated AOG dispatch desk',
+            'Airport airside delivery & security clearance',
+            'IATA compliant dangerous goods handling',
+            'Zero-transshipment direct airport runs'
+        ],
+        stats: [
+            { label: 'Avg Collection', value: '<45m' },
+            { label: 'On-Time AOG', value: '100%' },
+            { label: 'Airport Hubs', value: 'All UK' }
+        ],
+        equipment: [
+            { title: 'Air-Ride Vans', desc: 'Minimise vibration for sensitive avionics and turbine components.', icon: 'Zap' },
+            { title: 'High-Capacity Freight', desc: 'Large wheelbase vehicles for structural panels and landing gear.', icon: 'Truck' },
+            { title: 'Secure Trackers', desc: 'Real-time GPS tethering for high-value aerospace assets.', icon: 'Map' }
+        ],
+        processSteps: [
+            { title: 'Flash Dispatch', desc: 'AOG orders are prioritized with immediate vehicle breakout within 15 minutes.' },
+            { title: 'Direct Perimeter Run', desc: 'Transit is non-stop from collection point to the specific airport gate or hangar.' },
+            { title: 'Airside Handoff', desc: 'Direct coordination with ground handling teams for immediate part installation.' }
+        ],
+        caseStudyTitle: 'Case Study: Major Airline Recovery',
+        caseStudyQuote: 'CYVhub delivered a critical engine component from Manchester to Heathrow in under 4 hours, saving us from a potential 24-hour grounded event.',
+        caseStudyAuthor: 'Operations Director, Global Airways'
     }
 };

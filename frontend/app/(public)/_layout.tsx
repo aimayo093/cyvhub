@@ -1,18 +1,22 @@
-import { Slot, Link, useFocusEffect } from 'expo-router';
+import { Slot, Link } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'react-native';
-import { Truck, Navigation, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react-native';
+import { Truck, Navigation, Facebook, Twitter, Linkedin, Instagram, Menu, X, User } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 import CookieBanner from '@/components/CookieBanner';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export default function PublicLayout() {
     const { header, footer } = useCMS();
     const insets = useSafeAreaInsets();
-
-    const slideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+ 
+    const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+    const drawerAnim = useRef(new Animated.Value(-SCREEN_WIDTH)).current;
 
     useEffect(() => {
         if (header.enableAnnouncement) {
@@ -26,6 +30,16 @@ export default function PublicLayout() {
             ).start();
         }
     }, [header.enableAnnouncement, slideAnim]);
+ 
+    const toggleMenu = () => {
+        const toValue = isMenuOpen ? -Dimensions.get('window').width : 0;
+        Animated.timing(drawerAnim, {
+            toValue,
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+        setIsMenuOpen(!isMenuOpen);
+    };
 
     return (
         <View style={styles.container}>
@@ -45,18 +59,22 @@ export default function PublicLayout() {
             {/* HEADER */}
             <View style={[styles.header, { paddingTop: header.enableAnnouncement ? 0 : (insets.top || 16) }]}>
                 <View style={styles.headerContent}>
-                    <Link href="/(public)">
-                        <View style={styles.logoContainer}>
+                    <TouchableOpacity style={styles.menuIcon} onPress={toggleMenu}>
+                        <Menu size={28} color={Colors.primary} />
+                    </TouchableOpacity>
+
+                    <Link href="/(public)" asChild>
+                        <TouchableOpacity style={styles.logoContainer}>
                             <Image
                                 source={require('@/assets/images/logo-color-no-bg.png')}
                                 style={styles.logoImage}
                                 resizeMode="contain"
                             />
-                        </View>
+                        </TouchableOpacity>
                     </Link>
 
                     <View style={styles.navLinks}>
-                        {header.menuItems?.map((item) => (
+                        {header.menuItems?.map((item: any) => (
                             <Link key={item.id} href={item.url as any} asChild>
                                 <TouchableOpacity style={styles.navItem}>
                                     <Text style={styles.navText}>{item.label}</Text>
@@ -70,11 +88,40 @@ export default function PublicLayout() {
                             style={styles.loginBtn}
                             activeOpacity={0.8}
                         >
+                            <User size={18} color="#FFF" style={{ marginRight: 8 }} />
                             <Text style={styles.loginBtnText}>{header.loginBtnText}</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>
             </View>
+
+            {/* MOBILE DRAWER */}
+            <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
+                <View style={[styles.drawerHeader, { paddingTop: insets.top + 20 }]}>
+                    <Image
+                        source={require('@/assets/images/logo-color-no-bg.png')}
+                        style={styles.drawerLogo}
+                        resizeMode="contain"
+                    />
+                    <TouchableOpacity onPress={toggleMenu}>
+                        <X size={28} color={Colors.text} />
+                    </TouchableOpacity>
+                </View>
+                <ScrollView contentContainerStyle={styles.drawerContent}>
+                    {header.menuItems?.map((item: any) => (
+                        <Link key={item.id} href={item.url as any} asChild>
+                            <TouchableOpacity style={styles.drawerItem} onPress={toggleMenu}>
+                                <Text style={styles.drawerItemText}>{item.label}</Text>
+                            </TouchableOpacity>
+                        </Link>
+                    ))}
+                    <Link href={header.loginBtnUrl as any} asChild>
+                        <TouchableOpacity style={styles.drawerLoginBtn} onPress={toggleMenu}>
+                            <Text style={styles.drawerLoginText}>{header.loginBtnText}</Text>
+                        </TouchableOpacity>
+                    </Link>
+                </ScrollView>
+            </Animated.View>
 
             {/* PAGE CONTENT */}
             <ScrollView style={styles.main} contentContainerStyle={styles.mainContent}>
@@ -202,8 +249,10 @@ const styles = StyleSheet.create({
     },
     navLinks: {
         flexDirection: 'row',
+        alignItems: 'center',
         gap: 32,
-        ...(Platform.OS !== 'web' && { display: 'none' }) // Hide on mobile for simplicity, could add hamburger later
+        ...(Platform.OS === 'web' && SCREEN_WIDTH < 768 && { display: 'none' }),
+        ...(Platform.OS !== 'web' && { display: 'none' }),
     },
     navItem: {
         paddingVertical: 8,
@@ -214,14 +263,75 @@ const styles = StyleSheet.create({
         color: Colors.text,
     },
     loginBtn: {
-        backgroundColor: Colors.primary, // Changed to primary brand blue
+        backgroundColor: Colors.primary,
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        ...(Platform.OS === 'web' && SCREEN_WIDTH < 768 && { display: 'none' }),
+        ...(Platform.OS !== 'web' && { display: 'none' }),
     },
     loginBtnText: {
         color: '#FFFFFF',
         fontSize: 15,
+        fontWeight: '700',
+    },
+    menuIcon: {
+        padding: 8,
+        ...(Platform.OS === 'web' && SCREEN_WIDTH > 768 && { display: 'none' }),
+    },
+    drawer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: '80%',
+        maxWidth: 300,
+        backgroundColor: '#FFFFFF',
+        zIndex: 100,
+        shadowColor: '#000',
+        shadowOffset: { width: 4, height: 0 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    drawerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+    },
+    drawerLogo: {
+        width: 120,
+        height: 40,
+    },
+    drawerContent: {
+        padding: 20,
+    },
+    drawerItem: {
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    drawerItemText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: Colors.text,
+    },
+    drawerLoginBtn: {
+        marginTop: 32,
+        backgroundColor: Colors.primary,
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    drawerLoginText: {
+        color: '#FFFFFF',
+        fontSize: 16,
         fontWeight: '700',
     },
     main: {

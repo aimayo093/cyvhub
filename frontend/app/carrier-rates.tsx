@@ -28,15 +28,32 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useCarrier } from '@/providers/CarrierProvider';
-import { CarrierRateCard } from '@/types';
-
-const MOCK_RATE_HISTORY = [
-  { id: '1', vehicleType: 'Medium Van', period: 'Dec 2025', jobsUsed: 142, avgPerJob: 165.50, totalRevenue: 23501 },
-  { id: '2', vehicleType: 'Medium Van', period: 'Nov 2025', jobsUsed: 135, avgPerJob: 162.10, totalRevenue: 21883.50 },
-  { id: '3', vehicleType: 'Small Van', period: 'Dec 2025', jobsUsed: 84, avgPerJob: 95.00, totalRevenue: 7980 },
-];
+import { CarrierRateCard, Job } from '@/types';
 
 type ViewTab = 'active' | 'history';
+
+function getHistoryFromJobs(jobs: Job[]) {
+  const historyMap: Record<string, { vehicleType: string; period: string; jobsUsed: number; totalRevenue: number }> = {};
+
+  jobs.forEach(job => {
+    const date = new Date(job.completedAt || job.createdAt);
+    const period = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+    const key = `${job.vehicleType}-${period}`;
+
+    if (!historyMap[key]) {
+      historyMap[key] = {
+        vehicleType: job.vehicleType,
+        period,
+        jobsUsed: 0,
+        totalRevenue: 0,
+      };
+    }
+    historyMap[key].jobsUsed += 1;
+    historyMap[key].totalRevenue += job.calculatedPrice;
+  });
+
+  return Object.values(historyMap).sort((a, b) => new Date(b.period).getTime() - new Date(a.period).getTime());
+}
 
 const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'HGV'];
 
@@ -57,7 +74,7 @@ function getStatusBg(status: CarrierRateCard['status']) {
 }
 
 export default function CarrierRatesScreen() {
-  const { rateCards, addRateCard, updateRateCard } = useCarrier();
+  const { rateCards, addRateCard, updateRateCard, completedJobs } = useCarrier();
   const [activeTab, setActiveTab] = useState<ViewTab>('active');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCard, setEditingCard] = useState<CarrierRateCard | null>(null);
@@ -232,34 +249,43 @@ export default function CarrierRatesScreen() {
         ) : (
           <>
             <Text style={styles.historyTitle}>Rate Usage by Period</Text>
-            {MOCK_RATE_HISTORY.map((item: any) => (
-              <View key={item.id} style={styles.historyCard}>
-                <View style={styles.historyTop}>
-                  <View style={styles.historyLeft}>
-                    <Truck size={16} color={Colors.carrierPrimary} />
-                    <View>
-                      <Text style={styles.historyVehicle}>{item.vehicleType}</Text>
-                      <Text style={styles.historyPeriod}>{item.period}</Text>
+            {getHistoryFromJobs(completedJobs).map((item: any, index: number) => {
+              const avgPerJob = item.jobsUsed > 0 ? (item.totalRevenue / item.jobsUsed) : 0;
+              return (
+                <View key={`${item.vehicleType}-${item.period}`} style={styles.historyCard}>
+                  <View style={styles.historyTop}>
+                    <View style={styles.historyLeft}>
+                      <Truck size={16} color={Colors.carrierPrimary} />
+                      <View>
+                        <Text style={styles.historyVehicle}>{item.vehicleType}</Text>
+                        <Text style={styles.historyPeriod}>{item.period}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.historyRevenue}>£{item.totalRevenue.toLocaleString()}</Text>
+                  </View>
+                  <View style={styles.historyMeta}>
+                    <View style={styles.historyMetaItem}>
+                      <Text style={styles.historyMetaValue}>{item.jobsUsed}</Text>
+                      <Text style={styles.historyMetaLabel}>Jobs</Text>
+                    </View>
+                    <View style={styles.historyMetaItem}>
+                      <Text style={styles.historyMetaValue}>£{avgPerJob.toFixed(2)}</Text>
+                      <Text style={styles.historyMetaLabel}>Avg/Job</Text>
+                    </View>
+                    <View style={styles.historyMetaItem}>
+                      <Text style={styles.historyMetaValue}>£{item.totalRevenue.toLocaleString()}</Text>
+                      <Text style={styles.historyMetaLabel}>Revenue</Text>
                     </View>
                   </View>
-                  <Text style={styles.historyRevenue}>£{item.totalRevenue.toLocaleString()}</Text>
                 </View>
-                <View style={styles.historyMeta}>
-                  <View style={styles.historyMetaItem}>
-                    <Text style={styles.historyMetaValue}>{item.jobsUsed}</Text>
-                    <Text style={styles.historyMetaLabel}>Jobs</Text>
-                  </View>
-                  <View style={styles.historyMetaItem}>
-                    <Text style={styles.historyMetaValue}>£{item.avgPerJob}</Text>
-                    <Text style={styles.historyMetaLabel}>Avg/Job</Text>
-                  </View>
-                  <View style={styles.historyMetaItem}>
-                    <Text style={styles.historyMetaValue}>£{item.totalRevenue.toLocaleString()}</Text>
-                    <Text style={styles.historyMetaLabel}>Revenue</Text>
-                  </View>
-                </View>
+              );
+            })}
+            {completedJobs.length === 0 && (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Clock size={40} color={Colors.textMuted} strokeWidth={1} />
+                <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 13 }}>No history available yet.</Text>
               </View>
-            ))}
+            )}
           </>
         )}
 

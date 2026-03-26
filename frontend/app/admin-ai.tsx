@@ -14,12 +14,11 @@ import { Stack } from 'expo-router';
 import {
   Brain,
   Send,
-  Truck,
-  Clock,
-  TrendingUp,
+  Shield,
+  Activity,
+  BarChart3,
+  Users,
   AlertTriangle,
-  MapPin,
-  Briefcase,
   ChevronRight,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -34,15 +33,14 @@ interface ChatMessage {
 }
 
 const QUICK_PROMPTS = [
-  { label: 'Late deliveries last month', icon: Clock, query: 'Show my late deliveries last month' },
-  { label: 'Routes causing delays', icon: MapPin, query: 'Which routes are causing delays?' },
-  { label: 'Average SLA score', icon: TrendingUp, query: 'What is my average SLA score?' },
-  { label: 'Revenue breakdown', icon: Briefcase, query: 'Show my revenue breakdown' },
-  { label: 'Fleet status', icon: Truck, query: 'What is the status of my fleet?' },
-  { label: 'At-risk jobs', icon: AlertTriangle, query: 'Are there any at-risk jobs right now?' },
+  { label: 'Platform performance', icon: Activity, query: 'Show platform operational performance' },
+  { label: 'Financial anomalies', icon: AlertTriangle, query: 'Are there any financial anomalies?' },
+  { label: 'Revenue snapshot', icon: BarChart3, query: 'What is the total revenue today?' },
+  { label: 'Carrier compliance', icon: Shield, query: 'Show carrier compliance status' },
+  { label: 'Active user count', icon: Users, query: 'How many active users are online?' },
 ];
 
-export default function CarrierAIScreen() {
+export default function AdminAIScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -123,7 +121,7 @@ export default function CarrierAIScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
-      <Stack.Screen options={{ title: 'AI Assistant' }} />
+      <Stack.Screen options={{ title: 'Admin AI Control' }} />
 
       <ScrollView
         ref={scrollRef}
@@ -135,14 +133,14 @@ export default function CarrierAIScreen() {
         {messages.length === 0 && (
           <View style={styles.welcomeSection}>
             <View style={styles.welcomeIcon}>
-              <Brain size={36} color={Colors.carrierPrimary} />
+              <Brain size={36} color={Colors.adminPrimary} />
             </View>
-            <Text style={styles.welcomeTitle}>Carrier AI Assistant</Text>
+            <Text style={styles.welcomeTitle}>Admin AI Assistant</Text>
             <Text style={styles.welcomeSub}>
-              Ask me about your deliveries, performance, routes, or fleet. I have access to all your operational data.
+              Ask me about platform health, financial anomalies, carrier compliance, or revenue insights. I have access to the entire CYVHUB data lake.
             </Text>
 
-            <Text style={styles.promptsTitle}>Quick actions</Text>
+            <Text style={styles.promptsTitle}>Global Insights</Text>
             <View style={styles.promptsGrid}>
               {QUICK_PROMPTS.map((prompt) => (
                 <TouchableOpacity
@@ -151,7 +149,7 @@ export default function CarrierAIScreen() {
                   onPress={() => handleQuickPrompt(prompt.query)}
                   activeOpacity={0.7}
                 >
-                  <prompt.icon size={16} color={Colors.carrierPrimary} />
+                  <prompt.icon size={16} color={Colors.adminPrimary} />
                   <Text style={styles.promptLabel}>{prompt.label}</Text>
                   <ChevronRight size={14} color={Colors.textMuted} />
                 </TouchableOpacity>
@@ -170,7 +168,7 @@ export default function CarrierAIScreen() {
           >
             {msg.role === 'assistant' && (
               <View style={styles.aiAvatarSmall}>
-                <Brain size={12} color={Colors.carrierPrimary} />
+                <Brain size={12} color={Colors.adminPrimary} />
               </View>
             )}
             <Text style={[
@@ -185,9 +183,9 @@ export default function CarrierAIScreen() {
         {isTyping && (
           <Animated.View style={[styles.typingIndicator, { opacity: typingAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }]}>
             <View style={styles.aiAvatarSmall}>
-              <Brain size={12} color={Colors.carrierPrimary} />
+              <Brain size={12} color={Colors.adminPrimary} />
             </View>
-            <Text style={styles.typingText}>Analysing your data...</Text>
+            <Text style={styles.typingText}>Scanning platform data...</Text>
           </Animated.View>
         )}
 
@@ -216,7 +214,7 @@ export default function CarrierAIScreen() {
           style={styles.textInput}
           value={input}
           onChangeText={setInput}
-          placeholder="Ask about your operations..."
+          placeholder="Command center query..."
           placeholderTextColor={Colors.textMuted}
           multiline
           returnKeyType="send"
@@ -256,7 +254,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: Colors.carrierPrimary + '12',
+    backgroundColor: Colors.adminPrimary + '12',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -313,7 +311,7 @@ const styles = StyleSheet.create({
   },
   userBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: Colors.carrierPrimary,
+    backgroundColor: Colors.adminPrimary,
     borderBottomRightRadius: 4,
   },
   aiBubble: {
@@ -337,7 +335,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 7,
-    backgroundColor: Colors.carrierPrimary + '12',
+    backgroundColor: Colors.adminPrimary + '12',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
@@ -369,17 +367,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   quickChip: {
-    backgroundColor: Colors.carrierPrimary + '10',
+    backgroundColor: Colors.adminPrimary + '10',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.carrierPrimary + '20',
+    borderColor: Colors.adminPrimary + '20',
   },
   quickChipText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.carrierPrimary,
+    color: Colors.adminPrimary,
   },
   inputBar: {
     flexDirection: 'row',
@@ -407,7 +405,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.carrierPrimary,
+    backgroundColor: Colors.adminPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },

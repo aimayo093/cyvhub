@@ -8,6 +8,8 @@ interface JobCardProps {
   job: Job;
   onPress: () => void;
   compact?: boolean;
+  isCurrent?: boolean;
+  isDark?: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -28,21 +30,26 @@ function formatTime(dateStr: string): string {
   return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default React.memo(function JobCard({ job, onPress, compact }: JobCardProps) {
+export default React.memo(function JobCard({ job, onPress, compact, isCurrent, isDark }: JobCardProps) {
   const statusInfo = STATUS_CONFIG[job.status] ?? { label: job.status, color: Colors.textMuted, bg: '#F3F4F6' };
 
   return (
     <TouchableOpacity
-      style={[styles.card, compact && styles.cardCompact]}
+      style={[
+        styles.card, 
+        compact && styles.cardCompact,
+        isCurrent && styles.cardCurrent,
+        isDark && styles.cardDark
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
       testID={`job-card-${job.id}`}
     >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.jobNumber}>{job.jobNumber}</Text>
+          <Text style={[styles.jobNumber, isDark && styles.textWhite]}>{job.jobNumber}</Text>
           {job.businessName && (
-            <Text style={styles.businessName}>{job.businessName}</Text>
+            <Text style={[styles.businessName, isDark && styles.textLight]}>{job.businessName}</Text>
           )}
         </View>
         <View style={styles.headerRight}>
@@ -52,9 +59,9 @@ export default React.memo(function JobCard({ job, onPress, compact }: JobCardPro
               <Text style={styles.urgentText}>URGENT</Text>
             </View>
           )}
-          <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusInfo.color }]} />
-            <Text style={[styles.statusText, { color: statusInfo.color }]}>
+          <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : statusInfo.bg }]}>
+            <View style={[styles.statusDot, { backgroundColor: isDark ? '#FFF' : statusInfo.color }]} />
+            <Text style={[styles.statusText, { color: isDark ? '#FFF' : statusInfo.color }]}>
               {statusInfo.label}
             </Text>
           </View>
@@ -262,5 +269,24 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.primary,
     marginLeft: 'auto',
+  },
+  cardCurrent: {
+    borderColor: Colors.primary,
+    borderWidth: 2,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  cardDark: {
+    backgroundColor: '#1E293B',
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  textWhite: {
+    color: '#FFFFFF',
+  },
+  textLight: {
+    color: 'rgba(255,255,255,0.7)',
   },
 });

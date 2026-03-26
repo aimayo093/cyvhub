@@ -25,24 +25,41 @@ import { useAuth } from '@/providers/AuthProvider';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { driver, customer, admin, userRole, updateProfile } = useAuth();
+  const { driver, customer, admin, carrier, userRole, updateProfile } = useAuth();
   const isDriver = userRole === 'driver';
   const isAdmin = userRole === 'admin';
-  const accent = isDriver ? Colors.primary : isAdmin ? Colors.adminPrimary : Colors.customerPrimary;
-  const profile = isDriver ? driver : isAdmin ? admin : customer;
+  const isCarrier = userRole === 'carrier';
 
-  const [firstName, setFirstName] = useState<string>(profile?.firstName ?? '');
-  const [lastName, setLastName] = useState<string>(profile?.lastName ?? '');
+  const accent = isDriver
+    ? Colors.primary
+    : isAdmin
+      ? Colors.adminPrimary
+      : isCarrier
+        ? Colors.carrierPrimary
+        : Colors.customerPrimary;
+
+  const profile = isDriver ? driver : isAdmin ? admin : isCarrier ? carrier : customer;
+
+  const [firstName, setFirstName] = useState<string>(
+    isCarrier
+      ? ((carrier as any)?.contactFirstName ?? (carrier as any)?.firstName ?? '')
+      : (profile as any)?.firstName ?? ''
+  );
+  const [lastName, setLastName] = useState<string>(
+    isCarrier
+      ? ((carrier as any)?.contactLastName ?? (carrier as any)?.lastName ?? '')
+      : (profile as any)?.lastName ?? ''
+  );
   const [email, setEmail] = useState<string>(profile?.email ?? '');
   const [phone, setPhone] = useState<string>(profile?.phone ?? '');
   const [address, setAddress] = useState<string>(
-    isDriver || isAdmin ? '' : (customer?.defaultAddress ?? '')
+    (isDriver || isAdmin || isCarrier) ? '' : (customer?.defaultAddress ?? '')
   );
   const [city, setCity] = useState<string>(
-    isDriver || isAdmin ? '' : (customer?.defaultCity ?? '')
+    (isDriver || isAdmin || isCarrier) ? '' : (customer?.defaultCity ?? '')
   );
   const [postcode, setPostcode] = useState<string>(
-    isDriver || isAdmin ? '' : (customer?.defaultPostcode ?? '')
+    (isDriver || isAdmin || isCarrier) ? '' : (customer?.defaultPostcode ?? '')
   );
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -56,17 +73,26 @@ export default function EditProfileScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     setTimeout(() => {
-      updateProfile(profile?.id || '', {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+      const updates: any = {
         email: email.trim(),
         phone: phone.trim(),
-        ...(isDriver || isAdmin ? {} : {
-          defaultAddress: address.trim(),
-          defaultCity: city.trim(),
-          defaultPostcode: postcode.trim(),
-        }),
-      });
+      };
+
+      if (isCarrier) {
+        updates.contactFirstName = firstName.trim();
+        updates.contactLastName = lastName.trim();
+      } else {
+        updates.firstName = firstName.trim();
+        updates.lastName = lastName.trim();
+      }
+
+      if (!isDriver && !isAdmin && !isCarrier) {
+        updates.defaultAddress = address.trim();
+        updates.defaultCity = city.trim();
+        updates.defaultPostcode = postcode.trim();
+      }
+
+      updateProfile(profile?.id || '', updates);
 
       setIsSaving(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

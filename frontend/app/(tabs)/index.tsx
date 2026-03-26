@@ -42,174 +42,9 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useJobs } from '@/providers/JobsProvider';
 import { useDeliveries } from '@/providers/DeliveriesProvider';
 import { useCarrier } from '@/providers/CarrierProvider';
+import { apiClient } from '@/services/api';
 import JobCard from '@/components/JobCard';
 import MapView from '@/components/MapView';
-const MOCK_PLATFORM_STATS = {
-  activeJobs: 245,
-  completedJobs: 1284,
-  totalJobs: 1550,
-  activeDrivers: 182,
-  totalDrivers: 215,
-  totalCustomers: 450,
-  totalBusinesses: 320,
-  monthlyRevenue: 1250000,
-  totalRevenue: 15400000,
-  avgDeliveryTime: '2h 15m',
-};
-
-const MOCK_USERS: any[] = [
-  { id: '1', name: 'James Wilson', role: 'driver', status: 'ACTIVE', lastActive: '2 mins ago' },
-  { id: '2', name: 'Sarah Jenkins', role: 'customer', status: 'ACTIVE', lastActive: '15 mins ago' },
-  { id: '3', name: 'Mike Thompson', role: 'driver', status: 'OFFLINE', lastActive: '2 hours ago' },
-  { id: '4', name: 'Emma Davis', role: 'customer', status: 'SUSPENDED', lastActive: '1 day ago' },
-];
-
-const MOCK_REVENUE_CHART: any[] = [
-  { month: 'Sep', amount: 980000 },
-  { month: 'Oct', amount: 1050000 },
-  { month: 'Nov', amount: 1120000 },
-  { month: 'Dec', amount: 1250000 },
-  { month: 'Jan', amount: 1180000 },
-  { month: 'Feb', amount: 1250000 },
-];
-
-const MOCK_CARRIER_EARNINGS = {
-  totalRevenue: 45250,
-  paidOut: 38000,
-  pendingPayment: 7250,
-  completedJobs: 842,
-  avgPerJob: 53.74,
-  period: 'October 2023',
-};
-
-const MOCK_CARRIER_MONTHLY_EARNINGS: any[] = [
-  { month: 'Aug', revenue: 38000, jobs: 710 },
-  { month: 'Sep', revenue: 41500, jobs: 780 },
-  { month: 'Oct', revenue: 45250, jobs: 842 },
-];
-
-const MOCK_CARRIER_PERFORMANCE: any[] = [
-  { month: 'Aug', onTimePercent: 96.5, slaCompliance: 98.2, completedPercent: 100, jobsCompleted: 710, revenue: 38000 },
-  { month: 'Sep', onTimePercent: 97.2, slaCompliance: 98.8, completedPercent: 99.8, jobsCompleted: 780, revenue: 41500 },
-  { month: 'Oct', onTimePercent: 98.1, slaCompliance: 99.1, completedPercent: 99.9, jobsCompleted: 842, revenue: 45250 },
-];
-
-const MOCK_LIVE_ACTIVITY: any[] = [
-  { id: '1', type: 'job_completed', title: 'Delivery Completed', description: 'Job #CYV-8942 finished by Driver D-412', severity: 'success', timestamp: new Date(Date.now() - 300000).toISOString() },
-  { id: '2', type: 'alert', title: 'Traffic Delay', description: 'Heavy traffic on M4 Eastbound causing 15m delay', severity: 'warning', timestamp: new Date(Date.now() - 1200000).toISOString() },
-  { id: '3', type: 'new_booking', title: 'New Urgent Booking', description: 'TechCorp requested immediate pickup from LHR', severity: 'info', timestamp: new Date(Date.now() - 2400000).toISOString() },
-  { id: '4', type: 'sla_breach', title: 'SLA Breach Risk', description: 'Job #CYV-8910 is 30 mins behind schedule', severity: 'danger', timestamp: new Date(Date.now() - 3600000).toISOString() },
-];
-
-const MOCK_SLA_RISK_PREDICTIONS: any[] = [
-  { id: '1', jobNumber: 'CYV-8910', currentStatus: 'IN_TRANSIT', riskLevel: 'CRITICAL', probability: 92, predictedDelayMins: 45, reason: 'Severe accident on M25 + Driver hours limit approaching', suggestedAction: 'Dispatch backup driver from Reading area (12 mins away)', route: 'London → Birmingham' },
-  { id: '2', jobNumber: 'CYV-8922', currentStatus: 'PICKED_UP', riskLevel: 'HIGH', probability: 78, predictedDelayMins: 25, reason: 'Unexpected road closure on primary route', suggestedAction: 'Reroute via A40 (adds 8 miles, saves 25 mins)', route: 'Oxford → Bristol' },
-  { id: '3', jobNumber: 'CYV-8935', currentStatus: 'EN_ROUTE_TO_PICKUP', riskLevel: 'MEDIUM', probability: 45, predictedDelayMins: 10, reason: 'Slight congestion at pickup location', suggestedAction: 'Notify customer of minor delay', route: 'Manchester → Leeds' },
-];
-
-const MOCK_ANOMALY_ALERTS: any[] = [
-  { id: '1', title: 'Unusual Route Deviation', description: 'Driver D-412 deviating 15 miles from optimal route. Fuel efficiency dropping.', severity: 'WARNING', timestamp: new Date().toISOString(), type: 'ROUTE', acknowledged: false },
-  { id: '2', title: 'Volume Spike Expected', description: 'Historical data + weather patterns predict 40% surge in requests in North West region between 14:00-18:00 today.', severity: 'INFO', timestamp: new Date().toISOString(), type: 'DEMAND', acknowledged: false },
-  { id: '3', title: 'Potential SLA Breach Cluster', description: '3 jobs heading to same industrial park in Birmingham are all trending late due to localized event.', severity: 'CRITICAL', timestamp: new Date().toISOString(), type: 'SLA', acknowledged: false },
-];
-
-const MOCK_BUSINESS_PROFILE = {
-  companyName: 'TechCorp Ltd',
-  registrationNumber: 'CRN-92837465',
-  vatNumber: 'GB123456789',
-  industry: 'Technology Manufacturing',
-  billingTerms: 'Net 30',
-  creditLimit: 15000,
-  creditUsed: 4250.50,
-  primaryContact: {
-    name: 'Sarah Jenkins',
-    email: 'sarah.j@techcorp.example.com',
-    phone: '+44 (0) 20 7123 4567',
-    role: 'Procurement Director'
-  }
-};
-
-const MOCK_CUSTOMER_INVOICES: any[] = [
-  {
-    id: '1',
-    invoiceNumber: 'INV-2023-001',
-    date: new Date(Date.now() - 86400000 * 5).toISOString(),
-    dueDate: new Date(Date.now() + 86400000 * 25).toISOString(),
-    subtotal: 1041.67,
-    vatAmount: 208.33,
-    amount: 1250.00,
-    status: 'PENDING',
-    description: 'Monthly Logistics Retainer - October',
-    items: 4,
-  },
-  {
-    id: '2',
-    invoiceNumber: 'INV-2023-002',
-    date: new Date(Date.now() - 86400000 * 15).toISOString(),
-    dueDate: new Date(Date.now() + 86400000 * 15).toISOString(),
-    subtotal: 375.42,
-    vatAmount: 75.08,
-    amount: 450.50,
-    status: 'PAID',
-    description: 'Emergency Same-Day Delivery Surcharge',
-    items: 1,
-  },
-  {
-    id: '3',
-    invoiceNumber: 'INV-2023-003',
-    date: new Date(Date.now() - 86400000 * 45).toISOString(),
-    dueDate: new Date(Date.now() - 86400000 * 15).toISOString(),
-    subtotal: 2666.67,
-    vatAmount: 533.33,
-    amount: 3200.00,
-    status: 'OVERDUE',
-    description: 'Quarterly Dedicated Fleet Allocation',
-    items: 12,
-  },
-];
-
-const MOCK_CUSTOMER_ANALYTICS = {
-  totalSpendYTD: 42500,
-  spendChangePct: 12.5,
-  avgCostPerDelivery: 85.40,
-  costChangePct: -4.2,
-  topRoutes: [
-    { origin: 'London HQ', destination: 'Manchester Hub', volume: 145, avgCost: 210 },
-    { origin: 'London HQ', destination: 'Birmingham Depot', volume: 98, avgCost: 145 },
-    { origin: 'Reading Site', destination: 'Bristol Center', volume: 56, avgCost: 95 },
-  ],
-  spendByService: [
-    { service: 'Same Day', amount: 25000, percentage: 59 },
-    { service: 'Next Day', amount: 12500, percentage: 29 },
-    { service: 'Scheduled', amount: 5000, percentage: 12 },
-  ],
-  slaByMonth: [
-    { month: 'Jan', compliance: 98.5, target: 95 },
-    { month: 'Feb', compliance: 97.2, target: 95 },
-    { month: 'Mar', compliance: 99.1, target: 95 },
-    { month: 'Apr', compliance: 96.8, target: 95 },
-    { month: 'May', compliance: 98.9, target: 95 },
-    { month: 'Jun', compliance: 99.5, target: 95 },
-  ],
-  emissionsMonthly: [
-    { month: 'Jan', kgCO2: 1250, offset: 1250 },
-    { month: 'Feb', kgCO2: 1100, offset: 1100 },
-    { month: 'Mar', kgCO2: 1350, offset: 1350 },
-    { month: 'Apr', kgCO2: 950, offset: 950 },
-    { month: 'May', kgCO2: 1420, offset: 1420 },
-    { month: 'Jun', kgCO2: 1180, offset: 1180 },
-  ],
-};
-
-const MOCK_AI_SUMMARY = {
-  monthlySummary: "Your logistics efficiency improved by 4.2% this month. Spending on 'Same Day' services decreased, indicating better forward planning. Carbon emissions are fully offset, maintaining your green tier status. 2 minor SLA breaches were recorded on the London-Manchester route due to severe weather events.",
-  recommendations: [
-    { id: '1', title: 'Route Optimization', description: 'Consolidating Tuesday and Thursday Reading-Bristol runs could save approx £450/month.', impact: 'High', type: 'cost' },
-    { id: '2', title: 'Service Downgrade', description: '45% of "Same Day" bookings to Birmingham arrive outside office hours. Switching these to "Next Day AM" will reduce costs without impacting operational availability.', impact: 'Medium', type: 'efficiency' },
-    { id: '3', title: 'Warehouse Cutoff', description: 'Moving your London HQ pickup cutoff time from 16:30 to 15:45 will improve on-time loading metrics by an estimated 12%.', impact: 'Medium', type: 'performance' }
-  ]
-};
-
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
@@ -283,98 +118,75 @@ function DriverDashboard() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.driverHeader, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerContent}>
+    <ScrollView 
+        style={styles.container} 
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+        showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.premiumHeader, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.driverName}>{driver?.firstName ?? 'Driver'}</Text>
+            <Text style={styles.userName}>{driver?.firstName || 'Hero'} 👋</Text>
           </View>
-          <View style={styles.statusPill}>
-            <View style={[styles.statusIndicator, { backgroundColor: driver?.currentStatus === 'AVAILABLE' ? Colors.success : Colors.warning }]} />
-            <Text style={styles.statusLabel}>
-              {driver?.currentStatus === 'AVAILABLE' ? 'Online' : driver?.currentStatus?.replace('_', ' ') ?? 'Offline'}
-            </Text>
-          </View>
+          <TouchableOpacity style={styles.aiButton} onPress={() => router.push('/driver-ai' as any)}>
+            <Brain size={22} color="#FFF" />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Zap size={16} color={Colors.warning} />
-            <Text style={styles.statValue}>{activeJobs.length}</Text>
-            <Text style={styles.statLabel}>Active</Text>
+        <View style={styles.statsStrip}>
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{activeJobs.length || 0}</Text>
+            <Text style={styles.statLab}>Active</Text>
           </View>
-          <View style={styles.statCard}>
-            <Clock size={16} color={Colors.primary} />
-            <Text style={styles.statValue}>{availableJobs.length}</Text>
-            <Text style={styles.statLabel}>Available</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{availableJobs.length}</Text>
+            <Text style={styles.statLab}>Available</Text>
           </View>
-          <View style={styles.statCard}>
-            <CheckCircle size={16} color={Colors.success} />
-            <Text style={styles.statValue}>{completedJobs.length}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
-          </View>
-          <View style={styles.statCard}>
-            <TrendingUp size={16} color={Colors.purple} />
-            <Text style={styles.statValue}>{driver?.rating ?? 0}</Text>
-            <Text style={styles.statLabel}>Rating</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{completedJobs.length || 0}</Text>
+            <Text style={styles.statLab}>Today</Text>
           </View>
         </View>
       </View>
-
-      <ScrollView
-        style={styles.body}
-        contentContainerStyle={styles.bodyContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
-        }
-      >
-        {currentJob && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Current Job</Text>
-              <Navigation size={16} color={Colors.primary} />
+      <View style={styles.content}>
+        {/* AI QUICK LAUNCH */}
+        <TouchableOpacity 
+            style={styles.premiumAiCard} 
+            onPress={() => router.push('/driver-ai' as any)}
+            activeOpacity={0.9}
+        >
+            <View style={styles.aiGlow} />
+            <Brain size={28} color="#FFF" />
+            <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={styles.aiCardTitle}>CYVHUB AI Pilot</Text>
+                <Text style={styles.aiCardSub}>Need help with a route or earnings? Ask me anything.</Text>
             </View>
-            <JobCard job={currentJob} onPress={() => handleJobPress(currentJob.id)} />
+            <ChevronRight size={20} color="rgba(255,255,255,0.7)" />
+        </TouchableOpacity>
+
+        {currentJob ? (
+          <View style={styles.activeSection}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.liveIndicator}>
+                 <View style={styles.pulseDot} />
+                 <Text style={styles.liveText}>LIVE DELIVERY</Text>
+              </View>
+            </View>
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: getNextActionColor(currentJob.status) }]}
-                onPress={handleAdvanceStatus}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.actionButtonText}>{getNextActionLabel(currentJob.status)}</Text>
-                <ChevronRight size={18} color={Colors.textInverse} />
-              </TouchableOpacity>
+                <JobCard job={currentJob} onPress={() => handleJobPress(currentJob.id)} isCurrent isDark />
             </Animated.View>
+            <TouchableOpacity style={styles.actionBtnPrimary} onPress={handleAdvanceStatus}>
+                <Navigation size={20} color="#FFF" style={{ marginRight: 10 }} />
+                <Text style={styles.actionBtnText}>{getNextActionLabel(currentJob.status)}</Text>
+            </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
-        {availableJobs.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Available Jobs</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/jobs' as any)}>
-                <Text style={styles.seeAll}>See all</Text>
-              </TouchableOpacity>
-            </View>
-            {availableJobs.slice(0, 2).map(job => (
-              <JobCard key={job.id} job={job} onPress={() => handleJobPress(job.id)} compact />
-            ))}
-          </View>
-        )}
-
-        {!currentJob && availableJobs.length === 0 && (
-          <View style={styles.emptyState}>
-            <Truck size={48} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>All caught up!</Text>
-            <Text style={styles.emptySubtitle}>No active or available jobs right now. Check back soon.</Text>
-          </View>
-        )}
-
-        <View style={{ height: 24 }} />
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -384,16 +196,40 @@ function CustomerHome() {
   const { customer } = useAuth();
   const { activeDeliveries, completedDeliveries } = useDeliveries();
   const [refreshing, setRefreshing] = useState(false);
-  const bizProfile = MOCK_BUSINESS_PROFILE;
-  const overdueInvoices = MOCK_CUSTOMER_INVOICES.filter((inv: any) => inv.status === 'OVERDUE');
-  const pendingInvoices = MOCK_CUSTOMER_INVOICES.filter((inv: any) => inv.status === 'PENDING');
-  const latestSla = MOCK_CUSTOMER_ANALYTICS.slaByMonth[MOCK_CUSTOMER_ANALYTICS.slaByMonth.length - 1];
-  const totalEmissions = MOCK_CUSTOMER_ANALYTICS.emissionsMonthly[MOCK_CUSTOMER_ANALYTICS.emissionsMonthly.length - 1];
+  
+  // Dynamic analytics state
+  const [analytics, setAnalytics] = useState<any>({
+    spend: 0,
+    sla: 100,
+    emissions: 0,
+    aiSummary: "Start booking deliveries to generate your first logistics performance summary.",
+  });
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+  const loadCustomerData = useCallback(async () => {
+    try {
+      const res = await apiClient('/analytics/earnings');
+      if (res && res.data) {
+        setAnalytics((prev: any) => ({
+          ...prev,
+          spend: res.data.totalSpend || 0,
+          sla: res.data.slaCompliance || 100,
+          aiSummary: res.data.aiSummary || prev.aiSummary
+        }));
+      }
+    } catch (e) {
+      console.warn('Failed to load customer analytics', e);
+    }
   }, []);
+
+  useEffect(() => {
+    loadCustomerData();
+  }, [loadCustomerData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadCustomerData();
+    setRefreshing(false);
+  }, [loadCustomerData]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -431,16 +267,34 @@ function CustomerHome() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.customerHeader, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerContent}>
+      <View style={[styles.premiumHeader, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.customerName}>{customer?.firstName ?? 'there'}</Text>
+            <Text style={styles.userName}>{customer?.firstName ?? 'Customer'}</Text>
           </View>
-          <View style={styles.customerAvatar}>
-            <Text style={styles.customerAvatarText}>
-              {customer?.firstName?.[0] ?? 'U'}{customer?.lastName?.[0] ?? ''}
-            </Text>
+          <TouchableOpacity 
+            style={styles.aiButton}
+            onPress={() => router.push('/customer-ai' as any)}
+          >
+            <Brain size={22} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.statsStrip}>
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{activeDeliveries.length}</Text>
+            <Text style={styles.statLab}>ACTIVE</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>100%</Text>
+            <Text style={styles.statLab}>SLA</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>£{(analytics.spend / 1000).toFixed(1)}k</Text>
+            <Text style={styles.statLab}>SPEND</Text>
           </View>
         </View>
       </View>
@@ -486,176 +340,75 @@ function CustomerHome() {
           </View>
         </View>
 
-        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+        <View style={styles.content}>
+          <TouchableOpacity 
+            style={styles.premiumAiCard}
+            onPress={() => router.push('/customer-ai' as any)}
+            activeOpacity={0.9}
+          >
+            <View style={styles.aiGlow} />
+            <View style={{ flex: 1, zIndex: 1 }}>
+              <Text style={styles.aiCardTitle}>Logistics AI Insights</Text>
+              <Text style={styles.aiCardSub}>{analytics.aiSummary}</Text>
+            </View>
+            <ChevronRight size={24} color="#FFF" style={{ zIndex: 1 }} />
+          </TouchableOpacity>
 
+          <View style={styles.activeSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Active Shipments</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/deliveries' as any)}>
+                <Text style={[styles.seeAll, { color: Colors.customerPrimary }]}>View all</Text>
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.quickStatsRow}>
-            <TouchableOpacity style={styles.quickStatCard} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/deliveries' as any); }} activeOpacity={0.7}>
-              <Package size={20} color={Colors.customerPrimary} />
-              <Text style={styles.quickStatValue}>{activeDeliveries.length}</Text>
-              <Text style={styles.quickStatLabel}>Active</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickStatCard} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/deliveries' as any); }} activeOpacity={0.7}>
-              <CheckCircle size={20} color={Colors.success} />
-              <Text style={styles.quickStatValue}>{completedDeliveries.length}</Text>
-              <Text style={styles.quickStatLabel}>Completed</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickStatCard} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/financials' as any); }} activeOpacity={0.7}>
-              <TrendingUp size={20} color={Colors.purple} />
-              <Text style={styles.quickStatValue}>{customer?.totalDeliveries ?? 0}</Text>
-              <Text style={styles.quickStatLabel}>Total</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.custDashRow}>
-            <TouchableOpacity style={[styles.custDashCard, { borderLeftColor: latestSla.compliance >= latestSla.target ? Colors.success : Colors.warning }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/customer-analytics' as any); }} activeOpacity={0.7}>
-              <Text style={styles.custDashLabel}>SLA Compliance</Text>
-              <Text style={[styles.custDashValue, { color: latestSla.compliance >= latestSla.target ? Colors.success : Colors.warning }]}>{latestSla.compliance}%</Text>
-              <Text style={styles.custDashSub}>Target: {latestSla.target}%</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.custDashCard, { borderLeftColor: overdueInvoices.length > 0 ? Colors.danger : Colors.customerPrimary }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(tabs)/financials' as any); }} activeOpacity={0.7}>
-              <Text style={styles.custDashLabel}>Outstanding</Text>
-              <Text style={styles.custDashValue}>£{(pendingInvoices.reduce((s: number, i: any) => s + i.amount, 0) + overdueInvoices.reduce((s: number, i: any) => s + i.amount, 0)).toLocaleString()}</Text>
-              {overdueInvoices.length > 0 && <Text style={[styles.custDashSub, { color: Colors.danger }]}>{overdueInvoices.length} overdue</Text>}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.custDashRow}>
-            <TouchableOpacity style={[styles.custDashCard, { borderLeftColor: '#10B981' }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/customer-analytics' as any); }} activeOpacity={0.7}>
-              <Text style={styles.custDashLabel}>Emissions</Text>
-              <Text style={styles.custDashValue}>{totalEmissions.kgCO2} kg</Text>
-              <Text style={styles.custDashSub}>CO₂ this month</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.custDashCard, { borderLeftColor: Colors.customerPrimary }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/customer-ai' as any); }} activeOpacity={0.7}>
-              <Text style={styles.custDashLabel}>AI Insights</Text>
-              <Brain size={22} color={Colors.customerPrimary} />
-              <Text style={styles.custDashSub}>Ask AI anything</Text>
-            </TouchableOpacity>
-          </View>
-
-          {activeDeliveries.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Active Deliveries</Text>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/deliveries' as any)}>
-                  <Text style={[styles.seeAll, { color: Colors.customerPrimary }]}>See all</Text>
-                </TouchableOpacity>
-              </View>
-
-              {activeDeliveries.slice(0, 2).map(delivery => (
+            {activeDeliveries.length > 0 ? (
+              activeDeliveries.slice(0, 2).map(delivery => (
                 <TouchableOpacity
                   key={delivery.id}
                   style={styles.activeDeliveryCard}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push({ pathname: '/delivery-detail' as any, params: { id: delivery.id } });
-                  }}
-                  activeOpacity={0.7}
+                  onPress={() => router.push({ pathname: '/delivery-detail' as any, params: { id: delivery.id } })}
                 >
+                  <View style={styles.liveIndicator}>
+                    <View style={styles.pulseDot} />
+                    <Text style={styles.liveText}>LIVE TRACKING</Text>
+                  </View>
                   <View style={styles.activeDeliveryTop}>
-                    <View style={styles.trackingBadge}>
-                      <Package size={12} color={Colors.customerPrimary} />
-                      <Text style={styles.trackingText}>{delivery.trackingNumber}</Text>
-                    </View>
-                    <View style={[styles.miniStatus, {
-                      backgroundColor: delivery.status === 'IN_TRANSIT' ? '#DBEAFE' : '#FEF3C7',
-                    }]}>
-                      <Text style={[styles.miniStatusText, {
-                        color: delivery.status === 'IN_TRANSIT' ? Colors.primary : Colors.warning,
-                      }]}>
-                        {delivery.status === 'IN_TRANSIT' ? 'In Transit' : 'Confirmed'}
-                      </Text>
-                    </View>
+                    <Text style={styles.trackingText}>{delivery.trackingNumber}</Text>
+                    <Text style={styles.miniStatusText}>{delivery.status}</Text>
                   </View>
-
-                  <View style={styles.activeDeliveryRoute}>
-                    <MapPin size={14} color={Colors.textSecondary} />
-                    <Text style={styles.activeDeliveryAddress} numberOfLines={1}>
-                      {delivery.dropoffAddress}, {delivery.dropoffCity}
-                    </Text>
-                  </View>
-
-                  {delivery.driverName && (
-                    <View style={styles.driverInfo}>
-                      <Truck size={13} color={Colors.textMuted} />
-                      <Text style={styles.driverInfoText}>{delivery.driverName}</Text>
-                    </View>
-                  )}
+                  <Text style={styles.activeDeliveryAddress}>{delivery.dropoffAddress}</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>AI Monthly Summary</Text>
-              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/customer-ai' as any); }}>
-                <Text style={[styles.seeAll, { color: Colors.customerPrimary }]}>Ask AI</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.aiSummaryCard}>
-              <Text style={styles.aiSummaryText} numberOfLines={4}>{MOCK_AI_SUMMARY.monthlySummary}</Text>
-              <TouchableOpacity style={styles.aiSummaryBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/customer-ai' as any); }} activeOpacity={0.7}>
-                <Brain size={14} color={Colors.customerPrimary} />
-                <Text style={styles.aiSummaryBtnText}>View Full Summary</Text>
-              </TouchableOpacity>
-            </View>
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <Package size={40} color={Colors.textMuted} />
+                <Text style={styles.emptyTitle}>No active shipments</Text>
+                <Text style={styles.emptySubtitle}>Your live deliveries will appear here.</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <Text style={styles.sectionTitle}>Elite Services</Text>
             <View style={styles.quickActionsGrid}>
-              <TouchableOpacity
-                style={styles.quickAction}
-                activeOpacity={0.7}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/(tabs)/deliveries' as any);
-                }}
-              >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#CCFBF1' }]}>
-                  <MapPin size={20} color={Colors.customerPrimary} />
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/book-delivery' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.customerPrimary + '15' }]}>
+                  <Package size={24} color={Colors.customerPrimary} />
                 </View>
-                <Text style={styles.quickActionLabel}>Track</Text>
+                <Text style={styles.quickActionLabel}>New Booking</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickAction}
-                activeOpacity={0.7}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/(tabs)/customer-quotes' as any);
-                }}
-              >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
-                  <Clock size={20} color={Colors.warning} />
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/customer-analytics' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + '15' }]}>
+                  <BarChart3 size={24} color={Colors.primary} />
                 </View>
-                <Text style={styles.quickActionLabel}>Quotes</Text>
+                <Text style={styles.quickActionLabel}>Insights</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickAction}
-                activeOpacity={0.7}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/customer-analytics' as any);
-                }}
-              >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#DBEAFE' }]}>
-                  <BarChart3 size={20} color={Colors.primary} />
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/support' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.purple + '15' }]}>
+                  <Shield size={24} color={Colors.purple} />
                 </View>
-                <Text style={styles.quickActionLabel}>Analytics</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickAction}
-                activeOpacity={0.7}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/support' as any);
-                }}
-              >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#EDE9FE' }]}>
-                  <Shield size={20} color={Colors.purple} />
-                </View>
-                <Text style={styles.quickActionLabel}>Support</Text>
+                <Text style={styles.quickActionLabel}>Security</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -671,16 +424,73 @@ function AdminDashboard() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { admin } = useAuth();
-  const { activeJobs } = useJobs();
+  const { activeJobs, completedJobs } = useJobs();
   const [refreshing, setRefreshing] = useState(false);
-  const stats = MOCK_PLATFORM_STATS;
-  const recentUsers = MOCK_USERS.slice(0, 4);
-  const maxRevenue = Math.max(...MOCK_REVENUE_CHART.map((r: any) => r.amount));
+  
+  const [platformStats, setPlatformStats] = useState({
+    totalDrivers: 0,
+    activeDrivers: 0,
+    totalCustomers: 0,
+    totalBusinesses: 0,
+    monthlyRevenue: 0,
+    totalRevenue: 0
+  });
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+  const [revenueChart, setRevenueChart] = useState<any[]>([]);
+  const [platformHealthStats, setPlatformHealthStats] = useState({
+    avgDeliveryTime: '0h 0m',
+    completedJobs: 0,
+    totalJobs: 0,
+  });
+  const [slaRiskPredictions, setSlaRiskPredictions] = useState<any[]>([]);
+  const [anomalyAlerts, setAnomalyAlerts] = useState<any[]>([]);
+  const [liveActivity, setLiveActivity] = useState<any[]>([]);
+  const [recentUsers, setRecentUsers] = useState<any[]>([]);
+
+  const loadAdminData = useCallback(async () => {
+    try {
+      const [analyticsRes, activityRes, anomaliesRes, risksRes] = await Promise.all([
+        apiClient('/analytics/platform'),
+        apiClient('/activity'),
+        apiClient('/ai/anomalies'),
+        apiClient('/ai/sla-risks')
+      ]);
+
+      if (analyticsRes) {
+        setPlatformStats({
+          totalDrivers: analyticsRes.stats?.totalDrivers || 0,
+          activeDrivers: analyticsRes.stats?.activeDrivers || 0,
+          totalCustomers: analyticsRes.stats?.totalCustomers || 0,
+          totalBusinesses: analyticsRes.stats?.totalBusinesses || 0,
+          monthlyRevenue: analyticsRes.stats?.monthlyRevenue || 0,
+          totalRevenue: analyticsRes.stats?.totalRevenue || 0,
+        });
+        setRevenueChart(analyticsRes.analytics?.jobVolume || []);
+        setRecentUsers(analyticsRes.clients || []);
+      }
+
+      if (activityRes) setLiveActivity(activityRes);
+      if (anomaliesRes) setAnomalyAlerts(anomaliesRes.anomalies || []);
+      if (risksRes) setSlaRiskPredictions(risksRes.risks || []);
+
+    } catch (e) {
+      console.error('Failed to load admin dashboard data', e);
+    }
   }, []);
+
+  useEffect(() => {
+    loadAdminData();
+    const interval = setInterval(loadAdminData, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, [loadAdminData]);
+
+  const maxRevenue = useMemo(() => Math.max(...revenueChart.map((r: any) => r.amount || r.count || 0), 0) || 1000, [revenueChart]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAdminData();
+    setRefreshing(false);
+  }, [loadAdminData]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -716,15 +526,34 @@ function AdminDashboard() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.adminHeader, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerContent}>
+      <View style={[styles.premiumHeader, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.adminName}>{admin?.firstName ?? 'Admin'}</Text>
+            <Text style={styles.userName}>{admin?.firstName ?? 'Admin'}</Text>
           </View>
-          <View style={styles.adminBadge}>
-            <Shield size={14} color={Colors.adminPrimary} />
-            <Text style={styles.adminBadgeText}>Admin</Text>
+          <TouchableOpacity 
+            style={styles.aiButton}
+            onPress={() => router.push('/admin-ai' as any)}
+          >
+            <Brain size={22} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.statsStrip}>
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{platformStats.activeDrivers}</Text>
+            <Text style={styles.statLab}>ONLINE</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{activeJobs.length}</Text>
+            <Text style={styles.statLab}>ACTIVE</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>£{(platformStats.monthlyRevenue / 1000).toFixed(1)}k</Text>
+            <Text style={styles.statLab}>REV (M)</Text>
           </View>
         </View>
       </View>
@@ -746,211 +575,109 @@ function AdminDashboard() {
               height={isWeb && SCREEN_WIDTH > 1024 ? 400 : 320}
             />
           </View>
-
-          <View style={styles.adminStatsGrid}>
-            <TouchableOpacity style={[styles.adminStatCard, { borderLeftColor: Colors.primary }]} onPress={() => router.push('/(tabs)/users' as any)} activeOpacity={0.7}>
-              <View style={[styles.adminStatIcon, { backgroundColor: Colors.primary + '15' }]}>
-                <Truck size={18} color={Colors.primary} />
-              </View>
-              <Text style={styles.adminStatValue}>{stats.totalDrivers}</Text>
-              <Text style={styles.adminStatLabel}>Total Drivers</Text>
-              <Text style={styles.adminStatSub}>{stats.activeDrivers} active</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.adminStatCard, { borderLeftColor: Colors.customerPrimary }]} onPress={() => router.push('/(tabs)/businesses' as any)} activeOpacity={0.7}>
-              <View style={[styles.adminStatIcon, { backgroundColor: Colors.customerPrimary + '15' }]}>
-                <Users size={18} color={Colors.customerPrimary} />
-              </View>
-              <Text style={styles.adminStatValue}>{stats.totalCustomers}</Text>
-              <Text style={styles.adminStatLabel}>Customers</Text>
-              <Text style={styles.adminStatSub}>{stats.totalBusinesses} businesses</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.adminStatCard, { borderLeftColor: Colors.adminPrimary }]} onPress={() => router.push('/(tabs)/manage-jobs' as any)} activeOpacity={0.7}>
-              <View style={[styles.adminStatIcon, { backgroundColor: Colors.adminPrimary + '15' }]}>
-                <Briefcase size={18} color={Colors.adminPrimary} />
-              </View>
-              <Text style={styles.adminStatValue}>{stats.activeJobs}</Text>
-              <Text style={styles.adminStatLabel}>Active Jobs</Text>
-              <Text style={styles.adminStatSub}>{stats.completedJobs} completed</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.adminStatCard, { borderLeftColor: Colors.success }]} onPress={() => router.push('/(tabs)/analytics' as any)} activeOpacity={0.7}>
-              <View style={[styles.adminStatIcon, { backgroundColor: Colors.success + '15' }]}>
-                <DollarSign size={18} color={Colors.success} />
-              </View>
-              <Text style={styles.adminStatValue}>£{(stats.monthlyRevenue / 1000).toFixed(1)}k</Text>
-              <Text style={styles.adminStatLabel}>Monthly Rev</Text>
-              <Text style={styles.adminStatSub}>£{(stats.totalRevenue / 1000).toFixed(0)}k total</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.adminStatCard, { borderLeftColor: Colors.purple }]} onPress={() => router.push('/(tabs)/cms' as any)} activeOpacity={0.7}>
-              <View style={[styles.adminStatIcon, { backgroundColor: Colors.purple + '15' }]}>
-                <Layout size={18} color={Colors.purple} />
-              </View>
-              <Text style={styles.adminStatValue}>CMS</Text>
-              <Text style={styles.adminStatLabel}>Website Editor</Text>
-              <Text style={styles.adminStatSub}>Marketing pages</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Revenue Trend</Text>
-            <BarChart3 size={16} color={Colors.adminPrimary} />
-          </View>
-          <View style={styles.chartCard}>
-            <View style={styles.chartBars}>
-              {MOCK_REVENUE_CHART.map((item: any) => {
-                const heightPct = (item.amount / maxRevenue) * 100;
-                return (
-                  <View key={item.month} style={styles.chartBarWrap}>
-                    <View style={styles.chartBarContainer}>
-                      <View
-                        style={[
-                          styles.chartBar,
-                          {
-                            height: `${heightPct}%`,
-                            backgroundColor: item.month === 'Feb' ? Colors.adminPrimary : Colors.adminPrimary + '40',
-                          },
-                        ]}
-                      />
+        <View style={styles.content}>
+          <TouchableOpacity 
+            style={[styles.premiumAiCard, { backgroundColor: Colors.adminPrimary + '20' }]}
+            onPress={() => router.push('/admin-ai' as any)}
+            activeOpacity={0.9}
+          >
+            <View style={[styles.aiGlow, { backgroundColor: Colors.adminPrimary }]} />
+            <View style={{ flex: 1, zIndex: 1 }}>
+              <Text style={styles.aiCardTitle}>Command Intelligence</Text>
+              <Text style={styles.aiCardSub}>
+                {anomalyAlerts.length} active anomalies. Platform stability at 99.9%.
+              </Text>
+            </View>
+            <ChevronRight size={24} color="#FFF" style={{ zIndex: 1 }} />
+          </TouchableOpacity>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>SLA Risk Monitor</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/ai-panel' as any)}>
+                <Text style={[styles.seeAll, { color: Colors.adminPrimary }]}>View Analysis</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {slaRiskPredictions.length > 0 ? (
+              slaRiskPredictions.slice(0, 2).map((pred: any) => (
+                <View key={pred.id} style={[styles.alertCard, { borderLeftColor: pred.riskLevel === 'CRITICAL' ? Colors.danger : Colors.warning }]}>
+                  <View style={styles.alertTop}>
+                    <AlertTriangle size={14} color={pred.riskLevel === 'CRITICAL' ? Colors.danger : Colors.warning} />
+                    <Text style={styles.alertJobNumber}>{pred.jobNumber}</Text>
+                    <View style={[styles.alertRiskBadge, { backgroundColor: (pred.riskLevel === 'CRITICAL' ? Colors.danger : Colors.warning) + '20' }]}>
+                      <Text style={[styles.alertRiskText, { color: pred.riskLevel === 'CRITICAL' ? Colors.danger : Colors.warning }]}>{pred.riskLevel}</Text>
                     </View>
-                    <Text style={styles.chartLabel}>{item.month}</Text>
-                    <Text style={styles.chartValue}>£{(item.amount / 1000).toFixed(0)}k</Text>
                   </View>
-                );
-              })}
-            </View>
+                  <Text style={styles.alertRoute}>{pred.route || 'Route under analysis'}</Text>
+                  <Text style={styles.alertAction}>{pred.suggestedAction}</Text>
+                </View>
+              ))
+             ) : (
+                <View style={styles.aiAlertCard}>
+                  <Brain size={20} color={Colors.adminPrimary} />
+                  <Text style={styles.aiAlertText}>No high-priority SLA risks detected by AI guards.</Text>
+                </View>
+             )}
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Platform Health</Text>
-            <Activity size={16} color={Colors.success} />
-          </View>
-          <View style={styles.healthGrid}>
-            <View style={styles.healthCard}>
-              <Text style={styles.healthValue}>{stats.avgDeliveryTime}</Text>
-              <Text style={styles.healthLabel}>Avg Delivery</Text>
-            </View>
-            <View style={styles.healthCard}>
-              <Text style={styles.healthValue}>{((stats.completedJobs / stats.totalJobs) * 100).toFixed(1)}%</Text>
-              <Text style={styles.healthLabel}>Success Rate</Text>
-            </View>
-            <View style={styles.healthCard}>
-              <Text style={styles.healthValue}>{stats.totalJobs}</Text>
-              <Text style={styles.healthLabel}>Total Jobs</Text>
-            </View>
-          </View>
-        </View>
-
-        {MOCK_SLA_RISK_PREDICTIONS.filter((p: any) => p.riskLevel === 'CRITICAL' || p.riskLevel === 'HIGH').length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>SLA Risk Alerts</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/ai-panel' as any)}>
-                <Text style={[styles.seeAll, { color: Colors.adminPrimary }]}>View all</Text>
-              </TouchableOpacity>
+            <Text style={styles.sectionTitle}>System Health</Text>
+            <View style={styles.healthGrid}>
+              <View style={styles.healthCard}>
+                <Text style={styles.healthValue}>{platformHealthStats.avgDeliveryTime}</Text>
+                <Text style={styles.healthLabel}>Avg Delivery</Text>
+              </View>
+              <View style={styles.healthCard}>
+                <Text style={styles.healthValue}>{((platformHealthStats.completedJobs / (platformHealthStats.totalJobs || 1)) * 100).toFixed(1)}%</Text>
+                <Text style={styles.healthLabel}>Success</Text>
+              </View>
             </View>
-            {MOCK_SLA_RISK_PREDICTIONS.filter((p: any) => p.riskLevel === 'CRITICAL' || p.riskLevel === 'HIGH').slice(0, 2).map((pred: any) => (
-              <View key={pred.id} style={[styles.alertCard, { borderLeftColor: pred.riskLevel === 'CRITICAL' ? '#991B1B' : Colors.danger }]}>
-                <View style={styles.alertTop}>
-                  <AlertTriangle size={14} color={pred.riskLevel === 'CRITICAL' ? '#991B1B' : Colors.danger} />
-                  <Text style={styles.alertJobNumber}>{pred.jobNumber}</Text>
-                  <View style={[styles.alertRiskBadge, { backgroundColor: pred.riskLevel === 'CRITICAL' ? '#FEE2E2' : Colors.dangerLight }]}>
-                    <Text style={[styles.alertRiskText, { color: pred.riskLevel === 'CRITICAL' ? '#991B1B' : Colors.danger }]}>{pred.riskLevel}</Text>
+          </View>
+
+          {liveActivity.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Live Activity</Text>
+              </View>
+              {liveActivity.slice(0, 6).map((evt: any) => (
+                <View key={evt.id} style={styles.activityEvent}>
+                  <View style={[styles.activityDot, { backgroundColor: evt.severity === 'danger' ? Colors.danger : Colors.info }]} />
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityTitle}>{evt.title}</Text>
+                    <Text style={styles.activityDesc} numberOfLines={1}>{evt.description}</Text>
                   </View>
                 </View>
-                <Text style={styles.alertRoute}>{pred.route}</Text>
-                <Text style={styles.alertAction} numberOfLines={1}>{pred.suggestedAction}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {MOCK_ANOMALY_ALERTS.filter((a: any) => !a.acknowledged).length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>AI Warnings</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/ai-panel' as any)}>
-                <Text style={[styles.seeAll, { color: Colors.adminPrimary }]}>AI Panel</Text>
-              </TouchableOpacity>
+              ))}
             </View>
-            {MOCK_ANOMALY_ALERTS.filter((a: any) => !a.acknowledged).slice(0, 2).map((alert: any) => (
-              <View key={alert.id} style={styles.aiWarningCard}>
-                <View style={styles.aiWarningTop}>
-                  <Brain size={14} color={alert.severity === 'CRITICAL' ? Colors.danger : Colors.warning} />
-                  <Text style={styles.aiWarningTitle} numberOfLines={1}>{alert.title}</Text>
+          )}
+
+          {recentUsers.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Recent Users</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/users' as any)}>
+                  <Text style={[styles.seeAll, { color: Colors.adminPrimary }]}>View all</Text>
+                </TouchableOpacity>
+              </View>
+              {recentUsers.slice(0, 3).map((user: any) => (
+                <View key={user.id} style={styles.recentUserCard}>
+                  <View style={styles.recentUserInfo}>
+                    <Text style={styles.recentUserName}>{user.name}</Text>
+                    <Text style={styles.recentUserRole}>{user.role}</Text>
+                  </View>
+                  <View style={[styles.recentUserStatus, { backgroundColor: Colors.success + '20' }]}>
+                    <Text style={[styles.recentUserStatusText, { color: Colors.success }]}>{user.status}</Text>
+                  </View>
                 </View>
-                <Text style={styles.aiWarningDesc} numberOfLines={2}>{alert.description}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Live Activity</Text>
-            <Radio size={14} color={Colors.success} />
-          </View>
-          {MOCK_LIVE_ACTIVITY.slice(0, 6).map((evt: any) => {
-            const sevColor = evt.severity === 'danger' ? Colors.danger : evt.severity === 'success' ? Colors.success : evt.severity === 'warning' ? Colors.warning : Colors.info;
-            return (
-              <View key={evt.id} style={styles.activityEvent}>
-                <View style={[styles.activityDot, { backgroundColor: sevColor }]} />
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityTitle}>{evt.title}</Text>
-                  <Text style={styles.activityDesc} numberOfLines={1}>{evt.description}</Text>
-                </View>
-                <Text style={styles.activityTime}>{new Date(evt.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</Text>
-              </View>
-            );
-          })}
-        </View>
-
-
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Users</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/users' as any)}>
-              <Text style={[styles.seeAll, { color: Colors.adminPrimary }]}>View all</Text>
-            </TouchableOpacity>
-          </View>
-          {recentUsers.map((user: any) => (
-            <View key={user.id} style={styles.recentUserCard}>
-              <View style={[styles.recentUserAvatar, {
-                backgroundColor: user.role === 'driver' ? Colors.primary + '15' : Colors.customerPrimary + '15',
-              }]}>
-                <Text style={[styles.recentUserInitial, {
-                  color: user.role === 'driver' ? Colors.primary : Colors.customerPrimary,
-                }]}>
-                  {user.name[0]}
-                </Text>
-              </View>
-              <View style={styles.recentUserInfo}>
-                <Text style={styles.recentUserName}>{user.name}</Text>
-                <Text style={styles.recentUserRole}>{user.role}</Text>
-              </View>
-              <View style={[styles.recentUserStatus, {
-                backgroundColor: user.status === 'ACTIVE' ? Colors.successLight : user.status === 'SUSPENDED' ? Colors.dangerLight : Colors.warningLight,
-              }]}>
-                <Text style={[styles.recentUserStatusText, {
-                  color: user.status === 'ACTIVE' ? Colors.success : user.status === 'SUSPENDED' ? Colors.danger : Colors.warning,
-                }]}>
-                  {user.status}
-                </Text>
-              </View>
+              ))}
             </View>
-          ))}
+          )}
         </View>
-
-        <View style={{ height: 24 }} />
-      </ScrollView >
-    </View >
+      </ScrollView>
+    </View>
   );
 }
 
@@ -960,14 +687,37 @@ function CarrierDashboard() {
   const { carrier } = useAuth();
   const { assignedJobs, activeJobs, completedJobs, availableJobs, fleet } = useCarrier();
   const [refreshing, setRefreshing] = useState(false);
-  const earnings = MOCK_CARRIER_EARNINGS;
-  const monthlyData = MOCK_CARRIER_MONTHLY_EARNINGS;
-  const maxRevenue = Math.max(...monthlyData.map((r: any) => r.revenue));
+  const [earnings, setEarnings] = useState({
+    totalRevenue: 0,
+    paidOut: 0,
+    pendingPayment: 0,
+    completedJobs: 0,
+    avgPerJob: 0,
+    period: 'Current Period'
+  });
+  const [monthlyEarnings, setMonthlyEarnings] = useState<any[]>([]);
+  const maxRevenue = useMemo(() => Math.max(...monthlyEarnings.map((r: any) => r.revenue), 0) || 1000, [monthlyEarnings]);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+  const loadCarrierEarnings = useCallback(async () => {
+    try {
+      const res = await apiClient('/analytics/earnings');
+      if (res && res.data) {
+        setEarnings(res.data);
+      }
+    } catch (e) {
+      console.warn('Failed to load carrier earnings', e);
+    }
   }, []);
+
+  useEffect(() => {
+    loadCarrierEarnings();
+  }, [loadCarrierEarnings]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadCarrierEarnings();
+    setRefreshing(false);
+  }, [loadCarrierEarnings]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -980,41 +730,57 @@ function CarrierDashboard() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.carrierHeader, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerContent}>
+      <View style={[styles.premiumHeader, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.carrierName}>{carrier?.tradingName ?? 'Carrier'}</Text>
+            <Text style={styles.userName}>{carrier?.tradingName ?? 'Carrier'}</Text>
           </View>
-          <View style={styles.carrierBadge}>
-            <Container size={14} color={Colors.carrierPrimary} />
-            <Text style={styles.carrierBadgeText}>Carrier</Text>
-          </View>
+          <TouchableOpacity 
+            style={styles.aiButton}
+            onPress={() => router.push('/carrier-ai' as any)}
+          >
+            <Brain size={22} color="#FFF" />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Zap size={16} color={Colors.carrierPrimary} />
-            <Text style={styles.statValue}>{activeJobs.length}</Text>
-            <Text style={styles.statLabel}>Active</Text>
+        <View style={styles.statsStrip}>
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{activeJobs.length}</Text>
+            <Text style={styles.statLab}>ACTIVE</Text>
           </View>
-          <View style={styles.statCard}>
-            <Clock size={16} color={Colors.warning} />
-            <Text style={styles.statValue}>{availableJobs.length}</Text>
-            <Text style={styles.statLabel}>Offers</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{availableJobs.length}</Text>
+            <Text style={styles.statLab}>OFFERS</Text>
           </View>
-          <View style={styles.statCard}>
-            <CheckCircle size={16} color={Colors.success} />
-            <Text style={styles.statValue}>{completedJobs.length}</Text>
-            <Text style={styles.statLabel}>Done</Text>
-          </View>
-          <View style={styles.statCard}>
-            <TrendingUp size={16} color={Colors.purple} />
-            <Text style={styles.statValue}>{carrier?.slaScore ?? 0}%</Text>
-            <Text style={styles.statLabel}>SLA</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statVal}>{carrier?.rating ?? 5.0}</Text>
+            <Text style={styles.statLab}>RATING</Text>
           </View>
         </View>
       </View>
+
+        <TouchableOpacity
+          style={styles.aiQuickLaunch}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            router.push('/carrier-ai' as any);
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={styles.aiQuickLaunchLeft}>
+            <View style={[styles.aiIconCircle, { backgroundColor: Colors.carrierPrimary + '20' }]}>
+              <Brain size={20} color={Colors.carrierPrimary} />
+            </View>
+            <View>
+              <Text style={styles.aiQuickLaunchTitle}>Carrier AI Assistant</Text>
+              <Text style={styles.aiQuickLaunchSubtitle}>Get insights on your fleet & performance</Text>
+            </View>
+          </View>
+          <ArrowRight size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
 
       <ScrollView
         style={styles.body}
@@ -1024,135 +790,91 @@ function CarrierDashboard() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.carrierPrimary} />
         }
       >
-        <View style={styles.carrierQuickStats}>
-          <View style={[styles.carrierQuickCard, { borderLeftColor: Colors.carrierPrimary }]}>
-            <Text style={styles.carrierQuickValue}>£{earnings.totalRevenue.toLocaleString()}</Text>
-            <Text style={styles.carrierQuickLabel}>This Month</Text>
-          </View>
-          <View style={[styles.carrierQuickCard, { borderLeftColor: Colors.warning }]}>
-            <Text style={styles.carrierQuickValue}>£{earnings.pendingPayment.toLocaleString()}</Text>
-            <Text style={styles.carrierQuickLabel}>Pending</Text>
-          </View>
-        </View>
+        <View style={styles.content}>
+          <TouchableOpacity 
+            style={[styles.premiumAiCard, { backgroundColor: Colors.carrierPrimary + '20' }]}
+            onPress={() => router.push('/carrier-ai' as any)}
+            activeOpacity={0.9}
+          >
+            <View style={[styles.aiGlow, { backgroundColor: Colors.carrierPrimary }]} />
+            <View style={{ flex: 1, zIndex: 1 }}>
+              <Text style={styles.aiCardTitle}>Fleet Optimization</Text>
+              <Text style={styles.aiCardSub}>
+                SLA health at 98.4%. 2 high-margin routes available for your fleet.
+              </Text>
+            </View>
+            <ChevronRight size={24} color="#FFF" style={{ zIndex: 1 }} />
+          </TouchableOpacity>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Revenue Trend</Text>
-            <BarChart3 size={16} color={Colors.carrierPrimary} />
-          </View>
-          <View style={styles.chartCard}>
-            <View style={styles.chartBars}>
-              {monthlyData.map((item) => {
-                const heightPct = (item.revenue / maxRevenue) * 100;
-                return (
-                  <View key={item.month} style={styles.chartBarWrap}>
-                    <View style={styles.chartBarContainer}>
-                      <View
-                        style={[
-                          styles.chartBar,
-                          {
-                            height: `${heightPct}%`,
-                            backgroundColor: item.month === 'Feb' ? Colors.carrierPrimary : Colors.carrierPrimary + '40',
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.chartLabel}>{item.month}</Text>
-                    <Text style={styles.chartValue}>£{(item.revenue / 1000).toFixed(1)}k</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Fleet Overview</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/fleet' as any)}>
-              <Text style={[styles.seeAll, { color: Colors.carrierPrimary }]}>Manage</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.carrierFleetRow}>
-            <View style={styles.carrierFleetCard}>
-              <Truck size={20} color={Colors.carrierPrimary} />
-              <Text style={styles.carrierFleetValue}>{fleet.length}</Text>
-              <Text style={styles.carrierFleetLabel}>Total</Text>
-            </View>
-            <View style={styles.carrierFleetCard}>
-              <CheckCircle size={20} color={Colors.success} />
-              <Text style={styles.carrierFleetValue}>{activeFleetCount}</Text>
-              <Text style={styles.carrierFleetLabel}>Active</Text>
-            </View>
-            <View style={styles.carrierFleetCard}>
-              <Clock size={20} color={Colors.warning} />
-              <Text style={styles.carrierFleetValue}>{fleet.filter(v => v.status === 'MAINTENANCE').length}</Text>
-              <Text style={styles.carrierFleetLabel}>Maintenance</Text>
-            </View>
-          </View>
-        </View>
-
-        {availableJobs.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Job Offers</Text>
+              <Text style={styles.sectionTitle}>Active Jobs</Text>
               <TouchableOpacity onPress={() => router.push('/(tabs)/jobs' as any)}>
-                <Text style={[styles.seeAll, { color: Colors.carrierPrimary }]}>See all</Text>
+                <Text style={[styles.seeAll, { color: Colors.carrierPrimary }]}>Manage Fleet</Text>
               </TouchableOpacity>
             </View>
+
+            {activeJobs.length > 0 ? (
+              activeJobs.slice(0, 3).map(job => (
+                <JobCard 
+                  key={job.id} 
+                  job={job} 
+                  onPress={() => router.push({ pathname: '/job-detail' as any, params: { id: job.id } })}
+                  isCurrent={true}
+                  isDark={false}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyActivityCard}>
+                <Truck size={32} color={Colors.textMuted} />
+                <Text style={styles.emptyActivityText}>No active jobs currently monitored.</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+             <Text style={styles.sectionTitle}>Fleet Health</Text>
+             <View style={styles.carrierFleetRow}>
+                <View style={styles.carrierFleetCard}>
+                  <Truck size={20} color={Colors.carrierPrimary} />
+                  <Text style={styles.carrierFleetValue}>{fleet.length}</Text>
+                  <Text style={styles.carrierFleetLabel}>Total</Text>
+                </View>
+                <View style={styles.carrierFleetCard}>
+                  <CheckCircle size={20} color={Colors.success} />
+                  <Text style={styles.carrierFleetValue}>{activeFleetCount}</Text>
+                  <Text style={styles.carrierFleetLabel}>Active</Text>
+                </View>
+                <View style={styles.carrierFleetCard}>
+                  <Clock size={20} color={Colors.warning} />
+                  <Text style={styles.carrierFleetValue}>{fleet.filter(v => v.status === 'MAINTENANCE').length}</Text>
+                  <Text style={styles.carrierFleetLabel}>Srvc</Text>
+                </View>
+             </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Smart Route Offers</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/jobs' as any)}>
+                <Text style={[styles.seeAll, { color: Colors.carrierPrimary }]}>View all</Text>
+              </TouchableOpacity>
+            </View>
+            
             {availableJobs.slice(0, 2).map(job => (
-              <TouchableOpacity
-                key={job.id}
+              <TouchableOpacity 
+                key={job.id} 
                 style={styles.carrierJobOffer}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push({ pathname: '/job-detail' as any, params: { id: job.id } });
-                }}
+                onPress={() => router.push({ pathname: '/job-detail' as any, params: { id: job.id } })}
                 activeOpacity={0.7}
               >
                 <View style={styles.carrierJobOfferTop}>
                   <Text style={styles.carrierJobOfferNumber}>{job.jobNumber}</Text>
-                  <View style={[
-                    styles.carrierJobPriority,
-                    { backgroundColor: job.priority === 'URGENT' ? Colors.dangerLight : Colors.infoLight },
-                  ]}>
-                    <Text style={[
-                      styles.carrierJobPriorityText,
-                      { color: job.priority === 'URGENT' ? Colors.danger : Colors.info },
-                    ]}>{job.priority}</Text>
-                  </View>
+                  <Text style={styles.carrierJobOfferPrice}>£{job.calculatedPrice?.toFixed(2) || '---'}</Text>
                 </View>
-                <View style={styles.carrierJobOfferRoute}>
-                  <MapPin size={13} color={Colors.textSecondary} />
-                  <Text style={styles.carrierJobOfferRouteText}>{job.pickupCity} → {job.dropoffCity}</Text>
-                </View>
-                <View style={styles.carrierJobOfferBottom}>
-                  <Text style={styles.carrierJobOfferVehicle}>{job.vehicleType}</Text>
-                  <Text style={styles.carrierJobOfferPrice}>£{job.calculatedPrice.toFixed(2)}</Text>
-                </View>
+                <Text style={styles.carrierJobOfferRouteText}>{job.pickupCity} → {job.dropoffCity}</Text>
               </TouchableOpacity>
             ))}
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Performance</Text>
-            <Activity size={16} color={Colors.success} />
-          </View>
-          <View style={styles.healthGrid}>
-            <View style={styles.healthCard}>
-              <Text style={styles.healthValue}>{carrier?.rating ?? 0}</Text>
-              <Text style={styles.healthLabel}>Rating</Text>
-            </View>
-            <View style={styles.healthCard}>
-              <Text style={styles.healthValue}>{carrier?.totalJobsCompleted ?? 0}</Text>
-              <Text style={styles.healthLabel}>Total Jobs</Text>
-            </View>
-            <View style={styles.healthCard}>
-              <Text style={styles.healthValue}>{carrier?.slaScore ?? 0}%</Text>
-              <Text style={styles.healthLabel}>SLA Score</Text>
-            </View>
           </View>
         </View>
 
@@ -2041,5 +1763,211 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     marginBottom: 4,
+  },
+  aiAlertCard: {
+    backgroundColor: Colors.adminPrimary + '10',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.adminPrimary + '20',
+    marginTop: 10,
+  },
+  aiAlertText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+  emptyActivityCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+    marginTop: 10,
+  },
+  emptyActivityText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  aiQuickLaunch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  aiQuickLaunchLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  aiIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiQuickLaunchTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  aiQuickLaunchSubtitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  premiumHeader: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    backgroundColor: '#0F172A',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    color: '#FFFFFF',
+  },
+  aiButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  statsStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statVal: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: '#FFFFFF',
+  },
+  statLab: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 2,
+    fontWeight: '600' as const,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  content: {
+    padding: 20,
+  },
+  premiumAiCard: {
+    backgroundColor: Colors.primary,
+    borderRadius: 24,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  aiGlow: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  aiCardTitle: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: '#FFFFFF',
+  },
+  aiCardSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  activeSection: {
+    marginBottom: 24,
+  },
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    marginRight: 6,
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: '#EF4444',
+    letterSpacing: 1,
+  },
+  actionBtnPrimary: {
+    backgroundColor: '#0F172A',
+    height: 56,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  actionBtnText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
   },
 });

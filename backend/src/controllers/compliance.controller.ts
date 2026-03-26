@@ -12,6 +12,14 @@ export const REQUIRED_DOC_TYPES = [
     { slug: 'vehicle_registration', label: 'Vehicle Registration (V5)' },
 ];
 
+// ─── Carrier Document type definitions ─────────────────────────────────────────
+export const CARRIER_DOC_TYPES = [
+    { slug: 'operator_licence',   label: 'Operator Licence' },
+    { slug: 'git_insurance',      label: 'Goods in Transit Insurance' },
+    { slug: 'public_liability',   label: 'Public Liability Insurance' },
+    { slug: 'background_checks',  label: 'Driver Background Checks' },
+];
+
 // ─── Compute overall driver compliance status ────────────────────────────────
 async function getDriverComplianceSummary(driverId: string) {
     const docs = await prisma.driverComplianceDocument.findMany({
@@ -23,31 +31,45 @@ async function getDriverComplianceSummary(driverId: string) {
     const allRequired = REQUIRED_DOC_TYPES.map((t) => t.slug);
     const missing = allRequired.filter((s) => !slugsUploaded.has(s));
 
-    // Check for expired docs
-    const anyExpired = docs.some(
-        (d) => d.expiryDate && d.expiryDate < now && d.status === 'verified'
-    );
+    const anyExpired = docs.some((d) => d.expiryDate && d.expiryDate < now && d.status === 'verified');
     const anyRejected = docs.some((d) => d.status === 'rejected');
     const anyPending = docs.some((d) => d.status === 'pending_review');
-    const allVerified =
-        missing.length === 0 &&
-        docs.every((d) => d.status === 'verified') &&
-        !anyExpired;
+    const allVerified = missing.length === 0 && docs.every((d) => d.status === 'verified') && !anyExpired;
 
     let overallStatus: string;
-    if (missing.length === allRequired.length && docs.length === 0) {
-        overallStatus = 'not_submitted';
-    } else if (anyExpired || (missing.length > 0 && docs.length > 0)) {
-        overallStatus = 'action_required';
-    } else if (anyRejected) {
-        overallStatus = 'rejected';
-    } else if (anyPending) {
-        overallStatus = 'pending_verification';
-    } else if (allVerified) {
-        overallStatus = 'verified';
-    } else {
-        overallStatus = 'pending_verification';
-    }
+    if (missing.length === allRequired.length && docs.length === 0) overallStatus = 'not_submitted';
+    else if (anyExpired || (missing.length > 0 && docs.length > 0)) overallStatus = 'action_required';
+    else if (anyRejected) overallStatus = 'rejected';
+    else if (anyPending) overallStatus = 'pending_verification';
+    else if (allVerified) overallStatus = 'verified';
+    else overallStatus = 'pending_verification';
+
+    return { docs, overallStatus, missing };
+}
+
+// ─── Compute overall carrier compliance status ────────────────────────────────
+async function getCarrierComplianceSummary(carrierId: string) {
+    const docs = await prisma.complianceDocument.findMany({
+        where: { carrierId },
+    });
+
+    const now = new Date();
+    const slugsUploaded = new Set(docs.map((d) => d.type));
+    const allRequired = CARRIER_DOC_TYPES.map((t) => t.slug);
+    const missing = allRequired.filter((s) => !slugsUploaded.has(s));
+
+    const anyExpired = docs.some((d) => d.expiryDate && d.expiryDate < now && d.status === 'verified');
+    const anyRejected = docs.some((d) => d.status === 'rejected');
+    const anyPending = docs.some((d) => d.status === 'pending_review');
+    const allVerified = missing.length === 0 && docs.every((d) => d.status === 'verified') && !anyExpired;
+
+    let overallStatus: string;
+    if (missing.length === allRequired.length && docs.length === 0) overallStatus = 'not_submitted';
+    else if (anyExpired || (missing.length > 0 && docs.length > 0)) overallStatus = 'action_required';
+    else if (anyRejected) overallStatus = 'rejected';
+    else if (anyPending) overallStatus = 'pending_verification';
+    else if (allVerified) overallStatus = 'verified';
+    else overallStatus = 'pending_verification';
 
     return { docs, overallStatus, missing };
 }
@@ -59,221 +81,198 @@ export const getMyCompliance = async (req: Request, res: Response) => {
         if (!driverId) return res.status(401).json({ error: 'Unauthorized' });
 
         const { docs, overallStatus, missing } = await getDriverComplianceSummary(driverId);
-
-        res.json({
-            overallStatus,
-            requiredDocTypes: REQUIRED_DOC_TYPES,
-            missing,
-            documents: docs,
-        });
+        res.json({ overallStatus, requiredDocTypes: REQUIRED_DOC_TYPES, missing, documents: docs });
     } catch (err) {
         console.error('getMyCompliance error:', err);
         res.status(500).json({ error: 'Failed to fetch compliance documents' });
     }
 };
 
-// ─── DRIVER: Upload / re-upload a compliance document ───────────────────────
-// Expects: { documentType, fileName, fileUrl, mimeType, fileSize, expiryDate?, issueDate? }
+// ─── CARRIER: Get my compliance documents ───────────────────────────────────
+export const getMyCarrierCompliance = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { carrierProfileId: true } });
+        const carrierId = user?.carrierProfileId;
+        if (!carrierId) return res.status(401).json({ error: 'No carrier profile found' });
+
+        const { docs, overallStatus, missing } = await getCarrierComplianceSummary(carrierId);
+        res.json({ overallStatus, requiredDocTypes: CARRIER_DOC_TYPES, missing, documents: docs });
+    } catch (err) {
+        console.error('getMyCarrierCompliance error:', err);
+        res.status(500).json({ error: 'Failed to fetch carrier compliance docs' });
+    }
+};
+
+// ─── DRIVER: Upload a document ───────────────────────────────────────────────
 export const uploadComplianceDoc = async (req: Request, res: Response) => {
     try {
         const driverId = (req as any).user?.userId;
         if (!driverId) return res.status(401).json({ error: 'Unauthorized' });
 
-        const {
-            documentType, fileName, fileUrl, mimeType, fileSize,
-            expiryDate, issueDate,
-        } = req.body;
+        const { documentType, fileName, fileUrl, mimeType, fileSize, expiryDate, issueDate } = req.body;
+        if (!documentType || !fileName || !fileUrl) return res.status(400).json({ error: 'Missing required fields' });
 
-        if (!documentType || !fileName || !fileUrl) {
-            return res.status(400).json({ error: 'documentType, fileName, and fileUrl are required' });
-        }
-
-        // Validate document type is one we recognise
         const validType = REQUIRED_DOC_TYPES.find((t) => t.slug === documentType);
-        if (!validType) {
-            return res.status(400).json({ error: `Unknown document type: ${documentType}` });
-        }
+        if (!validType) return res.status(400).json({ error: `Unknown type: ${documentType}` });
 
-        // Check if a doc of this type already exists for this driver
-        const existing = await prisma.driverComplianceDocument.findFirst({
-            where: { driverId, documentType },
-        });
+        const existing = await prisma.driverComplianceDocument.findFirst({ where: { driverId, documentType } });
+
+        const data = {
+            fileName, fileUrl, mimeType: mimeType || null,
+            fileSize: fileSize ? parseInt(fileSize) : null,
+            issueDate: issueDate ? new Date(issueDate) : null,
+            expiryDate: expiryDate ? new Date(expiryDate) : null,
+            status: 'pending_review', adminNote: null, rejectionReason: null, verifiedByAdminId: null, verifiedAt: null,
+        };
 
         let doc;
         if (existing) {
-            // Update (re-upload — resets status to pending_review, clears rejection)
-            doc = await prisma.driverComplianceDocument.update({
-                where: { id: existing.id },
-                data: {
-                    fileName,
-                    fileUrl,
-                    mimeType: mimeType || null,
-                    fileSize: fileSize ? parseInt(fileSize) : null,
-                    issueDate: issueDate ? new Date(issueDate) : null,
-                    expiryDate: expiryDate ? new Date(expiryDate) : null,
-                    status: 'pending_review',
-                    adminNote: null,
-                    rejectionReason: null,
-                    verifiedByAdminId: null,
-                    verifiedAt: null,
-                },
-            });
+            doc = await prisma.driverComplianceDocument.update({ where: { id: existing.id }, data });
         } else {
-            doc = await prisma.driverComplianceDocument.create({
-                data: {
-                    driverId,
-                    documentType,
-                    fileName,
-                    fileUrl,
-                    mimeType: mimeType || null,
-                    fileSize: fileSize ? parseInt(fileSize) : null,
-                    issueDate: issueDate ? new Date(issueDate) : null,
-                    expiryDate: expiryDate ? new Date(expiryDate) : null,
-                    status: 'pending_review',
-                },
-            });
+            doc = await prisma.driverComplianceDocument.create({ data: { driverId, documentType, ...data } });
         }
-
-        res.status(201).json({ message: 'Document uploaded successfully', document: doc });
+        res.status(201).json({ message: 'Success', document: doc });
     } catch (err) {
         console.error('uploadComplianceDoc error:', err);
-        res.status(500).json({ error: 'Failed to upload compliance document' });
+        res.status(500).json({ error: 'Upload failed' });
     }
 };
 
-// ─── ADMIN: List all pending compliance documents ────────────────────────────
+// ─── CARRIER: Upload a document ──────────────────────────────────────────────
+export const uploadCarrierComplianceDoc = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { carrierProfileId: true } });
+        const carrierId = user?.carrierProfileId;
+        if (!carrierId) return res.status(401).json({ error: 'No carrier profile' });
+
+        const { documentType, fileName, fileUrl, mimeType, fileSize, expiryDate, issueDate } = req.body;
+        if (!documentType || !fileName || !fileUrl) return res.status(400).json({ error: 'Missing fields' });
+
+        const validType = CARRIER_DOC_TYPES.find((t) => t.slug === documentType);
+        if (!validType) return res.status(400).json({ error: `Unknown type: ${documentType}` });
+
+        const existing = await prisma.complianceDocument.findFirst({ where: { carrierId, type: documentType } });
+
+        const data = {
+            fileName, fileUrl, mimeType: mimeType || null,
+            fileSize: fileSize ? parseInt(fileSize) : null,
+            issueDate: issueDate ? new Date(issueDate) : null,
+            expiryDate: expiryDate ? new Date(expiryDate) : null,
+            status: 'pending_review', adminNote: null, rejectionReason: null, verifiedByAdminId: null, verifiedAt: null,
+        };
+
+        let doc;
+        if (existing) {
+            doc = await prisma.complianceDocument.update({ where: { id: existing.id }, data });
+        } else {
+            doc = await prisma.complianceDocument.create({ data: { carrierId, type: documentType, ...data } });
+        }
+        res.status(201).json({ message: 'Success', document: doc });
+    } catch (err) {
+        console.error('uploadCarrierComplianceDoc error:', err);
+        res.status(500).json({ error: 'Upload failed' });
+    }
+};
+
+// ─── ADMIN: List all pending compliance ───────────────────────────────────────
 export const adminListCompliance = async (req: Request, res: Response) => {
     try {
-        const statusFilter = (req.query.status as string) || undefined;
-        const where: any = {};
-        if (statusFilter && statusFilter !== 'all') {
-            where.status = statusFilter;
-        }
+        const statusFilter = (req.query.status as string) || 'pending_review';
+        const where: any = statusFilter !== 'all' ? { status: statusFilter } : {};
 
-        const docs = await prisma.driverComplianceDocument.findMany({
-            where,
-            include: {
-                driver: {
-                    select: { id: true, firstName: true, lastName: true, email: true },
-                },
-                verifiedByAdmin: {
-                    select: { id: true, firstName: true, lastName: true },
-                },
-            },
+        const driverDocs = await prisma.driverComplianceDocument.findMany({
+            where, include: { driver: { select: { id: true, firstName: true, lastName: true, email: true } } },
             orderBy: { createdAt: 'desc' },
         });
 
-        // Group by driver 
-        const byDriver: Record<string, any> = {};
-        for (const doc of docs) {
-            const did = doc.driverId;
-            if (!byDriver[did]) {
-                byDriver[did] = {
-                    driver: doc.driver,
-                    documents: [],
-                };
-            }
-            byDriver[did].documents.push(doc);
-        }
+        const carrierDocs = await prisma.complianceDocument.findMany({
+            where, include: { carrier: { select: { id: true, companyName: true, email: true } } },
+            orderBy: { createdAt: 'desc' },
+        });
 
-        // Compute overallStatus per driver
-        const grouped = await Promise.all(
-            Object.values(byDriver).map(async (entry: any) => {
-                const { overallStatus } = await getDriverComplianceSummary(entry.driver.id);
-                return { ...entry, overallStatus };
-            })
-        );
+        // Grouping logic (simplified for combined view)
+        const combined = [
+            ...driverDocs.map(d => ({ ...d, entityType: 'driver', entityName: `${d.driver.firstName} ${d.driver.lastName}`, entityId: d.driverId, docType: d.documentType })),
+            ...carrierDocs.map(c => ({ ...c, entityType: 'carrier', entityName: c.carrier.companyName, entityId: c.carrier.id, docType: c.type })),
+        ].sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-        // Summary counts
-        const counts = {
-            pending_review: docs.filter((d) => d.status === 'pending_review').length,
-            verified: docs.filter((d) => d.status === 'verified').length,
-            rejected: docs.filter((d) => d.status === 'rejected').length,
-            total: docs.length,
-        };
-
-        res.json({ counts, drivers: grouped });
+        res.json({ counts: { pending_review: combined.filter(c => c.status === 'pending_review').length, total: combined.length }, items: combined });
     } catch (err) {
         console.error('adminListCompliance error:', err);
-        res.status(500).json({ error: 'Failed to fetch compliance list' });
+        res.status(500).json({ error: 'Fetch failed' });
     }
 };
 
-// ─── ADMIN: Get a specific driver's compliance ───────────────────────────────
-export const adminGetDriverCompliance = async (req: Request, res: Response) => {
-    try {
-        const driverId = req.params.driverId as string;
-        const driver = await prisma.user.findUnique({
-            where: { id: driverId },
-            select: { id: true, firstName: true, lastName: true, email: true, role: true },
-        });
-        if (!driver || driver.role !== 'driver') {
-            return res.status(404).json({ error: 'Driver not found' });
-        }
-        const { docs, overallStatus, missing } = await getDriverComplianceSummary(driverId);
-        res.json({ driver, overallStatus, requiredDocTypes: REQUIRED_DOC_TYPES, missing, documents: docs });
-    } catch (err) {
-        console.error('adminGetDriverCompliance error:', err);
-        res.status(500).json({ error: 'Failed to fetch driver compliance' });
-    }
-};
-
-// ─── ADMIN: Approve a compliance document ───────────────────────────────────
+// ─── ADMIN: Approve document (Unified) ──────────────────────────────────────
 export const adminApproveDoc = async (req: Request, res: Response) => {
     try {
         const adminId = (req as any).user?.userId;
         const docId = req.params.docId as string;
-        const { adminNote } = req.body;
+        const { entityType, adminNote } = req.body; // Expect entityType: 'driver' | 'carrier'
 
-        const doc = await prisma.driverComplianceDocument.findUnique({ where: { id: docId } });
-        if (!doc) return res.status(404).json({ error: 'Document not found' });
+        const updateData = { status: 'verified', adminNote: adminNote || null, rejectionReason: null, verifiedByAdminId: adminId, verifiedAt: new Date() };
 
-        const updated = await prisma.driverComplianceDocument.update({
-            where: { id: docId },
-            data: {
-                status: 'verified',
-                adminNote: adminNote || null,
-                rejectionReason: null,
-                verifiedByAdminId: adminId,
-                verifiedAt: new Date(),
-            },
-        });
+        let updated;
+        if (entityType === 'carrier') {
+            updated = await prisma.complianceDocument.update({ where: { id: docId }, data: updateData });
+        } else {
+            updated = await prisma.driverComplianceDocument.update({ where: { id: docId }, data: updateData });
+        }
 
-        res.json({ message: 'Document approved', document: updated });
+        res.json({ message: 'Approved', document: updated });
     } catch (err) {
         console.error('adminApproveDoc error:', err);
-        res.status(500).json({ error: 'Failed to approve document' });
+        res.status(500).json({ error: 'Approve failed' });
     }
 };
 
-// ─── ADMIN: Reject a compliance document ────────────────────────────────────
+// ─── ADMIN: Reject document (Unified) ───────────────────────────────────────
 export const adminRejectDoc = async (req: Request, res: Response) => {
     try {
         const adminId = (req as any).user?.userId;
         const docId = req.params.docId as string;
-        const { rejectionReason, adminNote } = req.body;
+        const { entityType, rejectionReason, adminNote } = req.body;
 
-        if (!rejectionReason) {
-            return res.status(400).json({ error: 'rejectionReason is required when rejecting' });
+        if (!rejectionReason) return res.status(400).json({ error: 'rejectionReason required' });
+        const updateData = { status: 'rejected', rejectionReason, adminNote: adminNote || null, verifiedByAdminId: adminId, verifiedAt: new Date() };
+
+        let updated;
+        if (entityType === 'carrier') {
+            updated = await prisma.complianceDocument.update({ where: { id: docId }, data: updateData });
+        } else {
+            updated = await prisma.driverComplianceDocument.update({ where: { id: docId }, data: updateData });
         }
 
-        const doc = await prisma.driverComplianceDocument.findUnique({ where: { id: docId } });
-        if (!doc) return res.status(404).json({ error: 'Document not found' });
-
-        const updated = await prisma.driverComplianceDocument.update({
-            where: { id: docId },
-            data: {
-                status: 'rejected',
-                rejectionReason,
-                adminNote: adminNote || null,
-                verifiedByAdminId: adminId,
-                verifiedAt: new Date(),
-            },
-        });
-
-        res.json({ message: 'Document rejected', document: updated });
+        res.json({ message: 'Rejected', document: updated });
     } catch (err) {
         console.error('adminRejectDoc error:', err);
-        res.status(500).json({ error: 'Failed to reject document' });
+        res.status(500).json({ error: 'Reject failed' });
+    }
+};
+
+// Placeholder for adminGetDriverCompliance replacement if needed...
+export const adminGetDriverCompliance = async (req: Request, res: Response) => {
+    try {
+        const driverId = req.params.driverId as string;
+        const { docs, overallStatus, missing } = await getDriverComplianceSummary(driverId);
+        const driver = await prisma.user.findUnique({ where: { id: driverId }, select: { id: true, firstName: true, lastName: true, email: true } });
+        res.json({ driver, overallStatus, documents: docs, missing, requiredDocTypes: REQUIRED_DOC_TYPES });
+    } catch (err) {
+        console.error('adminGetDriverCompliance error:', err);
+        res.status(500).json({ error: 'Fetch failed' });
+    }
+};
+
+export const adminGetCarrierCompliance = async (req: Request, res: Response) => {
+    try {
+        const carrierId = req.params.carrierId as string;
+        const { docs, overallStatus, missing } = await getCarrierComplianceSummary(carrierId);
+        const carrier = await prisma.carrierProfile.findUnique({ where: { id: carrierId } });
+        res.json({ carrier, overallStatus, documents: docs, missing, requiredDocTypes: CARRIER_DOC_TYPES });
+    } catch (err) {
+        console.error('adminGetCarrierCompliance error:', err);
+        res.status(500).json({ error: 'Fetch failed' });
     }
 };

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { apiClient } from '@/services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Receipt,
@@ -23,81 +25,6 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-const MOCK_BUSINESS_PROFILE = {
-  companyName: 'TechCorp Ltd',
-  registrationNumber: 'CRN-92837465',
-  vatNumber: 'GB123456789',
-  industry: 'Technology Manufacturing',
-  billingTerms: 'Net 30',
-  creditLimit: 15000,
-  creditUsed: 4250.50,
-  primaryContact: {
-    name: 'Sarah Jenkins',
-    email: 'sarah.j@techcorp.example.com',
-    phone: '+44 (0) 20 7123 4567',
-    role: 'Procurement Director'
-  }
-};
-
-const MOCK_CUSTOMER_INVOICES: any[] = [
-  {
-    id: '1',
-    invoiceNumber: 'INV-2023-001',
-    date: new Date(Date.now() - 86400000 * 5).toISOString(),
-    dueDate: new Date(Date.now() + 86400000 * 25).toISOString(),
-    subtotal: 1041.67,
-    vatAmount: 208.33,
-    amount: 1250.00,
-    status: 'PENDING',
-    description: 'Monthly Logistics Retainer - October',
-    items: 4,
-  },
-  {
-    id: '2',
-    invoiceNumber: 'INV-2023-002',
-    date: new Date(Date.now() - 86400000 * 15).toISOString(),
-    dueDate: new Date(Date.now() + 86400000 * 15).toISOString(),
-    subtotal: 375.42,
-    vatAmount: 75.08,
-    amount: 450.50,
-    status: 'PAID',
-    description: 'Emergency Same-Day Delivery Surcharge',
-    items: 1,
-  },
-  {
-    id: '3',
-    invoiceNumber: 'INV-2023-003',
-    date: new Date(Date.now() - 86400000 * 45).toISOString(),
-    dueDate: new Date(Date.now() - 86400000 * 15).toISOString(),
-    subtotal: 2666.67,
-    vatAmount: 533.33,
-    amount: 3200.00,
-    status: 'OVERDUE',
-    description: 'Quarterly Dedicated Fleet Allocation',
-    items: 12,
-  },
-];
-
-const MOCK_CUSTOMER_STATEMENTS: any[] = [
-  {
-    id: '1',
-    period: 'September 2023',
-    openingBalance: 4500.00,
-    totalInvoiced: 12500.00,
-    totalPaid: 15000.00,
-    closingBalance: 2000.00,
-    invoiceCount: 18,
-  },
-  {
-    id: '2',
-    period: 'August 2023',
-    openingBalance: 1200.00,
-    totalInvoiced: 14800.00,
-    totalPaid: 11500.00,
-    closingBalance: 4500.00,
-    invoiceCount: 22,
-  },
-];
 
 type ViewMode = 'invoices' | 'statements';
 type InvoiceFilter = 'all' | 'PENDING' | 'PAID' | 'OVERDUE';
@@ -122,31 +49,59 @@ export default function FinancialsScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('invoices');
   const [invoiceFilter, setInvoiceFilter] = useState<InvoiceFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
-  const profile = MOCK_BUSINESS_PROFILE;
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const filteredInvoices = useMemo(() => {
-    if (invoiceFilter === 'all') return MOCK_CUSTOMER_INVOICES;
-    return MOCK_CUSTOMER_INVOICES.filter((inv: any) => inv.status === invoiceFilter);
-  }, [invoiceFilter]);
+  const fetchData = useCallback(async () => {
+    try {
+      const [invRes, profRes] = await Promise.all([
+        apiClient('/invoices'),
+        apiClient('/profile'),
+      ]);
+      setInvoices(invRes.invoices || invRes || []);
+      setProfileData(profRes);
+    } catch (err) {
+      console.error('Financials fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
-  const totalOutstanding = useMemo(() =>
-    MOCK_CUSTOMER_INVOICES
-      .filter((inv: any) => inv.status === 'PENDING' || inv.status === 'OVERDUE')
-      .reduce((sum: number, inv: any) => sum + inv.amount, 0),
-    []
-  );
-
-  const totalOverdue = useMemo(() =>
-    MOCK_CUSTOMER_INVOICES
-      .filter((inv: any) => inv.status === 'OVERDUE')
-      .reduce((sum: number, inv: any) => sum + inv.amount, 0),
-    []
-  );
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    fetchData();
+  }, [fetchData]);
+
+  const biz = profileData?.businessAccount;
+  const profile = {
+    companyName: biz?.companyName || profileData?.firstName + ' ' + profileData?.lastName || '—',
+    billingTerms: biz?.billingTerms || 'Net 30',
+    creditLimit: biz?.creditLimit || 0,
+    creditUsed: biz?.currentBalance || 0,
+  };
+
+  const filteredInvoices = useMemo(() => {
+    if (invoiceFilter === 'all') return invoices;
+    return invoices.filter((inv: any) => inv.status === invoiceFilter);
+  }, [invoiceFilter, invoices]);
+
+  const totalOutstanding = useMemo(() =>
+    invoices
+      .filter((inv: any) => inv.status === 'PENDING' || inv.status === 'OVERDUE')
+      .reduce((sum: number, inv: any) => sum + inv.amount, 0),
+    [invoices]
+  );
+
+  const totalOverdue = useMemo(() =>
+    invoices
+      .filter((inv: any) => inv.status === 'OVERDUE')
+      .reduce((sum: number, inv: any) => sum + inv.amount, 0),
+    [invoices]
+  );
 
   const handleDownloadPDF = useCallback((invoice: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -157,6 +112,14 @@ export default function FinancialsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert('Export Data', 'Your financial data will be exported as CSV.');
   }, []);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.customerPrimary} />
+      </View>
+    );
+  }
 
   const renderInvoice = useCallback(({ item }: { item: any }) => {
     const config = INVOICE_STATUS_CONFIG[item.status];
@@ -340,12 +303,18 @@ export default function FinancialsScreen() {
         />
       ) : (
         <FlatList
-          data={MOCK_CUSTOMER_STATEMENTS}
+          data={[]}
           renderItem={renderStatement}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.customerPrimary} />}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <FileText size={44} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>No statements yet</Text>
+            </View>
+          }
         />
       )}
     </View>

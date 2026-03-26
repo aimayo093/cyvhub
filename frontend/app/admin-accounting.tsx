@@ -34,6 +34,7 @@ import {
     XCircle,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { apiClient } from '@/services/api';
 import { SettlementBatch, SettlementStatus, AccountingEntry } from '@/types';
 
 type TabView = 'overview' | 'settlements' | 'ledger';
@@ -56,11 +57,32 @@ export default function AdminAccountingScreen() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabView>('overview');
     const [settlements, setSettlements] = useState<SettlementBatch[]>([]);
-    const [ledger] = useState<AccountingEntry[]>([]);
+    const [ledger, setLedger] = useState<AccountingEntry[]>([]);
     const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>('all');
     const [ledgerFilter, setLedgerFilter] = useState<LedgerFilter>('all');
     const [selectedSettlement, setSelectedSettlement] = useState<SettlementBatch | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const loadData = useCallback(async () => {
+        try {
+            const [settlementsRes, ledgerRes] = await Promise.all([
+                apiClient('/payments/settlements'),
+                apiClient('/payments/ledger')
+            ]);
+            if (settlementsRes.settlements) setSettlements(settlementsRes.settlements);
+            if (ledgerRes.ledger) setLedger(ledgerRes.ledger);
+        } catch (e) {
+            console.error('Failed to load accounting data', e);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    React.useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     // Summary calculations
     const totalPaidOut = useMemo(() =>
@@ -147,8 +169,8 @@ export default function AdminAccountingScreen() {
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 1000);
-    }, []);
+        loadData();
+    }, [loadData]);
 
     const tabs: { key: TabView; label: string; icon: typeof BarChart3 }[] = [
         { key: 'overview', label: 'Overview', icon: BarChart3 },

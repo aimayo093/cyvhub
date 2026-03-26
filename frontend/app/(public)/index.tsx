@@ -149,7 +149,7 @@ export default function PublicHome() {
             </Head>
             {/* HERO SECTION */}
             <View style={styles.heroSection}>
-                {hero.bgImages && hero.bgImages.length > 0 ? hero.bgImages.map((imgUrl: string, index: number) => (
+                {hero.bgImages && hero.bgImages.length > 0 ? hero.bgImages.slice(0, 3).map((imgUrl: string, index: number) => (
                     <Image
                         key={index}
                         source={{ uri: imgUrl }}
@@ -160,7 +160,7 @@ export default function PublicHome() {
                         resizeMode="cover"
                     />
                 )) : null}
-                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.7)' }]} />
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.6)' }]} />
                 <View style={styles.heroContent}>
                     <Text style={styles.heroTitle}>{hero.headline}</Text>
                     <Text style={styles.heroSubtitle}>{hero.subheading}</Text>
@@ -171,15 +171,14 @@ export default function PublicHome() {
                         <View style={styles.widgetContainer}>
                             <View style={styles.widgetTabs}>
                                 {hero.showGuestWidget && (
-                                    <Link href="/(public)/contact" asChild>
-                                        <TouchableOpacity
-                                            style={StyleSheet.flatten([styles.widgetTab, activeHeroTab === 'quote' && styles.widgetTabActive])}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Headset size={18} color={activeHeroTab === 'quote' ? Colors.primary : Colors.textSecondary} />
-                                            <Text style={StyleSheet.flatten([styles.widgetTabText, activeHeroTab === 'quote' && styles.widgetTabTextActive])}>Talk to Sales</Text>
-                                        </TouchableOpacity>
-                                    </Link>
+                                    <TouchableOpacity
+                                        style={StyleSheet.flatten([styles.widgetTab, activeHeroTab === 'quote' && styles.widgetTabActive])}
+                                        onPress={() => setActiveHeroTab('quote')}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Calculator size={18} color={activeHeroTab === 'quote' ? Colors.primary : Colors.textSecondary} />
+                                        <Text style={StyleSheet.flatten([styles.widgetTabText, activeHeroTab === 'quote' && styles.widgetTabTextActive])}>Get a Quote</Text>
+                                    </TouchableOpacity>
                                 )}
                                 {hero.showTrackWidget && (
                                     <TouchableOpacity
@@ -424,50 +423,23 @@ export default function PublicHome() {
                     <Text style={styles.sectionTitle}>{services.title}</Text>
                     <Text style={styles.sectionSubtitle}>{services.subtitle}</Text>
                 </View>
-                <View style={styles.sliderContainer}>
-                    <ScrollView
-                        ref={servicesScrollRef}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.servicesScroll}
-                        snapToInterval={SCREEN_WIDTH > 1200 ? 400 + 24 : SCREEN_WIDTH * 0.8 + 24}
-                        snapToAlignment="start"
-                        decelerationRate="fast"
-                    >
-                        {services.banners?.map((banner: any) => (
-                            <Link key={banner.id} href={banner.link as any} asChild>
-                                <TouchableOpacity style={styles.serviceBannerCard} activeOpacity={0.9}>
-                                    <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFillObject} />
-                                    <View style={styles.serviceOverlay} />
-                                    <View style={styles.serviceBannerContent}>
-                                        <Text style={styles.serviceBannerTitle}>{banner.title}</Text>
-                                        <Text style={styles.serviceBannerDesc}>{banner.desc}</Text>
-                                        <View style={styles.serviceBannerLink}>
-                                            <Text style={styles.serviceBannerLinkText}>Learn More</Text>
-                                            <ArrowRight size={16} color="#FFF" />
-                                        </View>
+                <View style={styles.cardsGrid}>
+                    {services.banners?.map((banner: any) => (
+                        <Link key={banner.id} href={banner.link as any} asChild>
+                            <TouchableOpacity style={styles.serviceBannerCard} activeOpacity={0.9}>
+                                <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFillObject} />
+                                <View style={styles.serviceOverlay} />
+                                <View style={styles.serviceBannerContent}>
+                                    <Text style={styles.serviceBannerTitle}>{banner.title}</Text>
+                                    <Text style={styles.serviceBannerDesc}>{banner.desc}</Text>
+                                    <View style={styles.serviceBannerLink}>
+                                        <Text style={styles.serviceBannerLinkText}>Learn More</Text>
+                                        <ArrowRight size={16} color="#FFF" />
                                     </View>
-                                </TouchableOpacity>
-                            </Link>
-                        ))}
-                    </ScrollView>
-
-                    {Platform.OS === 'web' && (
-                        <>
-                            <TouchableOpacity
-                                style={[styles.sliderNavBtn, styles.sliderNavLeft]}
-                                onPress={() => servicesScrollRef.current?.scrollTo({ x: -424, animated: true })}
-                            >
-                                <ArrowRight size={20} color={Colors.primary} style={{ transform: [{ rotate: '180deg' }] }} />
+                                </View>
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.sliderNavBtn, styles.sliderNavRight]}
-                                onPress={() => servicesScrollRef.current?.scrollTo({ x: 424, animated: true })}
-                            >
-                                <ArrowRight size={20} color={Colors.primary} />
-                            </TouchableOpacity>
-                        </>
-                    )}
+                        </Link>
+                    ))}
                 </View>
             </View>
 
@@ -478,51 +450,22 @@ export default function PublicHome() {
                         <Text style={styles.sectionTitle}>{industries.title}</Text>
                         <Text style={styles.sectionSubtitle}>{industries.subtitle}</Text>
                     </View>
-                    <View style={styles.sliderContainer}>
-                        <ScrollView
-                            ref={industryScrollRef}
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.industriesScroll}
-                            snapToInterval={300 + 24}
-                            snapToAlignment="start"
-                            decelerationRate="fast"
-                            onMomentumScrollEnd={handleIndustryScroll}
-                            scrollEventThrottle={16}
-                        >
-                            {industries.industries.map((ind: any) => (
-                                <Link key={ind.id} href={`/services?industry=${ind.id}` as any} asChild>
-                                    <TouchableOpacity style={styles.industryCard} activeOpacity={0.9}>
-                                        <Image source={{ uri: ind.imageUrl }} style={styles.industryImg} />
-                                        <View style={styles.industryOverlay} />
-                                        <View style={styles.industryContent}>
-                                            <View style={styles.industryHeader}>
-                                                <Text style={styles.industryTitle}>{ind.title}</Text>
-                                                <ArrowUpRight size={20} color="#FFFFFF" />
-                                            </View>
-                                            <Text style={styles.industryDesc}>{ind.desc}</Text>
+                    <View style={styles.cardsGrid}>
+                        {industries.industries.map((ind: any) => (
+                            <Link key={ind.id} href={`/services?industry=${ind.id}` as any} asChild>
+                                <TouchableOpacity style={styles.industryCard} activeOpacity={0.9}>
+                                    <Image source={{ uri: ind.imageUrl }} style={styles.industryImg} />
+                                    <View style={styles.industryOverlay} />
+                                    <View style={styles.industryContent}>
+                                        <View style={styles.industryHeader}>
+                                            <Text style={styles.industryTitle}>{ind.title}</Text>
+                                            <ArrowUpRight size={20} color="#FFFFFF" />
                                         </View>
-                                    </TouchableOpacity>
-                                </Link>
-                            ))}
-                        </ScrollView>
-
-                        {Platform.OS === 'web' && (
-                            <>
-                                <TouchableOpacity
-                                    style={[styles.sliderNavBtn, styles.sliderNavLeft]}
-                                    onPress={() => industryScrollRef.current?.scrollTo({ x: -324, animated: true })}
-                                >
-                                    <ArrowRight size={20} color={Colors.primary} style={{ transform: [{ rotate: '180deg' }] }} />
+                                        <Text style={styles.industryDesc}>{ind.desc}</Text>
+                                    </View>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.sliderNavBtn, styles.sliderNavRight]}
-                                    onPress={() => industryScrollRef.current?.scrollTo({ x: 324, animated: true })}
-                                >
-                                    <ArrowRight size={20} color={Colors.primary} />
-                                </TouchableOpacity>
-                            </>
-                        )}
+                            </Link>
+                        ))}
                     </View>
                 </View>
             )}
@@ -664,23 +607,6 @@ const styles = StyleSheet.create({
     widgetTabTextActive: {
         color: Colors.primary,
         fontWeight: '800',
-    },
-    bookingWidget: {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        paddingVertical: 32,
-        paddingHorizontal: 40,
-        borderRadius: 32,
-        width: '100%',
-        maxWidth: '100%',
-        minHeight: Platform.OS === 'web' ? 289 : 'auto',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.7)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-        elevation: 10,
     },
     bookingTitle: {
         fontSize: 20,
@@ -1073,13 +999,6 @@ const styles = StyleSheet.create({
         paddingVertical: 20,
         gap: 24,
     },
-    industryCard: {
-        width: 300,
-        height: 400,
-        borderRadius: 16,
-        overflow: 'hidden',
-        position: 'relative',
-    },
     industryImg: {
         ...StyleSheet.absoluteFillObject,
     },
@@ -1119,13 +1038,6 @@ const styles = StyleSheet.create({
     servicesScroll: {
         paddingVertical: 20,
         gap: 24,
-    },
-    serviceBannerCard: {
-        width: Platform.OS === 'web' && SCREEN_WIDTH > 1200 ? 400 : SCREEN_WIDTH * 0.8,
-        height: 300,
-        borderRadius: 16,
-        overflow: 'hidden',
-        position: 'relative',
     },
     serviceOverlay: {
         ...StyleSheet.absoluteFillObject,
@@ -1243,5 +1155,56 @@ const styles = StyleSheet.create({
     },
     sliderNavRight: {
         right: -25,
+    },
+    // NEW GRID STYLES
+    cardsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: 24,
+        width: '100%',
+        maxWidth: 1200,
+        alignSelf: 'center',
+        paddingVertical: 40,
+    },
+    serviceBannerCard: {
+        width: Platform.OS === 'web' ? (SCREEN_WIDTH > 1000 ? '30%' : '45%') : '100%',
+        height: 350,
+        borderRadius: 20,
+        overflow: 'hidden',
+        position: 'relative',
+        backgroundColor: '#F8FAFC',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 5,
+    },
+    industryCard: {
+        width: Platform.OS === 'web' ? (SCREEN_WIDTH > 1000 ? '22%' : '45%') : '100%',
+        height: 380,
+        borderRadius: 24,
+        overflow: 'hidden',
+        position: 'relative',
+        marginBottom: 24,
+    },
+    bookingWidget: {
+        backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : '#FFFFFF',
+        borderRadius: 24,
+        padding: 32,
+        width: '100%',
+        maxWidth: 700,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.15,
+        shadowRadius: 30,
+        elevation: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        ...Platform.select({
+            web: {
+                backdropFilter: 'blur(20px)',
+            }
+        })
     },
 });

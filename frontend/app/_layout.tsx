@@ -43,10 +43,11 @@ function RootLayoutNav() {
 
     if (!isAuthenticated) {
       if (Platform.OS !== 'web') {
-        // Mobile platform: unauthenticated users go to login, except verification/legal screens
+        // Mobile platform: unauthenticated users go to login, except verification, legal, or password reset screens
         const isVerifyRoute = seg === 'verify-email-sent' || seg === 'verify-email';
         const isLegalRoute = seg === 'terms' || seg === 'privacy-policy';
-        if (seg !== 'login' && !isVerifyRoute && !isLegalRoute) {
+        const isPassResetRoute = seg === 'forgot-password' || seg === 'reset-password';
+        if (seg !== 'login' && !isVerifyRoute && !isLegalRoute && !isPassResetRoute) {
            router.replace('/login' as any);
         }
       } else {

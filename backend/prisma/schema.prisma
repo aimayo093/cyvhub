@@ -55,9 +55,10 @@ model User {
   timeOffRequests TimeOffRequest[]
   payslips        Payslip[]
 
-  // Driver compliance documents
-  complianceDocs  DriverComplianceDocument[] @relation("DriverDocs")
-  complianceReviews DriverComplianceDocument[] @relation("ReviewedByAdmin")
+  // Compliance documents
+  complianceDocs         DriverComplianceDocument[] @relation("DriverDocs")
+  complianceReviews      DriverComplianceDocument[] @relation("ReviewedByAdmin")
+  carrierComplianceReviews ComplianceDocument[]     @relation("CarrierDocReview")
 }
 
 // ─── Driver Compliance Documents ────────────────────────────────────────────
@@ -362,7 +363,31 @@ model CarrierProfile {
   users                 User[]
   vehicles              FleetVehicle[]
   complianceDocs        ComplianceDocument[]
+  rates                 CarrierRate[]
   accountingIntegration AccountingIntegration?
+}
+
+model CarrierRate {
+  id             String         @id @default(uuid())
+  carrierId      String
+  carrier        CarrierProfile @relation(fields: [carrierId], references: [id], onDelete: Cascade)
+  
+  vehicleType    String // "Small Van", "Medium Van", etc.
+  baseRate       Float
+  perKmRate      Float
+  perStopRate    Float          @default(0)
+  weekendSurcharge Float        @default(0)
+  outOfHoursSurcharge Float      @default(0)
+  heavyGoodsSurcharge Float      @default(0)
+  
+  effectiveFrom  DateTime       @default(now())
+  effectiveTo    DateTime?
+  status         String         @default("ACTIVE") // "ACTIVE", "DRAFT", "EXPIRED"
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([carrierId])
 }
 
 model FleetVehicle {
@@ -391,17 +416,34 @@ model FleetVehicle {
 
 model ComplianceDocument {
   id          String    @id @default(uuid())
-  type        String // "INSURANCE" | "MOT" | "LICENCE" | "GOODS_INT_TRANSIT"
-  status      String    @default("PENDING") // "VALID" | "EXPIRING_SOON" | "EXPIRED" | "PENDING"
-  documentUrl String
-  uploadDate  DateTime  @default(now())
+  type        String // e.g. "operator_licence" | "goods_in_transit" | "public_liability"
+  
+  fileName    String?
+  fileUrl     String    // Supabase Storage URL
+  mimeType    String?
+  fileSize    Int?
+
+  status      String    @default("pending_review") // "verified" | "rejected" | "pending_review" | "expired"
+  
+  issueDate   DateTime?
   expiryDate  DateTime?
+  uploadDate  DateTime  @default(now())
+
+  rejectionReason String?
+  adminNote      String?
+
+  verifiedByAdminId String?
+  verifiedByAdmin   User?   @relation("CarrierDocReview", fields: [verifiedByAdminId], references: [id])
+  verifiedAt        DateTime?
 
   carrierId String
   carrier   CarrierProfile @relation(fields: [carrierId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([carrierId])
+  @@index([status])
 }
 
 // ==========================================

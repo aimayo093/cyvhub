@@ -29,11 +29,7 @@ import Colors from '@/constants/colors';
 import { useDeliveries } from '@/providers/DeliveriesProvider';
 import { useAuth } from '@/providers/AuthProvider';
 
-const MOCK_SAVED_LOCATIONS = [
-  { id: '1', label: 'Main Depot', address: '45 Timber Yard', city: 'Newport', postcode: 'NP20 2AB', contactName: 'Site Manager', contactPhone: '01633 123456', isDefault: true },
-  { id: '2', label: 'Cardiff Branch', address: '12 Bay View Road', city: 'Cardiff', postcode: 'CF10 1AA', contactName: 'Branch Manager', contactPhone: '029 2012 3456', isDefault: false },
-];
-const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'Motorbike'];
+const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'HGV'];
 const JOB_TYPES = ['IT Equipment', 'Construction', 'Medical', 'Furniture', 'Office Supplies', 'General Freight', 'Fragile Items', 'Documents'];
 const TIME_WINDOWS = [
   { label: 'Morning (8am - 12pm)', value: '08:00-12:00' },
@@ -74,29 +70,36 @@ export default function BookDeliveryScreen() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const estimatePrice = useCallback((): number => {
-    const base = selectedVehicle === 'Motorbike' ? 12 : selectedVehicle === 'Small Van' ? 25 : selectedVehicle === 'Medium Van' ? 45 : 65;
-    const cityMultiplier = pickupCity.toLowerCase() !== dropoffCity.toLowerCase() ? 1.8 : 1;
-    const jobTypeMultiplier = selectedJobType === 'Medical' || selectedJobType === 'Fragile Items' ? 1.2 : 1;
+    // Pricing logic aligned with VehicleClass baselines
+    const baseRates: Record<string, number> = {
+      'Small Van': 15,
+      'Medium Van': 25,
+      'Large Van': 45,
+      'HGV': 85
+    };
+    
+    const base = baseRates[selectedVehicle] || 25;
+    const cityMultiplier = pickupCity.toLowerCase() !== dropoffCity.toLowerCase() ? 1.5 : 1;
+    const jobTypeMultiplier = selectedJobType === 'Medical' || selectedJobType === 'Fragile Items' ? 1.25 : 1;
+    
     return Math.round(base * cityMultiplier * jobTypeMultiplier * 100) / 100;
   }, [selectedVehicle, pickupCity, dropoffCity, selectedJobType]);
 
-  const handleSelectSavedLocation = useCallback((target: LocationTarget, locId: string) => {
-    const loc = MOCK_SAVED_LOCATIONS.find((l: any) => l.id === locId);
-    if (!loc) return;
+  const handleQuickFill = useCallback((target: LocationTarget) => {
+    if (!customer) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (target === 'pickup') {
-      setPickupAddress(loc.address);
-      setPickupCity(loc.city);
-      setPickupPostcode(loc.postcode);
-      setPickupContact(loc.contactName);
+      setPickupAddress(customer.defaultAddress || '');
+      setPickupCity(customer.defaultCity || '');
+      setPickupPostcode(customer.defaultPostcode || '');
+      setPickupContact(`${customer.firstName} ${customer.lastName}`);
     } else {
-      setDropoffAddress(loc.address);
-      setDropoffCity(loc.city);
-      setDropoffPostcode(loc.postcode);
-      setDropoffContact(loc.contactName);
+      setDropoffAddress(customer.defaultAddress || '');
+      setDropoffCity(customer.defaultCity || '');
+      setDropoffPostcode(customer.defaultPostcode || '');
+      setDropoffContact(`${customer.firstName} ${customer.lastName}`);
     }
-    setShowSavedLocations(null);
-  }, []);
+  }, [customer]);
 
   const getWindowLabel = useCallback((value: string): string => {
     return TIME_WINDOWS.find(tw => tw.value === value)?.label ?? 'Select time window';
@@ -182,32 +185,17 @@ export default function BookDeliveryScreen() {
     }
   }, [validate, createDelivery, pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, packageDescription, selectedVehicle, estimatePrice, router, selectedJobType, specialInstructions, selectedPickupWindow, selectedDeliveryWindow]);
 
-  const renderSavedLocationChips = useCallback((target: LocationTarget) => (
+  const renderQuickFill = useCallback((target: LocationTarget) => (
     <View style={styles.savedLocationsWrap}>
-      <View style={styles.savedLocationsHeader}>
-        <Bookmark size={13} color={Colors.customerPrimary} />
-        <Text style={styles.savedLocationsLabel}>Saved Locations</Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.savedChipsRow}>
-        {MOCK_SAVED_LOCATIONS.map((loc: any) => {
-          const isActive = target === 'pickup'
-            ? pickupAddress === loc.address && pickupCity === loc.city
-            : dropoffAddress === loc.address && dropoffCity === loc.city;
-          return (
-            <TouchableOpacity
-              key={loc.id}
-              style={[styles.savedChip, isActive && styles.savedChipActive]}
-              onPress={() => handleSelectSavedLocation(target, loc.id)}
-              activeOpacity={0.7}
-            >
-              <MapPin size={11} color={isActive ? '#FFFFFF' : Colors.textMuted} />
-              <Text style={[styles.savedChipText, isActive && styles.savedChipTextActive]}>{loc.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <TouchableOpacity 
+        style={styles.quickFillBtn}
+        onPress={() => handleQuickFill(target)}
+      >
+        <User size={14} color={Colors.customerPrimary} />
+        <Text style={styles.quickFillText}>Fill with my profile address</Text>
+      </TouchableOpacity>
     </View>
-  ), [pickupAddress, pickupCity, dropoffAddress, dropoffCity, handleSelectSavedLocation]);
+  ), [handleQuickFill]);
 
   return (
     <View style={styles.container}>
@@ -242,7 +230,7 @@ export default function BookDeliveryScreen() {
               </TouchableOpacity>
             </View>
 
-            {showSavedLocations === 'pickup' && renderSavedLocationChips('pickup')}
+            {showSavedLocations === 'pickup' && renderQuickFill('pickup')}
 
             <View style={styles.inputGroup}>
               <View style={styles.inputRow}>
@@ -302,7 +290,7 @@ export default function BookDeliveryScreen() {
               </TouchableOpacity>
             </View>
 
-            {showSavedLocations === 'dropoff' && renderSavedLocationChips('dropoff')}
+            {showSavedLocations === 'dropoff' && renderQuickFill('dropoff')}
 
             <View style={styles.inputGroup}>
               <View style={styles.inputRow}>
@@ -769,5 +757,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: '#FFFFFF',
+  },
+  quickFillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.customerPrimary + '15',
+    padding: 12,
+    borderRadius: 10,
+    gap: 10,
+    marginTop: 4,
+  },
+  quickFillText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.customerPrimary,
   },
 });

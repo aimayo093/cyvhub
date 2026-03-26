@@ -53,11 +53,15 @@ export default function TermsPage() {
                             </Text>
                             <Text style={styles.h2}>2. Insurance & Compliance</Text>
                             <Text style={styles.p}>
-                                Drivers must maintain valid Goods in Transit and Hire & Reward insurance at all times. Failure to provide proof of valid documentation will result in immediate account suspension.
+                                Drivers must maintain valid Goods in Transit, Public Liability, and Hire & Reward insurance at all times. Failure to provide proof of valid documentation will result in immediate account suspension.
                             </Text>
                             <Text style={styles.h2}>3. Performance Metrics</Text>
                             <Text style={styles.p}>
-                                Your access to high-value jobs is determined by your rating, punctuality, and compliance score. Persistent delays or damaged goods will lower your rank.
+                                Your access to high-value jobs is determined by your rating, punctuality, and compliance score. Persistent delays or damaged goods will lower your rank and may lead to account deactivation.
+                            </Text>
+                            <Text style={styles.h2}>4. Vehicle Standards</Text>
+                            <Text style={styles.p}>
+                                Drivers must ensure their vehicles are roadworthy, taxed, and have a valid MOT. CYVhub reserves the right to inspect vehicles virtually or in-person.
                             </Text>
                         </>
                     )}
@@ -66,32 +70,40 @@ export default function TermsPage() {
                         <>
                             <Text style={styles.h2}>1. Service Level Agreement (SLA)</Text>
                             <Text style={styles.p}>
-                                As a Carrier Partner, you agree to meet a minimum 98% on-time delivery rate. Performance is audited monthly. Repeated failures to meet SLAs may result in contract termination.
+                                As a Carrier Partner, you agree to meet a minimum 98% on-time delivery rate. Performance is audited monthly. Repeated failures to meet SLAs may result in contract termination or reduced job allocation.
                             </Text>
-                            <Text style={styles.h2}>2. Sub-Contracting</Text>
+                            <Text style={styles.h2}>2. Sub-Contracting & Fleet Management</Text>
                             <Text style={styles.p}>
-                                Carriers may only sub-contract to drivers who meet the same compliance standards as specified by CYVhub. You remain fully liable for the actions of any sub-contracted personnel.
+                                Carriers may only sub-contract to drivers who meet the same compliance standards as specified by CYVhub. You are responsible for ensuring all fleet drivers maintain the required certifications.
                             </Text>
-                            <Text style={styles.h2}>3. Payment Terms</Text>
+                            <Text style={styles.h2}>3. Payment & Invoicing</Text>
                             <Text style={styles.p}>
-                                Carrier settlements are processed on a weekly basis, subject to a 7-day verification period following job completion. All invoices must be submitted via the platform.
+                                Carrier settlements are processed on a weekly basis. All invoices must be generated through the CYVhub portal. Payments are subject to a 7-day verification period following job completion.
+                            </Text>
+                            <Text style={styles.h2}>4. Liability & Indemnity</Text>
+                            <Text style={styles.p}>
+                                Carriers must maintain a minimum of £50,000 Goods in Transit cover. You agree to indemnify Cyvrix Limited against any claims arising from the actions of your drivers.
                             </Text>
                         </>
                     )}
 
                     {(!isDriver && !isCarrier) && (
                         <>
-                            <Text style={styles.h2}>1. Booking Policy</Text>
+                            <Text style={styles.h2}>1. Booking & Cancellation</Text>
                             <Text style={styles.p}>
-                                Quotes are generated based on provided weight and dimensions. Cyvrix Limited reserves the right to adjust billing if the actual consignment differs from the booking details.
+                                Quotes are generated based on provided weight and dimensions. Cyvrix Limited reserves the right to adjust billing if the actual consignment differs. Cancellations made after driver dispatch will incur a fee.
                             </Text>
-                            <Text style={styles.h2}>2. Liability Limits</Text>
+                            <Text style={styles.h2}>2. Transit Liability</Text>
                             <Text style={styles.p}>
-                                Standard transit liability is limited to £10,000. For high-value consignments, additional coverage must be purchased at the point of booking.
+                                Standard transit liability is limited to £10,000. For high-value consignments, additional coverage must be purchased at the point of booking. We do not carry prohibited items as listed in our prohibited goods guide.
                             </Text>
-                            <Text style={styles.h2}>3. Professional Use</Text>
+                            <Text style={styles.h2}>3. Payment Terms</Text>
                             <Text style={styles.p}>
-                                Business accounts are strictly for professional logistics use. Abuse of the platform or fraudulent bookings will result in immediate termination.
+                                Business customers may be eligible for credit accounts subject to status. Standard payment terms for non-credit accounts are strictly at the point of booking via our secure payment gateway.
+                            </Text>
+                            <Text style={styles.h2}>4. Account Security</Text>
+                            <Text style={styles.p}>
+                                You are responsible for maintaining the confidentiality of your account credentials. Any bookings made through your account will be deemed your responsibility.
                             </Text>
                         </>
                     )}

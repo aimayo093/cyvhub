@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ChevronLeft, CheckCircle, XCircle, Clock, Shield,
-  ExternalLink, FileText, Calendar,
+  ExternalLink, FileText, Calendar, AlertTriangle,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
@@ -20,6 +20,9 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   public_liability: 'Public Liability Insurance',
   right_to_work: 'Right to Work',
   vehicle_registration: 'Vehicle Registration (V5)',
+  operator_licence: 'Operator Licence',
+  git_insurance: 'Goods in Transit Insurance',
+  background_checks: 'Driver Background Checks',
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -27,6 +30,7 @@ function StatusBadge({ status }: { status: string }) {
     verified:       { bg: Colors.successLight, text: Colors.success,   label: 'Verified',       icon: CheckCircle },
     pending_review: { bg: Colors.warningLight, text: Colors.warning,   label: 'Pending Review', icon: Clock },
     rejected:       { bg: Colors.dangerLight,  text: Colors.danger,    label: 'Rejected',       icon: XCircle },
+    expired:        { bg: Colors.dangerLight,  text: Colors.danger,    label: 'Expired',        icon: AlertTriangle },
   }[status] ?? { bg: Colors.borderLight, text: Colors.textMuted, label: 'Not Submitted', icon: Shield };
 
   const IconComp = cfg.icon;
@@ -48,11 +52,11 @@ function formatDate(d: string | null): string {
 export default function AdminComplianceDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { driverId } = useLocalSearchParams<{ driverId: string }>();
+  const { docId, entityType, entityId } = useLocalSearchParams<{ docId: string; entityType: string; entityId: string }>();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [actionDocId, setActionDocId] = useState<string | null>(null);
+  const [actionDocId, setActionDocId] = useState<string | null>(docId || null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [note, setNote] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -60,16 +64,20 @@ export default function AdminComplianceDetailScreen() {
 
   const loadData = async () => {
     try {
-      const res = await apiClient(`/compliance/admin/driver/${driverId}`);
+      const endpoint = entityType === 'carrier' 
+        ? `/compliance/admin/carrier/${entityId}`
+        : `/compliance/admin/driver/${entityId}`;
+        
+      const res = await apiClient(endpoint);
       setData(res);
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to load driver compliance');
+      Alert.alert('Error', e?.message || 'Failed to load compliance details');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { if (driverId) loadData(); }, [driverId]);
+  useEffect(() => { if (entityId && entityType) loadData(); }, [entityId, entityType]);
 
   const handleAction = async () => {
     if (!actionDocId || !actionType) return;
@@ -85,8 +93,8 @@ export default function AdminComplianceDetailScreen() {
         method: 'POST',
         body: JSON.stringify(
           actionType === 'approve'
-            ? { adminNote: note }
-            : { rejectionReason, adminNote: note }
+            ? { entityType, adminNote: note }
+            : { entityType, rejectionReason, adminNote: note }
         ),
       });
 
@@ -112,7 +120,8 @@ export default function AdminComplianceDetailScreen() {
     );
   }
 
-  const driver = data?.driver;
+  const entity = data?.carrier || data?.driver;
+  const entityName = entity?.companyName || `${entity?.firstName} ${entity?.lastName}`;
   const documents = data?.documents ?? [];
   const requiredTypes = data?.requiredDocTypes ?? [];
 
@@ -124,9 +133,7 @@ export default function AdminComplianceDetailScreen() {
           <ChevronLeft size={22} color={Colors.textInverse} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>
-            {driver?.firstName} {driver?.lastName}
-          </Text>
+          <Text style={styles.headerTitle}>{entityName}</Text>
           <Text style={styles.headerSub}>Compliance Review</Text>
         </View>
       </View>
@@ -134,7 +141,7 @@ export default function AdminComplianceDetailScreen() {
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         {/* Documents */}
         {requiredTypes.map((docType: any) => {
-          const doc = documents.find((d: any) => d.documentType === docType.slug);
+          const doc = documents.find((d: any) => (d.documentType || d.type) === docType.slug);
           const isSelected = actionDocId === doc?.id;
 
           return (
@@ -276,7 +283,7 @@ export default function AdminComplianceDetailScreen() {
               )}
 
               {!doc && (
-                <Text style={styles.notSubmittedNote}>Driver has not uploaded this document yet.</Text>
+                <Text style={styles.notSubmittedNote}>Entity has not uploaded this document yet.</Text>
               )}
             </View>
           );

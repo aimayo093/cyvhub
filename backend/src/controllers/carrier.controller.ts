@@ -200,7 +200,7 @@ export class CarrierController {
         }
     }
 
-    // GET /api/carriers/my-drivers
+    // GET /api/carriers/my/drivers
     static async getMyDrivers(req: Request, res: Response): Promise<void> {
         try {
             const userId = (req as any).user?.userId;
@@ -228,6 +228,78 @@ export class CarrierController {
         } catch (error) {
             console.error('[CarrierController] Error fetching drivers:', error);
             res.status(500).json({ error: 'Failed to fetch drivers' });
+        }
+    }
+
+    // GET /api/carriers/my/rates
+    static async getMyRates(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = (req as any).user?.userId;
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (!user || !user.carrierProfileId) {
+                res.status(400).json({ data: [] });
+                return;
+            }
+            const rates = await prisma.carrierRate.findMany({
+                where: { carrierId: user.carrierProfileId },
+                orderBy: { createdAt: 'desc' }
+            });
+            res.status(200).json({ data: rates });
+        } catch (error) {
+            console.error('[CarrierController] Error fetching rates:', error);
+            res.status(500).json({ error: 'Failed' });
+        }
+    }
+
+    // POST /api/carriers/my/rates
+    static async addRate(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = (req as any).user?.userId;
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (!user || !user.carrierProfileId) return res.status(403).json({ error: 'No profile' });
+
+            const { vehicleType, baseRate, perKmRate, perStopRate, weekendSurcharge, outOfHoursSurcharge, heavyGoodsSurcharge } = req.body;
+            const rate = await prisma.carrierRate.create({
+                data: {
+                    carrierId: user.carrierProfileId,
+                    vehicleType,
+                    baseRate: parseFloat(baseRate),
+                    perKmRate: parseFloat(perKmRate),
+                    perStopRate: parseFloat(perStopRate || 0),
+                    weekendSurcharge: parseFloat(weekendSurcharge || 0),
+                    outOfHoursSurcharge: parseFloat(outOfHoursSurcharge || 0),
+                    heavyGoodsSurcharge: parseFloat(heavyGoodsSurcharge || 0),
+                    status: 'ACTIVE'
+                }
+            });
+            res.status(201).json({ data: rate });
+        } catch (error) {
+            console.error('[CarrierController] Error submiitng rate:', error);
+            res.status(500).json({ error: 'Failed' });
+        }
+    }
+
+    // PATCH /api/carriers/my/rates/:id
+    static async updateRate(req: Request, res: Response): Promise<void> {
+        try {
+            const id = req.params.id as string;
+            const userId = (req as any).user?.userId;
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (!user || !user.carrierProfileId) return res.status(403).json({ error: 'No profile' });
+
+            const existing = await prisma.carrierRate.findUnique({ where: { id } });
+            if (!existing || existing.carrierId !== user.carrierProfileId) {
+                return res.status(404).json({ error: 'Rate card not found' });
+            }
+
+            const updated = await prisma.carrierRate.update({
+                where: { id },
+                data: req.body
+            });
+            res.status(200).json({ data: updated });
+        } catch (error) {
+            console.error('[CarrierController] Error updating rate:', error);
+            res.status(500).json({ error: 'Failed' });
         }
     }
 }
