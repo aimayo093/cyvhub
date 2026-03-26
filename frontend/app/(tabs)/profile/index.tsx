@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -31,16 +33,23 @@ import {
   BarChart3,
   Brain,
   Receipt,
+  Upload,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/providers/AuthProvider';
+import { apiClient } from '@/services/api';
 
-const MOCK_COMPLIANCE = [
-  { id: '1', type: 'Driving Licence', status: 'VALID', expiryDate: '2026-08-15' },
-  { id: '2', type: 'Motor Insurance', status: 'EXPIRING_SOON', expiryDate: '2024-03-01' },
-  { id: '3', type: 'Goods in Transit', status: 'VALID', expiryDate: '2025-01-10' },
-  { id: '4', type: 'Public Liability', status: 'EXPIRED', expiryDate: '2023-12-01' },
+const REQUIRED_DOC_TYPES = [
+  { slug: 'driving_licence',       label: 'Driving Licence' },
+  { slug: 'motor_insurance',       label: 'Motor Insurance' },
+  { slug: 'mot_certificate',       label: 'MOT Certificate' },
+  { slug: 'goods_in_transit',      label: 'Goods in Transit Insurance' },
+  { slug: 'public_liability',      label: 'Public Liability Insurance' },
+  { slug: 'right_to_work',         label: 'Right to Work' },
+  { slug: 'vehicle_registration',  label: 'Vehicle Registration (V5)' },
 ];
 
 const MOCK_CARRIER_COMPLIANCE = [
@@ -53,21 +62,71 @@ const MOCK_CARRIER_COMPLIANCE = [
 
 function getComplianceIcon(status: string) {
   switch (status) {
-    case 'VALID': return { Icon: CheckCircle, color: Colors.success };
-    case 'EXPIRING_SOON': return { Icon: AlertTriangle, color: Colors.warning };
-    case 'EXPIRED': return { Icon: XCircle, color: Colors.danger };
-    default: return { Icon: Clock, color: Colors.textMuted };
+    case 'VALID':
+    case 'verified': return { Icon: CheckCircle, color: Colors.success };
+    case 'EXPIRING_SOON':
+    case 'expired': return { Icon: AlertTriangle, color: Colors.warning };
+    case 'EXPIRED':
+    case 'rejected': return { Icon: XCircle, color: Colors.danger };
+    case 'pending_review': return { Icon: Clock, color: Colors.warning };
+    default: return { Icon: AlertCircle, color: Colors.textMuted };
+  }
+}
+
+function getStatusLabel(status: string) {
+  switch (status) {
+    case 'verified': return 'Verified';
+    case 'pending_review': return 'Pending Review';
+    case 'rejected': return 'Rejected';
+    case 'expired': return 'Expired';
+    default: return 'Not Submitted';
+  }
+}
+
+function getOverallBadge(status: string): { label: string; bg: string; text: string } {
+  switch (status) {
+    case 'verified':      return { label: '✓ Fully Verified',        bg: Colors.successLight, text: Colors.success };
+    case 'pending_verification': return { label: '⏳ Under Review',  bg: Colors.warningLight, text: Colors.warning };
+    case 'rejected':      return { label: '✗ Action Required',       bg: Colors.dangerLight,  text: Colors.danger };
+    case 'action_required': return { label: '⚠ Action Required',    bg: Colors.dangerLight,  text: Colors.danger };
+    default:              return { label: '○ Not Submitted',          bg: Colors.borderLight,  text: Colors.textMuted };
   }
 }
 
 function formatDate(dateStr: string): string {
+  if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function DriverProfileSection() {
   const { driver } = useAuth();
+  const router = useRouter();
+  const [compliance, setCompliance] = useState<any>(null);
+  const [loadingCompliance, setLoadingCompliance] = useState(true);
+
+  const loadCompliance = async () => {
+    try {
+      const res = await apiClient('/compliance');
+      setCompliance(res);
+    } catch (e) {
+      console.error('Failed to load compliance:', e);
+    } finally {
+      setLoadingCompliance(false);
+    }
+  };
+
+  useEffect(() => { loadCompliance(); }, []);
+
   if (!driver) return null;
+
+  const docsBySlug: Record<string, any> = {};
+  (compliance?.documents || []).forEach((d: any) => {
+    docsBySlug[d.documentType] = d;
+  });
+
+  const overallBadge = getOverallBadge(compliance?.overallStatus || 'not_submitted');
 
   return (
     <>
@@ -75,38 +134,72 @@ function DriverProfileSection() {
         <Text style={styles.sectionTitle}>Personal Details</Text>
         <View style={styles.detailCard}>
           <DetailRow icon={Mail} label="Email" value={driver.email} />
-          <DetailRow icon={Phone} label="Phone" value={driver.phone} />
-          <DetailRow icon={CreditCard} label="Licence" value={driver.licenceNumber} />
-          <DetailRow icon={Clock} label="Licence Expiry" value={formatDate(driver.licenceExpiry)} last />
+          <DetailRow icon={Phone} label="Phone" value={driver.phone || '—'} />
+          <DetailRow icon={CreditCard} label="Licence" value={driver.licenceNumber || '—'} />
+          <DetailRow icon={Clock} label="Licence Expiry" value={driver.licenceExpiry ? formatDate(driver.licenceExpiry) : '—'} last />
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Compliance Documents</Text>
-        <View style={styles.complianceList}>
-          {MOCK_COMPLIANCE.map((item: any, index: number) => {
-            const { Icon: StatusIcon, color } = getComplianceIcon(item.status);
-            return (
-              <View key={item.id} style={[styles.complianceRow, index === MOCK_COMPLIANCE.length - 1 && { borderBottomWidth: 0 }]}>
-                <Shield size={16} color={Colors.textMuted} />
-                <View style={styles.complianceInfo}>
-                  <Text style={styles.complianceType}>{item.type}</Text>
-                  {item.expiryDate && (
-                    <Text style={[
-                      styles.complianceExpiry,
-                      item.status === 'EXPIRED' && { color: Colors.danger },
-                      item.status === 'EXPIRING_SOON' && { color: Colors.warning },
-                    ]}>
-                      {item.status === 'EXPIRED' ? 'Expired ' : 'Expires '}
-                      {formatDate(item.expiryDate)}
-                    </Text>
-                  )}
-                </View>
-                <StatusIcon size={18} color={color} />
-              </View>
-            );
-          })}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Compliance Documents</Text>
+          <View style={[styles.overallBadge, { backgroundColor: overallBadge.bg }]}>
+            <Text style={[styles.overallBadgeText, { color: overallBadge.text }]}>
+              {overallBadge.label}
+            </Text>
+          </View>
         </View>
+
+        {loadingCompliance ? (
+          <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 16 }} />
+        ) : (
+          <View style={styles.complianceList}>
+            {REQUIRED_DOC_TYPES.map((type, index) => {
+              const doc = docsBySlug[type.slug];
+              const status = doc?.status || 'not_submitted';
+              const { Icon: StatusIcon, color } = getComplianceIcon(status);
+              const isLast = index === REQUIRED_DOC_TYPES.length - 1;
+
+              return (
+                <View key={type.slug} style={[styles.complianceRow, isLast && { borderBottomWidth: 0 }]}>
+                  <Shield size={16} color={Colors.textMuted} />
+                  <View style={styles.complianceInfo}>
+                    <Text style={styles.complianceType}>{type.label}</Text>
+                    <Text style={[styles.complianceStatus, { color }]}>
+                      {getStatusLabel(status)}
+                    </Text>
+                    {doc?.expiryDate && (
+                      <Text style={styles.complianceExpiry}>
+                        Expires {formatDate(doc.expiryDate)}
+                      </Text>
+                    )}
+                    {status === 'rejected' && doc?.rejectionReason && (
+                      <Text style={styles.rejectionReason}>
+                        Reason: {doc.rejectionReason}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.complianceActions}>
+                    <StatusIcon size={18} color={color} />
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        router.push((`/compliance-upload?docType=${type.slug}`) as any);
+                      }}
+                    >
+                      {status === 'not_submitted' ? (
+                        <Upload size={14} color={Colors.primary} />
+                      ) : (
+                        <RefreshCw size={14} color={status === 'rejected' ? Colors.danger : Colors.textMuted} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </View>
     </>
   );
@@ -701,5 +794,44 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: 13,
     fontWeight: '600' as const,
+  },
+  complianceStatus: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    marginTop: 2,
+  },
+  rejectionReason: {
+    fontSize: 11,
+    color: Colors.danger,
+    marginTop: 3,
+    fontStyle: 'italic' as const,
+  },
+  sectionHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: 10,
+  },
+  overallBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  overallBadgeText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  complianceActions: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  uploadBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: Colors.borderLight,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
 });

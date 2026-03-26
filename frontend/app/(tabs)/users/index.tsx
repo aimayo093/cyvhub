@@ -23,7 +23,9 @@ import {
   Clock,
   AlertTriangle,
   ShieldCheck,
+  FileCheck,
 } from 'lucide-react-native';
+
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -122,6 +124,13 @@ export default function UsersScreen() {
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity
+              style={[styles.headerIconWrap, { backgroundColor: Colors.success + '18' }]}
+              onPress={() => router.push('/admin-compliance' as any)}
+              activeOpacity={0.7}
+            >
+              <FileCheck size={20} color={Colors.success} />
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.headerIconWrap, { backgroundColor: Colors.danger + '18' }]}
               onPress={() => router.push('/(tabs)/users/audit')}
               activeOpacity={0.7}
@@ -132,6 +141,7 @@ export default function UsersScreen() {
               <Users size={20} color={Colors.adminPrimary} />
             </View>
           </View>
+
         </View>
 
         <View style={styles.searchRow}>

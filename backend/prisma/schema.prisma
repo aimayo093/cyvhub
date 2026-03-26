@@ -50,6 +50,44 @@ model User {
   hrRecord        HRRecord?
   timeOffRequests TimeOffRequest[]
   payslips        Payslip[]
+
+  // Driver compliance documents
+  complianceDocs  DriverComplianceDocument[] @relation("DriverDocs")
+  complianceReviews DriverComplianceDocument[] @relation("ReviewedByAdmin")
+}
+
+// ─── Driver Compliance Documents ────────────────────────────────────────────
+// Stores uploaded compliance files (licence, insurance, MOT, etc.) per driver.
+// Files are hosted in Supabase Storage; fileUrl is a signed/public URL.
+model DriverComplianceDocument {
+  id             String    @id @default(uuid())
+  driverId       String
+  driver         User      @relation("DriverDocs", fields: [driverId], references: [id])
+
+  documentType   String    // e.g. "driving_licence" | "motor_insurance" | "mot" | ...
+  fileName       String
+  fileUrl        String    // Supabase Storage public/signed URL
+  mimeType       String?
+  fileSize       Int?
+
+  issueDate      DateTime?
+  expiryDate     DateTime?
+
+  // Status: not_submitted | pending_review | verified | rejected | expired
+  status         String    @default("pending_review")
+
+  adminNote      String?
+  rejectionReason String?
+
+  verifiedByAdminId String?
+  verifiedByAdmin   User?   @relation("ReviewedByAdmin", fields: [verifiedByAdminId], references: [id])
+  verifiedAt        DateTime?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([driverId])
+  @@index([status])
 }
 
 model Job {

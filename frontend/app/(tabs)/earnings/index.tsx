@@ -36,14 +36,18 @@ function DriverEarningsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   const amountAnim = useRef(new Animated.Value(0)).current;
 
   const loadData = async (p: Period) => {
+    setError(null);
     try {
       const res = await apiClient(`/analytics/earnings?period=${p}`);
-      setData(res.data);
-    } catch (error) {
-      console.error('Failed to load earnings:', error);
+      setData(res.data ?? res);
+    } catch (err: any) {
+      console.error('Failed to load earnings:', err);
+      setError(err?.message || 'Unable to load earnings data.');
+      setData(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,7 +86,7 @@ function DriverEarningsScreen() {
     loadData(period);
   }, [period]);
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -90,8 +94,62 @@ function DriverEarningsScreen() {
     );
   }
 
-  const { summary, weeklyEarnings: MOCK_WEEKLY_EARNINGS } = data;
-  const maxDaily = Math.max(...(MOCK_WEEKLY_EARNINGS || []).map((d: any) => d.amount), 1);
+  // Error state
+  if (error) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <TrendingUp size={48} color={Colors.textMuted} style={{ opacity: 0.4 }} />
+        <Text style={{ fontSize: 16, fontWeight: '600', color: Colors.text, marginTop: 16, textAlign: 'center' }}>
+          Unable to Load Earnings
+        </Text>
+        <Text style={{ fontSize: 13, color: Colors.textMuted, marginTop: 8, textAlign: 'center' }}>
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={() => { setLoading(true); loadData(period); }}
+          style={{ marginTop: 20, backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const summary = data?.summary ?? {};
+  const netPay = summary.netPay ?? 0;
+  const grossPay = summary.grossPay ?? 0;
+  const deductions = summary.deductions ?? 0;
+  const jobsCompleted = summary.jobsCompleted ?? 0;
+  const hoursWorked = summary.hoursWorked ?? 0;
+  const milesDriven = summary.milesDriven ?? 0;
+  const weeklyEarnings = data?.weeklyEarnings ?? [];
+  const maxDaily = Math.max(...weeklyEarnings.map((d: any) => d.amount ?? 0), 1);
+
+  // Empty state
+  if (jobsCompleted === 0 && netPay === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { justifyContent: 'center' }]}>
+          <Text style={styles.headerTitle}>Earnings</Text>
+          <Text style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4 }}>
+            {period === 'week' ? 'This Week' : 'This Month'}
+          </Text>
+          <Text style={{ fontSize: 36, fontWeight: '800', color: Colors.textInverse, marginTop: 8 }}>£0.00</Text>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Briefcase size={56} color={Colors.textMuted} style={{ opacity: 0.3 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.text, marginTop: 20, textAlign: 'center' }}>
+            No earnings yet
+          </Text>
+          <Text style={{ fontSize: 13, color: Colors.textMuted, marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+            Your earnings will appear here once you complete your first job. Accept a job to get started!
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+
 
   return (
     <View style={styles.container}>
@@ -115,7 +173,7 @@ function DriverEarningsScreen() {
 
         <Animated.View style={[styles.earningsHero, { opacity: amountAnim, transform: [{ scale: amountAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }] }]}>
           <Text style={styles.earningsLabel}>Net Earnings</Text>
-          <Text style={styles.earningsAmount}>£{summary.netPay.toFixed(2)}</Text>
+          <Text style={styles.earningsAmount}>£{netPay.toFixed(2)}</Text>
           <View style={styles.earningsDelta}>
             <ArrowUpRight size={14} color={Colors.success} />
             <Text style={styles.earningsDeltaText}>+12% vs last {period}</Text>
@@ -136,37 +194,37 @@ function DriverEarningsScreen() {
             <View style={[styles.statIcon, { backgroundColor: Colors.successLight }]}>
               <TrendingUp size={16} color={Colors.success} />
             </View>
-            <Text style={styles.statItemValue}>£{summary.grossPay.toFixed(2)}</Text>
+            <Text style={styles.statItemValue}>£{grossPay.toFixed(2)}</Text>
             <Text style={styles.statItemLabel}>Gross Pay</Text>
           </View>
           <View style={styles.statItem}>
             <View style={[styles.statIcon, { backgroundColor: Colors.dangerLight }]}>
               <ArrowDownRight size={16} color={Colors.danger} />
             </View>
-            <Text style={styles.statItemValue}>£{summary.deductions.toFixed(2)}</Text>
+            <Text style={styles.statItemValue}>£{deductions.toFixed(2)}</Text>
             <Text style={styles.statItemLabel}>Deductions</Text>
           </View>
           <View style={styles.statItem}>
             <View style={[styles.statIcon, { backgroundColor: Colors.infoLight }]}>
               <Briefcase size={16} color={Colors.info} />
             </View>
-            <Text style={styles.statItemValue}>{summary.jobsCompleted}</Text>
+            <Text style={styles.statItemValue}>{jobsCompleted}</Text>
             <Text style={styles.statItemLabel}>Jobs</Text>
           </View>
           <View style={styles.statItem}>
             <View style={[styles.statIcon, { backgroundColor: Colors.warningLight }]}>
               <Clock size={16} color={Colors.warning} />
             </View>
-            <Text style={styles.statItemValue}>{summary.hoursWorked}h</Text>
+            <Text style={styles.statItemValue}>{hoursWorked}h</Text>
             <Text style={styles.statItemLabel}>Hours</Text>
           </View>
         </View>
 
-        {period === 'week' && (
+        {period === 'week' && weeklyEarnings.length > 0 && (
           <View style={styles.chartSection}>
             <Text style={styles.chartTitle}>Daily Breakdown</Text>
             <View style={styles.chart}>
-              {MOCK_WEEKLY_EARNINGS.map((day: any) => (
+              {weeklyEarnings.map((day: any) => (
                 <View key={day.date} style={styles.barContainer}>
                   <Text style={styles.barValue}>
                     {day.amount > 0 ? `£${day.amount.toFixed(0)}` : ''}
@@ -194,11 +252,11 @@ function DriverEarningsScreen() {
           <View style={styles.milesCard}>
             <MapPin size={20} color={Colors.primary} />
             <View style={styles.milesInfo}>
-              <Text style={styles.milesValue}>{summary.milesDriven.toFixed(1)} miles</Text>
+              <Text style={styles.milesValue}>{milesDriven.toFixed(1)} miles</Text>
               <Text style={styles.milesLabel}>Total distance driven</Text>
             </View>
             <Text style={styles.milesRate}>
-              £{(summary.netPay / Math.max(summary.milesDriven, 1)).toFixed(2)}/mi
+              £{(netPay / Math.max(milesDriven, 1)).toFixed(2)}/mi
             </Text>
           </View>
         </View>

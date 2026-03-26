@@ -137,6 +137,19 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
+        name="compliance-upload"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="admin-compliance"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="admin-compliance-detail"
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
         name="pod"
         options={{
           title: "Proof of Delivery",

@@ -31,6 +31,7 @@ import adminRoutes from './routes/admin.routes';
 import accountingRoutes from './routes/accounting.routes';
 import commercialRoutes from './routes/commercial.routes';
 import adminCommercialRoutes from './routes/admin.commercial.routes';
+import complianceRoutes from './routes/compliance.routes';
 
 dotenv.config();
 
@@ -186,6 +187,9 @@ app.use('/api/accounting', accountingRoutes);
 
 // Commercial Pricing & Rules Engine
 app.use('/api/commercial', commercialRoutes);
+
+// Driver Compliance (upload, status, admin verification)
+app.use('/api/compliance', complianceRoutes);
 
 console.log('✅ All routes registered.');
 

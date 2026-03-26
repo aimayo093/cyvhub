@@ -132,9 +132,12 @@ export const getEarnings = async (req: Request, res: Response) => {
                 grossPay: parseFloat(grossPay.toFixed(2)),
                 deductions: parseFloat(deductions.toFixed(2)),
                 jobsCompleted: driverJobs.length,
+                hoursWorked: 0,   // Placeholder until time-tracking is implemented
+                milesDriven: 0,   // Placeholder until route tracking is implemented
             };
 
             return res.json({ role: 'driver', data: { summary, weeklyEarnings: [] } });
+
         }
     } catch (error) {
         console.error('Error fetching earnings analytics:', error);
