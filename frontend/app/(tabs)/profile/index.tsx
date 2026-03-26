@@ -508,7 +508,7 @@ export default function ProfileScreen() {
               <CustomerProfileSection />}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
+          <Text style={styles.sectionTitle}>Support & Legal</Text>
           <View style={styles.menuCard}>
             <MenuItem icon={HelpCircle} label="Help Centre" accent={accent} onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -516,11 +516,11 @@ export default function ProfileScreen() {
             }} />
             <MenuItem icon={FileText} label="Terms & Conditions" accent={accent} onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(public)/terms' as any);
+              router.push('/terms' as any);
             }} />
-            <MenuItem icon={Phone} label="Contact Support" accent={accent} last onPress={() => {
+            <MenuItem icon={Shield} label="Privacy Policy" accent={accent} last onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/support' as any);
+              router.push('/privacy-policy' as any);
             }} />
           </View>
         </View>

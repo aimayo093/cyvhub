@@ -37,13 +37,16 @@ function RootLayoutNav() {
       seg === 'verify-email-sent' ||
       seg === 'verify-email' ||
       seg === 'forgot-password' ||
-      seg === 'reset-password';
+      seg === 'reset-password' ||
+      seg === 'terms' ||
+      seg === 'privacy-policy';
 
     if (!isAuthenticated) {
       if (Platform.OS !== 'web') {
-        // Mobile platform: unauthenticated users go to login, except verification screens
+        // Mobile platform: unauthenticated users go to login, except verification/legal screens
         const isVerifyRoute = seg === 'verify-email-sent' || seg === 'verify-email';
-        if (seg !== 'login' && !isVerifyRoute) {
+        const isLegalRoute = seg === 'terms' || seg === 'privacy-policy';
+        if (seg !== 'login' && !isVerifyRoute && !isLegalRoute) {
            router.replace('/login' as any);
         }
       } else {
@@ -53,7 +56,10 @@ function RootLayoutNav() {
         }
       }
     } else if (isAuthenticated && isPublicRoute) {
-      router.replace('/(tabs)' as any);
+      // Don't redirect away from legal pages if authenticated
+      if (seg !== 'terms' && seg !== 'privacy-policy') {
+        router.replace('/(tabs)' as any);
+      }
     }
   }, [isAuthenticated, isLoading, segments, router]);
 
@@ -94,6 +100,14 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="reset-password"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="terms"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="privacy-policy"
         options={{ headerShown: false }}
       />
       <Stack.Screen
