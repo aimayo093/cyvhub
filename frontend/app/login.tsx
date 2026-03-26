@@ -145,16 +145,14 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <View style={[styles.contentWrap, isDesktop && { paddingVertical: 32 }]}>
         <View style={[styles.topSection, { paddingTop: insets.top + (isDesktop ? 40 : 20) }]}>
-          {!isDesktop && (
             <TouchableOpacity
-              style={[styles.backBtn, { top: insets.top + 20 }]}
+              style={[styles.backBtn, { top: insets.top + (isDesktop ? 40 : 20) }]}
               onPress={() => router.push('/')}
               activeOpacity={0.7}
             >
               <ArrowLeft size={20} color={Colors.textInverse} />
               <Text style={styles.backBtnText}>Back to Home</Text>
             </TouchableOpacity>
-          )}
 
           <Animated.View style={[styles.logoWrap, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
             <Image

@@ -418,6 +418,59 @@ export default function PublicHome() {
                 </View>
             </View>
 
+            {/* SERVICES OVERVIEW */}
+            <View style={styles.servicesSection}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>{services.title}</Text>
+                    <Text style={styles.sectionSubtitle}>{services.subtitle}</Text>
+                </View>
+                <View style={styles.sliderContainer}>
+                    <ScrollView
+                        ref={servicesScrollRef}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.servicesScroll}
+                        snapToInterval={SCREEN_WIDTH > 1200 ? 400 + 24 : SCREEN_WIDTH * 0.8 + 24}
+                        snapToAlignment="start"
+                        decelerationRate="fast"
+                    >
+                        {services.banners?.map((banner: any) => (
+                            <Link key={banner.id} href={banner.link as any} asChild>
+                                <TouchableOpacity style={styles.serviceBannerCard} activeOpacity={0.9}>
+                                    <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFillObject} />
+                                    <View style={styles.serviceOverlay} />
+                                    <View style={styles.serviceBannerContent}>
+                                        <Text style={styles.serviceBannerTitle}>{banner.title}</Text>
+                                        <Text style={styles.serviceBannerDesc}>{banner.desc}</Text>
+                                        <View style={styles.serviceBannerLink}>
+                                            <Text style={styles.serviceBannerLinkText}>Learn More</Text>
+                                            <ArrowRight size={16} color="#FFF" />
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            </Link>
+                        ))}
+                    </ScrollView>
+
+                    {Platform.OS === 'web' && (
+                        <>
+                            <TouchableOpacity
+                                style={[styles.sliderNavBtn, styles.sliderNavLeft]}
+                                onPress={() => servicesScrollRef.current?.scrollTo({ x: -424, animated: true })}
+                            >
+                                <ArrowRight size={20} color={Colors.primary} style={{ transform: [{ rotate: '180deg' }] }} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.sliderNavBtn, styles.sliderNavRight]}
+                                onPress={() => servicesScrollRef.current?.scrollTo({ x: 424, animated: true })}
+                            >
+                                <ArrowRight size={20} color={Colors.primary} />
+                            </TouchableOpacity>
+                        </>
+                    )}
+                </View>
+            </View>
+
             {/* INDUSTRIES SECTION */}
             {industries.industries && industries.industries.length > 0 && (
                 <View style={styles.industriesSection}>
@@ -473,59 +526,6 @@ export default function PublicHome() {
                     </View>
                 </View>
             )}
-
-            {/* SERVICES OVERVIEW */}
-            <View style={styles.servicesSection}>
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>{services.title}</Text>
-                    <Text style={styles.sectionSubtitle}>{services.subtitle}</Text>
-                </View>
-                <View style={styles.sliderContainer}>
-                    <ScrollView
-                        ref={servicesScrollRef}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.servicesScroll}
-                        snapToInterval={SCREEN_WIDTH > 1200 ? 400 + 24 : SCREEN_WIDTH * 0.8 + 24}
-                        snapToAlignment="start"
-                        decelerationRate="fast"
-                    >
-                        {services.banners?.map((banner: any) => (
-                            <Link key={banner.id} href={banner.link as any} asChild>
-                                <TouchableOpacity style={styles.serviceBannerCard} activeOpacity={0.9}>
-                                    <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFillObject} />
-                                    <View style={styles.serviceOverlay} />
-                                    <View style={styles.serviceBannerContent}>
-                                        <Text style={styles.serviceBannerTitle}>{banner.title}</Text>
-                                        <Text style={styles.serviceBannerDesc}>{banner.desc}</Text>
-                                        <View style={styles.serviceBannerLink}>
-                                            <Text style={styles.serviceBannerLinkText}>Learn More</Text>
-                                            <ArrowRight size={16} color="#FFF" />
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-                            </Link>
-                        ))}
-                    </ScrollView>
-
-                    {Platform.OS === 'web' && (
-                        <>
-                            <TouchableOpacity
-                                style={[styles.sliderNavBtn, styles.sliderNavLeft]}
-                                onPress={() => servicesScrollRef.current?.scrollTo({ x: -424, animated: true })}
-                            >
-                                <ArrowRight size={20} color={Colors.primary} style={{ transform: [{ rotate: '180deg' }] }} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.sliderNavBtn, styles.sliderNavRight]}
-                                onPress={() => servicesScrollRef.current?.scrollTo({ x: 424, animated: true })}
-                            >
-                                <ArrowRight size={20} color={Colors.primary} />
-                            </TouchableOpacity>
-                        </>
-                    )}
-                </View>
-            </View>
 
             {/* CTA SECTION */}
             <View style={styles.ctaSection}>

@@ -102,6 +102,31 @@ export default function ServicesPage() {
                     </View>
                 </View>
 
+                {/* SPECIALIST DELIVERIES GRID */}
+                <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
+                    <View style={styles.contentMax}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitleCenter}>{config.whatWeDeliverTitle}</Text>
+                            <View style={[styles.divider, { alignSelf: 'center', marginBottom: 60 }]} />
+                        </View>
+                        <View style={styles.deliveryItemsGrid}>
+                            {config.deliveryItems.map((item) => (
+                                <View key={item.id} style={styles.deliveryItemCard}>
+                                    <View style={[styles.iconBox, { backgroundColor: Colors.primary + '15', marginBottom: 20 }]}>
+                                        <DynamicIcon name={item.icon} size={32} color={Colors.primary} />
+                                    </View>
+                                    <Text style={styles.deliveryItemTitle}>{item.title}</Text>
+                                    <Text style={styles.deliveryItemDesc}>{item.desc}</Text>
+                                    <TouchableOpacity style={styles.itemLink}>
+                                        <Text style={styles.itemLinkText}>Learn More</Text>
+                                        <ChevronRight size={16} color={Colors.primary} />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                </View>
+
                 {/* MAIN SERVICES / INDUSTRIES */}
                 <View style={[styles.section, { backgroundColor: '#FFFFFF' }]}>
                     <View style={styles.contentMax}>
@@ -159,31 +184,6 @@ export default function ServicesPage() {
                                 </View>
                             </View>
                         ))}
-                    </View>
-                </View>
-
-                {/* SPECIALIST DELIVERIES GRID */}
-                <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
-                    <View style={styles.contentMax}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitleCenter}>{config.whatWeDeliverTitle}</Text>
-                            <View style={[styles.divider, { alignSelf: 'center', marginBottom: 60 }]} />
-                        </View>
-                        <View style={styles.deliveryItemsGrid}>
-                            {config.deliveryItems.map((item) => (
-                                <View key={item.id} style={styles.deliveryItemCard}>
-                                    <View style={[styles.iconBox, { backgroundColor: Colors.primary + '15', marginBottom: 20 }]}>
-                                        <DynamicIcon name={item.icon} size={32} color={Colors.primary} />
-                                    </View>
-                                    <Text style={styles.deliveryItemTitle}>{item.title}</Text>
-                                    <Text style={styles.deliveryItemDesc}>{item.desc}</Text>
-                                    <TouchableOpacity style={styles.itemLink}>
-                                        <Text style={styles.itemLinkText}>Learn More</Text>
-                                        <ChevronRight size={16} color={Colors.primary} />
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                        </View>
                     </View>
                 </View>
 
