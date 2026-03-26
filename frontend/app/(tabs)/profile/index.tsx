@@ -447,30 +447,34 @@ export default function ProfileScreen() {
           ) : isCarrier && carrier ? (
             <>
               <View style={styles.quickStat}>
-                <Text style={styles.quickStatValue}>{carrier.totalJobsCompleted}</Text>
+                <Text style={styles.quickStatValue}>{(carrier as any).totalJobsCompleted ?? '0'}</Text>
                 <Text style={styles.quickStatLabel}>Jobs Done</Text>
               </View>
               <View style={styles.quickStatDivider} />
               <View style={styles.quickStat}>
-                <Text style={styles.quickStatValue}>{carrier.rating}</Text>
+                <Text style={styles.quickStatValue}>{(carrier as any).rating ?? '—'}</Text>
                 <Text style={styles.quickStatLabel}>Rating</Text>
               </View>
               <View style={styles.quickStatDivider} />
               <View style={styles.quickStat}>
-                <Text style={styles.quickStatValue}>{carrier.slaScore}%</Text>
-                <Text style={styles.quickStatLabel}>SLA</Text>
+                <Text style={styles.quickStatValue}>
+                  {new Date((carrier as any).memberSince || (carrier as any).createdAt || Date.now()).getFullYear()}
+                </Text>
+                <Text style={styles.quickStatLabel}>Since</Text>
               </View>
             </>
           ) : isAdmin && admin ? (
             <>
               <View style={styles.quickStat}>
-                <Text style={styles.quickStatValue}>{admin.role === 'super_admin' ? 'Super' : 'Admin'}</Text>
+                <Text style={styles.quickStatValue}>
+                  {(admin as any).role === 'super_admin' ? 'Super' : 'Admin'}
+                </Text>
                 <Text style={styles.quickStatLabel}>Access Level</Text>
               </View>
               <View style={styles.quickStatDivider} />
               <View style={styles.quickStat}>
                 <Text style={styles.quickStatValue}>
-                  {new Date(admin.memberSince).getFullYear()}
+                  {new Date((admin as any).memberSince || (admin as any).createdAt || Date.now()).getFullYear()}
                 </Text>
                 <Text style={styles.quickStatLabel}>Since</Text>
               </View>
@@ -478,13 +482,13 @@ export default function ProfileScreen() {
           ) : customer ? (
             <>
               <View style={styles.quickStat}>
-                <Text style={styles.quickStatValue}>{customer.totalDeliveries}</Text>
+                <Text style={styles.quickStatValue}>{(customer as any).totalDeliveries ?? '0'}</Text>
                 <Text style={styles.quickStatLabel}>Deliveries</Text>
               </View>
               <View style={styles.quickStatDivider} />
               <View style={styles.quickStat}>
                 <Text style={styles.quickStatValue}>
-                  {new Date(customer.memberSince).getFullYear()}
+                  {new Date((customer as any).memberSince || (customer as any).createdAt || Date.now()).getFullYear()}
                 </Text>
                 <Text style={styles.quickStatLabel}>Since</Text>
               </View>
@@ -512,7 +516,7 @@ export default function ProfileScreen() {
             }} />
             <MenuItem icon={FileText} label="Terms & Conditions" accent={accent} onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/support' as any);
+              router.push('/(public)/terms' as any);
             }} />
             <MenuItem icon={Phone} label="Contact Support" accent={accent} last onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
