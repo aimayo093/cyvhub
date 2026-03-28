@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     ArrowLeft,
     Save,
@@ -37,27 +36,17 @@ import { useCMS } from '@/context/CMSContext';
 export default function ContactCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { setContactPage } = useCMS();
+    const { contactPage, setContactPage, isLoaded } = useCMS();
     const [config, setConfig] = useState<ContactPageConfig>(initialContactPage);
     const [loading, setLoading] = useState(true);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        try {
-            const saved = await AsyncStorage.getItem('cms_contactPageConfig');
-            if (saved) {
-                setConfig(JSON.parse(saved));
-            }
-        } catch (e) {
-            console.error('Failed to load contact CMS:', e);
-        } finally {
+        if (isLoaded && contactPage) {
+            setConfig(contactPage);
             setLoading(false);
         }
-    };
+    }, [isLoaded, contactPage]);
 
     const handleSave = async () => {
         try {

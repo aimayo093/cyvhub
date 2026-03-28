@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     ArrowLeft,
     Save,
@@ -43,27 +42,17 @@ import { useCMS } from '@/context/CMSContext';
 export default function AboutCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { setAboutPage } = useCMS();
+    const { aboutPage, setAboutPage, isLoaded } = useCMS();
     const [config, setConfig] = useState<AboutPageConfig>(initialAboutPage);
     const [loading, setLoading] = useState(true);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        try {
-            const saved = await AsyncStorage.getItem('cms_aboutPageConfig');
-            if (saved) {
-                setConfig(JSON.parse(saved));
-            }
-        } catch (e) {
-            console.error('Failed to load about CMS:', e);
-        } finally {
+        if (isLoaded && aboutPage) {
+            setConfig(aboutPage);
             setLoading(false);
         }
-    };
+    }, [isLoaded, aboutPage]);
 
     const handleSave = async () => {
         try {

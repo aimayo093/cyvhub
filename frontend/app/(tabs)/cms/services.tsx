@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     ArrowLeft,
     Save,
@@ -34,27 +33,17 @@ import { useCMS } from '@/context/CMSContext';
 export default function ServicesCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { setServicesPage } = useCMS();
+    const { servicesPage, setServicesPage, isLoaded } = useCMS();
     const [config, setConfig] = useState<ServicesPageConfig>(initialServicesPage);
     const [loading, setLoading] = useState(true);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        try {
-            const saved = await AsyncStorage.getItem('cms_servicesPageConfig');
-            if (saved) {
-                setConfig(JSON.parse(saved));
-            }
-        } catch (e) {
-            console.error('Failed to load services CMS:', e);
-        } finally {
+        if (isLoaded && servicesPage) {
+            setConfig(servicesPage);
             setLoading(false);
         }
-    };
+    }, [isLoaded, servicesPage]);
 
     const handleSave = async () => {
         try {

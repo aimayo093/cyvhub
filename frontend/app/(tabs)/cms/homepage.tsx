@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     Layout,
     Type,
@@ -65,7 +64,7 @@ export default function HomepageCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { setHeader, setFooter, setHomepageSection, refreshFromBackend } = useCMS();
+    const { homepageData, header, footer, setHeader, setFooter, setHomepageSection, isLoaded } = useCMS();
     const [activeTab, setActiveTab] = useState<TabType>((params.tab as TabType) || 'hero');
 
     const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(initialHeader);
@@ -85,40 +84,24 @@ export default function HomepageCMS() {
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+    // Sync local state with Global CMS Context on load
     React.useEffect(() => {
-        const loadData = async () => {
-            try {
-                const headerData = await AsyncStorage.getItem('cms_headerConfig');
-                const heroData = await AsyncStorage.getItem('cms_heroConfig');
-                const slidesData = await AsyncStorage.getItem('cms_slidesConfig');
-                const howItWorksData = await AsyncStorage.getItem('cms_howItWorksConfig');
-                const whyUsData = await AsyncStorage.getItem('cms_whyUsConfig');
-                const servicesDataSaved = await AsyncStorage.getItem('cms_servicesConfig');
-                const statsDataSaved = await AsyncStorage.getItem('cms_statsConfig');
-                const industriesDataSaved = await AsyncStorage.getItem('cms_industriesConfig');
-                const testimonialsDataSaved = await AsyncStorage.getItem('cms_testimonialsConfig');
-                const customSectionsData = await AsyncStorage.getItem('cms_customSections');
-                const ctaData = await AsyncStorage.getItem('cms_ctaConfig');
-                const footerData = await AsyncStorage.getItem('cms_footerConfig');
-
-                if (headerData) setHeaderConfig(JSON.parse(headerData));
-                if (heroData) setHero(JSON.parse(heroData));
-                if (slidesData) setSlides(JSON.parse(slidesData));
-                if (howItWorksData) setHowItWorks(JSON.parse(howItWorksData));
-                if (whyUsData) setWhyUs(JSON.parse(whyUsData));
-                if (servicesDataSaved) setServicesData(JSON.parse(servicesDataSaved));
-                if (statsDataSaved) setStatsData(JSON.parse(statsDataSaved));
-                if (industriesDataSaved) setIndustriesData(JSON.parse(industriesDataSaved));
-                if (testimonialsDataSaved) setTestimonialsData(JSON.parse(testimonialsDataSaved));
-                if (customSectionsData) setCustomSections(JSON.parse(customSectionsData));
-                if (ctaData) setCta(JSON.parse(ctaData));
-                if (footerData) setFooterConfig(JSON.parse(footerData));
-            } catch (error) {
-                console.error('Failed to load CMS data', error);
-            }
-        };
-        loadData();
-    }, []);
+        if (isLoaded) {
+            if (header) setHeaderConfig(header);
+            if (footer) setFooterConfig(footer);
+            
+            if (homepageData['cms_heroConfig']) setHero(homepageData['cms_heroConfig']);
+            if (homepageData['cms_slidesConfig']) setSlides(homepageData['cms_slidesConfig']);
+            if (homepageData['cms_howItWorksConfig']) setHowItWorks(homepageData['cms_howItWorksConfig']);
+            if (homepageData['cms_whyUsConfig']) setWhyUs(homepageData['cms_whyUsConfig']);
+            if (homepageData['cms_servicesConfig']) setServicesData(homepageData['cms_servicesConfig']);
+            if (homepageData['cms_statsConfig']) setStatsData(homepageData['cms_statsConfig']);
+            if (homepageData['cms_industriesConfig']) setIndustriesData(homepageData['cms_industriesConfig']);
+            if (homepageData['cms_testimonialsConfig']) setTestimonialsData(homepageData['cms_testimonialsConfig']);
+            if (homepageData['cms_customSections']) setCustomSections(homepageData['cms_customSections']);
+            if (homepageData['cms_ctaConfig']) setCta(homepageData['cms_ctaConfig']);
+        }
+    }, [isLoaded, homepageData, header, footer]);
 
     const handleSave = async () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
