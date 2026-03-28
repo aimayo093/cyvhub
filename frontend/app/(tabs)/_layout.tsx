@@ -399,7 +399,7 @@ function SidebarContent({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    flexDirection: "row",
+    flexDirection: "column",
     backgroundColor: Colors.background,
   },
   overlay: {
