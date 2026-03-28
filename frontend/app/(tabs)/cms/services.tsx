@@ -58,11 +58,10 @@ export default function ServicesCMS() {
 
     const handleSave = async () => {
         try {
-            await AsyncStorage.setItem('cms_servicesPageConfig', JSON.stringify(config));
-            setServicesPage(config); // Broadcast to global context
+            await setServicesPage(config, true); // Sync to backend & global context
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setHasUnsavedChanges(false);
-            Alert.alert('Success', 'Services Page content published!');
+            Alert.alert('Success', 'Services Page content published globally!');
         } catch (e) {
             Alert.alert('Error', 'Failed to save changes.');
         }

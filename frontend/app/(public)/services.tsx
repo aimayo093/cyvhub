@@ -117,10 +117,12 @@ export default function ServicesPage() {
                                     </View>
                                     <Text style={styles.deliveryItemTitle}>{item.title}</Text>
                                     <Text style={styles.deliveryItemDesc}>{item.desc}</Text>
-                                    <TouchableOpacity style={styles.itemLink}>
-                                        <Text style={styles.itemLinkText}>Learn More</Text>
-                                        <ChevronRight size={16} color={Colors.primary} />
-                                    </TouchableOpacity>
+                                    <Link href={item.link as any} asChild>
+                                        <TouchableOpacity style={styles.itemLink} activeOpacity={0.7}>
+                                            <Text style={styles.itemLinkText}>Learn More</Text>
+                                            <ChevronRight size={16} color={Colors.primary} />
+                                        </TouchableOpacity>
+                                    </Link>
                                 </View>
                             ))}
                         </View>

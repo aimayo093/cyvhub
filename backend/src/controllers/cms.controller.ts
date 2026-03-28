@@ -2,10 +2,14 @@ import { Request, Response } from 'express';
 import { prisma } from '../index';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
+/**
+ * PAGE CONTENT (Individual Pages)
+ */
+
 export const getPages = async (req: Request, res: Response) => {
     try {
-        const pages = await (prisma as any).pageContent.findMany({
-            select: { slug: true, title: true, updatedAt: true }
+        const pages = await prisma.pageContent.findMany({
+            select: { slug: true, title: true, updatedAt: true, published: true }
         });
         res.json(pages);
     } catch (error) {
@@ -17,7 +21,7 @@ export const getPages = async (req: Request, res: Response) => {
 export const getPageBySlug = async (req: Request, res: Response) => {
     try {
         const { slug } = req.params;
-        const page = await (prisma as any).pageContent.findUnique({
+        const page = await prisma.pageContent.findUnique({
             where: { slug }
         });
 
@@ -34,30 +38,31 @@ export const getPageBySlug = async (req: Request, res: Response) => {
 
 export const upsertPage = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        // SEC-ROLE: Only admins can edit CMS content
         if (req.user?.role !== 'admin') {
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { slug, title, metaDescription, bodyContent } = req.body;
+        const { slug, title, metaDescription, bodyContent, published } = req.body;
 
         if (!slug || !title || !bodyContent) {
             return res.status(400).json({ error: 'Missing required fields: slug, title, bodyContent' });
         }
 
-        const page = await (prisma as any).pageContent.upsert({
+        const page = await prisma.pageContent.upsert({
             where: { slug },
             create: {
                 slug,
                 title,
                 metaDescription,
                 bodyContent,
+                published: published !== undefined ? published : true,
                 updatedBy: req.user.userId
             },
             update: {
                 title,
                 metaDescription,
                 bodyContent,
+                published: published !== undefined ? published : true,
                 updatedBy: req.user.userId
             }
         });
@@ -69,6 +74,61 @@ export const upsertPage = async (req: AuthenticatedRequest, res: Response) => {
     }
 };
 
+/**
+ * GLOBAL CONFIG (Homepage, Header, etc.)
+ */
+
+export const getConfig = async (req: Request, res: Response) => {
+    try {
+        const { key } = req.params;
+        const config = await prisma.globalConfig.findUnique({
+            where: { key }
+        });
+
+        if (!config) {
+            // Return empty config if not found instead of 404 to avoid frontend breaks
+            return res.json({ key, config: {} });
+        }
+
+        res.json(config);
+    } catch (error) {
+        console.error('Get Config Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const upsertConfig = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const { key, config } = req.body;
+
+        if (!key || !config) {
+            return res.status(400).json({ error: 'Missing key or config' });
+        }
+
+        const savedConfig = await prisma.globalConfig.upsert({
+            where: { key },
+            create: {
+                key,
+                config,
+                updatedBy: req.user.userId
+            },
+            update: {
+                config,
+                updatedBy: req.user.userId
+            }
+        });
+
+        res.json({ message: 'Configuration saved globally', config: savedConfig });
+    } catch (error) {
+        console.error('Upsert Config Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 export const deletePage = async (req: AuthenticatedRequest, res: Response) => {
     try {
         if (req.user?.role !== 'admin') {
@@ -76,7 +136,7 @@ export const deletePage = async (req: AuthenticatedRequest, res: Response) => {
         }
 
         const { id } = req.params;
-        await (prisma as any).pageContent.delete({
+        await prisma.pageContent.delete({
             where: { id }
         });
 
@@ -86,3 +146,4 @@ export const deletePage = async (req: AuthenticatedRequest, res: Response) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+

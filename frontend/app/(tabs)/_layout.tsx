@@ -42,6 +42,7 @@ import {
 } from "react-native";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
+import { useCMS } from "@/context/CMSContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SIDEBAR_WIDTH = 240;
@@ -50,6 +51,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function TabLayout() {
   const { userRole, logout } = useAuth();
+  const { header } = useCMS();
   const insets = useSafeAreaInsets();
   const isDriver = userRole === "driver";
   const isCustomer = userRole === "customer";
@@ -91,6 +93,18 @@ export default function TabLayout() {
   // Build the Tabs with hidden tabBar, the sidebar provides navigation
   return (
     <View style={styles.root}>
+      {/* ANNOUNCEMENT BAR */}
+      {header?.enableAnnouncement && (
+        <View style={[styles.announcementBar, { paddingTop: insets.top || 8, backgroundColor: header.announcementBgColor || Colors.primary }]}>
+          <TouchableOpacity style={styles.announcementInner} activeOpacity={0.8}>
+            <Text numberOfLines={1} style={styles.announcementText}>
+               {header.announcementText}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <View style={[styles.layoutContent, { flex: 1, flexDirection: 'row' }]}>
       {/* === MOBILE SIDEBAR OVERLAY === */}
       {!isWeb && sidebarOpen && (
         <Pressable style={styles.overlay} onPress={closeSidebar} />
@@ -209,6 +223,7 @@ export default function TabLayout() {
         </View>
       </View>
     </View>
+  </View>
   );
 }
 
@@ -429,9 +444,28 @@ const styles = StyleSheet.create({
   },
   mobileHeaderTitle: {
     fontSize: 18,
-    fontWeight: "800" as const,
+    fontWeight: "800",
     color: Colors.textInverse,
     letterSpacing: 0.5,
+  },
+  announcementBar: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    zIndex: 110,
+    width: "100%",
+  },
+  announcementInner: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  announcementText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  layoutContent: {
+    flex: 1,
   },
 });
 
@@ -467,7 +501,7 @@ const sidebarStyles = StyleSheet.create({
   },
   roleText: {
     fontSize: 11,
-    fontWeight: "700" as const,
+    fontWeight: "700",
   },
   nav: {
     flex: 1,
@@ -477,7 +511,7 @@ const sidebarStyles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 10,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: Colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 1,
@@ -502,7 +536,7 @@ const sidebarStyles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 13,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: "#CBD5E1",
   },
   logoutBtn: {
@@ -516,7 +550,7 @@ const sidebarStyles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 13,
-    fontWeight: "600" as const,
+    fontWeight: "600",
     color: Colors.danger,
   },
 });

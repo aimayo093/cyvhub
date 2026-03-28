@@ -61,11 +61,10 @@ export default function ContactCMS() {
 
     const handleSave = async () => {
         try {
-            await AsyncStorage.setItem('cms_contactPageConfig', JSON.stringify(config));
-            setContactPage(config); // Broadcast to global context
+            await setContactPage(config, true); // Sync to backend & global context
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setHasUnsavedChanges(false);
-            Alert.alert('Success', 'Contact Us content published!');
+            Alert.alert('Success', 'Contact Us content published globally!');
         } catch (e) {
             Alert.alert('Error', 'Failed to save changes.');
         }

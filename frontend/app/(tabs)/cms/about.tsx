@@ -67,11 +67,10 @@ export default function AboutCMS() {
 
     const handleSave = async () => {
         try {
-            await AsyncStorage.setItem('cms_aboutPageConfig', JSON.stringify(config));
-            setAboutPage(config); // Broadcast to global context
+            await setAboutPage(config, true); // Sync to backend & global context
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setHasUnsavedChanges(false);
-            Alert.alert('Success', 'About Us content published!');
+            Alert.alert('Success', 'About Us content published globally!');
         } catch (e) {
             Alert.alert('Error', 'Failed to save changes.');
         }
@@ -165,7 +164,7 @@ export default function AboutCMS() {
                         <Text style={styles.headerTitle}>About Us Editor</Text>
                         <Text style={styles.headerSubtitle}>Manage company story and values</Text>
                     </View>
-                    <div style={styles.headerActions}>
+                    <View style={styles.headerActions}>
                         <TouchableOpacity
                             style={styles.previewBtn}
                             onPress={() => router.push('/(public)/about')}
@@ -180,7 +179,8 @@ export default function AboutCMS() {
                             <Save size={18} color="#FFF" />
                             <Text style={styles.saveBtnText}>Publish</Text>
                         </TouchableOpacity>
-                    </div>
+                    </View>
+
                 </View>
             </View>
 
@@ -275,13 +275,14 @@ export default function AboutCMS() {
 
                 {/* OUR VALUES */}
                 <View style={styles.section}>
-                    <div style={styles.sectionHeaderRow}>
+                    <View style={styles.sectionHeaderRow}>
                         <Text style={styles.sectionTitle}>Core Values</Text>
                         <TouchableOpacity style={styles.addBtn} onPress={addValue}>
                             <Plus size={16} color="#FFF" />
                             <Text style={styles.addBtnText}>Add Value</Text>
                         </TouchableOpacity>
-                    </div>
+                    </View>
+
 
                     <View style={styles.card}>
                         <View style={styles.inputGroup}>

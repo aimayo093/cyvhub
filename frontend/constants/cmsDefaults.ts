@@ -46,7 +46,7 @@ export type SlideConfig = {
 };
 
 export type StepConfig = { id: string; num: string; title: string; desc: string; icon: string; };
-export type WhyCardConfig = { id: string; title: string; desc: string; icon: string; };
+export type WhyCardConfig = { id: string; title: string; desc: string; icon: string; link?: string; };
 export type ServiceBannerConfig = { id: string; title: string; desc: string; imageUrl: string; link: string; };
 
 export type CustomSectionConfig = {
@@ -277,9 +277,9 @@ export const initialHero: HeroConfig = {
     ctaText: 'Get an Instant Quote',
     ctaLink: '/guest-quote',
     bgImages: [
-        'https://images.unsplash.com/photo-1586528116311-ad8669966155?auto=format&fit=crop&q=80&w=2000',
-        'https://images.unsplash.com/photo-1519003722824-192d992a6058?auto=format&fit=crop&q=80&w=2000',
-        'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=2000'
+        'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&q=80&w=2000', // Modern logistics truck
+        'https://images.unsplash.com/photo-1436491865332-7a61a109c0f3?auto=format&fit=crop&q=80&w=2000', // Aviation/AOG
+        'https://images.unsplash.com/photo-1586528116311-ad8669966155?auto=format&fit=crop&q=80&w=2000'  // Warehouse/Tech
     ],
     animated: true,
     showGuestWidget: true,
@@ -327,10 +327,10 @@ export const initialWhyUs: WhyUsConfig = {
     tag: 'Why CYVhub',
     title: 'The smarter choice for B2B logistics',
     cards: [
-        { id: '1', title: 'Lightning Fast', desc: 'Same day specialists with 60-minute collection nationwide.', icon: 'Zap' },
-        { id: '2', title: 'Fully Insured', desc: 'Total peace of mind with comprehensive transit cover.', icon: 'ShieldCheck' },
-        { id: '3', title: 'B2B Optimised', desc: 'Volume discounts, invoicing, and powerful API integrations.', icon: 'TrendingUp' },
-        { id: '4', title: '24/7 Support', desc: 'Our dedicated logistics experts are always on hand to help.', icon: 'Headset' },
+        { id: '1', title: 'Lightning Fast', desc: 'Same day specialists with 60-minute collection nationwide.', icon: 'Zap', link: '/services' },
+        { id: '2', title: 'Fully Insured', desc: 'Total peace of mind with comprehensive transit cover.', icon: 'ShieldCheck', link: '/terms' },
+        { id: '3', title: 'B2B Optimised', desc: 'Volume discounts, invoicing, and powerful API integrations.', icon: 'TrendingUp', link: '/b2b-logistics' },
+        { id: '4', title: '24/7 Support', desc: 'Our dedicated logistics experts are always on hand to help.', icon: 'Headset', link: '/contact' },
     ]
 };
 
@@ -344,7 +344,7 @@ export const initialServices: ServicesConfig = {
         { id: '3', title: 'Green Fleet', desc: 'Eco-friendly delivery options for a sustainable future.', imageUrl: 'https://images.unsplash.com/photo-1509391366360-2e959784a276', link: '/services' },
         { id: '4', title: 'Medical & Healthcare', desc: 'Specialist handling for time-sensitive medical goods.', imageUrl: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f', link: '/services' },
         { id: '5', title: 'Scheduled Routes', desc: 'Regular, reliable deliveries for your recurring needs.', imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8669966155', link: '/services' },
-        { id: '6', title: 'AOG & Aviation', desc: 'Time-critical parts delivery for aircraft on ground support.', imageUrl: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1', link: '/services/aviation-aog' },
+        { id: '6', title: 'AOG & Aviation', desc: 'Time-critical parts delivery for aircraft on ground support.', imageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109c0f3?auto=format&fit=crop&q=80&w=1200', link: '/services/aviation-aog' },
     ]
 };
 
@@ -405,7 +405,7 @@ export const initialFooter: FooterConfig = {
     copyright: `© ${new Date().getFullYear()} CYVhub (a Cyvrix Limited brand). All rights reserved.`,
     companyLinks: [
         { id: '1', label: 'About Us', url: '/about' },
-        { id: '2', label: 'Privacy Policy', url: '/privacy-policy' },
+        { id: '2', label: 'Privacy Policy', url: '/privacy' },
         { id: '3', label: 'Services', url: '/services' },
         { id: '4', label: 'Careers', url: '/careers' },
     ],
@@ -548,18 +548,21 @@ export const initialServicesPage: ServicesPageConfig = {
             title: 'Medical Couriers',
             desc: 'Temperature-controlled, secure transport for pharmaceuticals, samples, and medical equipment.',
             icon: 'BriefcaseMedical',
+            link: '/services'
         },
         {
             id: 'd2',
             title: 'Technical Logistics',
             desc: 'Safe delivery and on-site positioning of sensitive tech, servers, and AV equipment.',
             icon: 'Monitor',
+            link: '/services'
         },
         {
             id: 'd3',
             title: 'AOG & Aviation',
             desc: 'Time-critical Aircraft on Ground (AOG) support and rapid parts delivery to all UK airports.',
-            icon: 'Zap',
+            icon: 'Plane',
+            link: '/services/aviation-aog'
         },
     ],
     ctaTitle: 'Ready to upgrade your logistics?',

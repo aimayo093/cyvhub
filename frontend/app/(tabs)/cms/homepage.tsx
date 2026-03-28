@@ -65,7 +65,7 @@ export default function HomepageCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { setHeader, setFooter, setHomepageSection } = useCMS();
+    const { setHeader, setFooter, setHomepageSection, refreshFromBackend } = useCMS();
     const [activeTab, setActiveTab] = useState<TabType>((params.tab as TabType) || 'hero');
 
     const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(initialHeader);
@@ -124,37 +124,27 @@ export default function HomepageCMS() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         try {
-            await AsyncStorage.setItem('cms_headerConfig', JSON.stringify(headerConfig));
-            await AsyncStorage.setItem('cms_heroConfig', JSON.stringify(hero));
-            await AsyncStorage.setItem('cms_slidesConfig', JSON.stringify(slides));
-            await AsyncStorage.setItem('cms_howItWorksConfig', JSON.stringify(howItWorks));
-            await AsyncStorage.setItem('cms_whyUsConfig', JSON.stringify(whyUs));
-            await AsyncStorage.setItem('cms_servicesConfig', JSON.stringify(servicesData));
-            await AsyncStorage.setItem('cms_statsConfig', JSON.stringify(statsData));
-            await AsyncStorage.setItem('cms_industriesConfig', JSON.stringify(industriesData));
-            await AsyncStorage.setItem('cms_testimonialsConfig', JSON.stringify(testimonialsData));
-            await AsyncStorage.setItem('cms_customSections', JSON.stringify(customSections));
-            await AsyncStorage.setItem('cms_ctaConfig', JSON.stringify(cta));
-            await AsyncStorage.setItem('cms_footerConfig', JSON.stringify(footerConfig));
-
-            // Broadcast to global CMS context so public pages update instantly
-            setHeader(headerConfig);
-            setFooter(footerConfig);
-            setHomepageSection('cms_heroConfig', hero);
-            setHomepageSection('cms_slidesConfig', slides);
-            setHomepageSection('cms_howItWorksConfig', howItWorks);
-            setHomepageSection('cms_whyUsConfig', whyUs);
-            setHomepageSection('cms_servicesConfig', servicesData);
-            setHomepageSection('cms_statsConfig', statsData);
-            setHomepageSection('cms_industriesConfig', industriesData);
-            setHomepageSection('cms_testimonialsConfig', testimonialsData);
-            setHomepageSection('cms_ctaConfig', cta);
+            // Broadcast to global CMS context with sync: true to update backend & local cache
+            await setHeader(headerConfig, true);
+            await setFooter(footerConfig, true);
+            
+            // Sync all homepage sections
+            await setHomepageSection('cms_heroConfig', hero, true);
+            await setHomepageSection('cms_slidesConfig', slides, true);
+            await setHomepageSection('cms_howItWorksConfig', howItWorks, true);
+            await setHomepageSection('cms_whyUsConfig', whyUs, true);
+            await setHomepageSection('cms_servicesConfig', servicesData, true);
+            await setHomepageSection('cms_statsConfig', statsData, true);
+            await setHomepageSection('cms_industriesConfig', industriesData, true);
+            await setHomepageSection('cms_testimonialsConfig', testimonialsData, true);
+            await setHomepageSection('cms_customSections', customSections, true);
+            await setHomepageSection('cms_ctaConfig', cta, true);
 
             setHasUnsavedChanges(false);
-            alert('Homepage Content Published!');
+            alert('Homepage Content Published Globally!');
         } catch (error) {
             console.error('Failed to save CMS data', error);
-            alert('Error saving data');
+            alert('Error saving data to backend');
         }
     };
 

@@ -39,13 +39,13 @@ function RootLayoutNav() {
       seg === 'forgot-password' ||
       seg === 'reset-password' ||
       seg === 'terms' ||
-      seg === 'privacy-policy';
+      seg === 'privacy';
 
     if (!isAuthenticated) {
       if (Platform.OS !== 'web') {
         // Mobile platform: unauthenticated users go to login, except verification, legal, or password reset screens
         const isVerifyRoute = seg === 'verify-email-sent' || seg === 'verify-email';
-        const isLegalRoute = seg === 'terms' || seg === 'privacy-policy';
+        const isLegalRoute = seg === 'terms' || seg === 'privacy';
         const isPassResetRoute = seg === 'forgot-password' || seg === 'reset-password';
         if (seg !== 'login' && !isVerifyRoute && !isLegalRoute && !isPassResetRoute) {
            router.replace('/login' as any);
@@ -58,7 +58,7 @@ function RootLayoutNav() {
       }
     } else if (isAuthenticated && isPublicRoute) {
       // Don't redirect away from legal pages if authenticated
-      if (seg !== 'terms' && seg !== 'privacy-policy') {
+      if (seg !== 'terms' && seg !== 'privacy') {
         router.replace('/(tabs)' as any);
       }
     }
@@ -108,7 +108,7 @@ function RootLayoutNav() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="privacy-policy"
+        name="privacy"
         options={{ headerShown: false }}
       />
       <Stack.Screen

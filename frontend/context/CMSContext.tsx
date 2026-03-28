@@ -3,13 +3,13 @@
  *
  * A global React Context that holds all CMS configuration in memory.
  * - On app start, it loads data from AsyncStorage into memory.
- * - When the CMS saves data, it updates both AsyncStorage AND this context.
- * - Public pages subscribe to this context so they react instantly to any
- *   changes without needing a page refresh.
+ * - NEW: It also fetches the latest configuration from the backend to ensure global synchronization.
+ * - When the CMS saves data, it updates AsyncStorage, the local state, AND the backend.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiClient } from '@/services/api';
 import {
     initialHeader,
     initialFooter,
@@ -29,34 +29,31 @@ import {
 // Types
 // ─────────────────────────────────────────────
 interface CMSContextValue {
-    // Data
     header: HeaderConfig;
     footer: FooterConfig;
     aboutPage: AboutPageConfig;
     contactPage: ContactPageConfig;
     servicesPage: ServicesPageConfig;
     industryDetails: Record<string, IndustryDetail>;
-
-    // Raw homepage sections (stored individually)
     homepageData: Record<string, any>;
 
-    // Setters (called by CMS editors after saving)
-    setHeader: (v: HeaderConfig) => void;
-    setFooter: (v: FooterConfig) => void;
-    setAboutPage: (v: AboutPageConfig) => void;
-    setContactPage: (v: ContactPageConfig) => void;
-    setServicesPage: (v: ServicesPageConfig) => void;
-    setIndustryDetails: (v: Record<string, IndustryDetail>) => void;
-    setHomepageSection: (key: string, value: any) => void;
+    // Setters (with optional backend sync)
+    setHeader: (v: HeaderConfig, sync?: boolean) => Promise<void>;
+    setFooter: (v: FooterConfig, sync?: boolean) => Promise<void>;
+    setAboutPage: (v: AboutPageConfig, sync?: boolean) => Promise<void>;
+    setContactPage: (v: ContactPageConfig, sync?: boolean) => Promise<void>;
+    setServicesPage: (v: ServicesPageConfig, sync?: boolean) => Promise<void>;
+    setIndustryDetails: (v: Record<string, IndustryDetail>, sync?: boolean) => Promise<void>;
+    setHomepageSection: (key: string, value: any, sync?: boolean) => Promise<void>;
 
     isLoaded: boolean;
+    refreshFromBackend: () => Promise<void>;
 }
 
 const CMSContext = createContext<CMSContextValue | null>(null);
 
-// ─────────────────────────────────────────────
-// Provider
-// ─────────────────────────────────────────────
+const CMS_CONFIG_KEY = 'global_cms_bundle';
+
 export function CMSProvider({ children }: { children: React.ReactNode }) {
     const [header, setHeaderState] = useState<HeaderConfig>(initialHeader);
     const [footer, setFooterState] = useState<FooterConfig>(initialFooter);
@@ -67,109 +64,105 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const [homepageData, setHomepageData] = useState<Record<string, any>>({});
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Load all data from AsyncStorage on initial mount
+    const applyData = useCallback((data: any) => {
+        if (!data) return;
+        if (data.header) setHeaderState(data.header);
+        if (data.footer) setFooterState(data.footer);
+        if (data.aboutPage) setAboutPageState(data.aboutPage);
+        if (data.contactPage) setContactPageState(data.contactPage);
+        if (data.servicesPage) setServicesPageState(data.servicesPage);
+        if (data.industryDetails) setIndustryDetailsState(data.industryDetails);
+        if (data.homepageData) setHomepageData(data.homepageData);
+    }, []);
+
+    const refreshFromBackend = useCallback(async () => {
+        try {
+            const response = await apiClient(`/cms/config/${CMS_CONFIG_KEY}`);
+            if (response && response.config && Object.keys(response.config).length > 0) {
+                applyData(response.config);
+                // Also cache to local storage
+                await AsyncStorage.setItem(`cms_${CMS_CONFIG_KEY}`, JSON.stringify(response.config));
+            }
+        } catch (e) {
+            console.log('CMSContext: Backend unreachable or config missing, using local cache.');
+        }
+    }, [applyData]);
+
+    const syncToBackend = useCallback(async (fullData: any) => {
+        try {
+            await apiClient('/cms/config', {
+                method: 'POST',
+                body: JSON.stringify({
+                    key: CMS_CONFIG_KEY,
+                    config: fullData
+                })
+            });
+            // Update local cache as well
+            await AsyncStorage.setItem(`cms_${CMS_CONFIG_KEY}`, JSON.stringify(fullData));
+        } catch (e) {
+            console.error('CMSContext: Failed to sync to backend:', e);
+        }
+    }, []);
+
     useEffect(() => {
-        const loadAll = async () => {
+        const init = async () => {
             try {
-                const keys = [
-                    'cms_headerConfig',
-                    'cms_footerConfig',
-                    'cms_aboutPageConfig',
-                    'cms_contactPageConfig',
-                    'cms_servicesPageConfig',
-                    'cms_industryDetails',
-                    'cms_heroConfig',
-                    'cms_howItWorksConfig',
-                    'cms_whyUsConfig',
-                    'cms_servicesConfig',
-                    'cms_ctaConfig',
-                    'cms_statsConfig',
-                    'cms_industriesConfig',
-                    'cms_testimonialsConfig',
-                    'cms_slidesConfig',
-                    'cms_customSections',
-                ];
-
-                const results = await AsyncStorage.multiGet(keys);
-                const data: Record<string, any> = {};
-                results.forEach(([key, value]) => {
-                    if (value) data[key] = JSON.parse(value);
-                });
-
-                if (data['cms_headerConfig']) setHeaderState(data['cms_headerConfig']);
-                if (data['cms_footerConfig']) setFooterState(data['cms_footerConfig']);
-                if (data['cms_aboutPageConfig']) {
-                    const parsed = data['cms_aboutPageConfig'];
-                    setAboutPageState({
-                        ...initialAboutPage,
-                        ...parsed,
-                        values: parsed.values || initialAboutPage.values,
-                        stats: parsed.stats || initialAboutPage.stats,
-                        milestones: parsed.milestones || initialAboutPage.milestones,
-                        sustainabilityItems: parsed.sustainabilityItems || initialAboutPage.sustainabilityItems,
-                    });
-                }
-                if (data['cms_contactPageConfig']) {
-                    const parsed = data['cms_contactPageConfig'];
-                    setContactPageState({
-                        ...initialContactPage,
-                        ...parsed,
-                        contactMethods: parsed.contactMethods || initialContactPage.contactMethods,
-                        faqs: parsed.faqs || initialContactPage.faqs,
-                        departments: parsed.departments || initialContactPage.departments,
-                        hubs: parsed.hubs || initialContactPage.hubs,
-                    });
-                }
-                if (data['cms_servicesPageConfig']) {
-                    const parsed = data['cms_servicesPageConfig'];
-                    setServicesPageState({
-                        ...initialServicesPage,
-                        ...parsed,
-                        mainServices: parsed.mainServices || initialServicesPage.mainServices,
-                        deliveryItems: parsed.deliveryItems || initialServicesPage.deliveryItems,
-                    });
-                }
-                if (data['cms_industryDetails']) {
-                    setIndustryDetailsState({ ...initialIndustryDetails, ...data['cms_industryDetails'] });
+                // 1. Load from Local Cache (Fast)
+                const cached = await AsyncStorage.getItem(`cms_${CMS_CONFIG_KEY}`);
+                if (cached) {
+                    applyData(JSON.parse(cached));
                 }
 
-                // Merge all homepage section keys into homepageData
-                const homepageKeys = [
-                    'cms_headerConfig', 'cms_footerConfig',
-                    'cms_heroConfig', 'cms_howItWorksConfig', 'cms_whyUsConfig',
-                    'cms_servicesConfig', 'cms_ctaConfig', 'cms_statsConfig',
-                    'cms_industriesConfig', 'cms_testimonialsConfig', 'cms_slidesConfig',
-                    'cms_customSections',
-                ];
-                const hpData: Record<string, any> = {};
-                homepageKeys.forEach(k => { if (data[k]) hpData[k] = data[k]; });
-                setHomepageData(hpData);
-
-                // Auto-refresh the footer to force the new Cyvrix Limited copyright onto existing devices
-                setFooterState(prev => ({
-                    ...prev,
-                    copyright: initialFooter.copyright
-                }));
-
+                // 2. Refresh from Backend (Global Sync)
+                await refreshFromBackend();
             } catch (e) {
-                console.error('CMSContext: Failed to load data:', e);
+                console.error('CMSContext: Init failed:', e);
             } finally {
                 setIsLoaded(true);
             }
         };
-        loadAll();
-    }, []);
+        init();
+    }, [refreshFromBackend, applyData]);
 
-    // Setters that update in-memory state (AsyncStorage is written by the CMS editors themselves)
-    const setHeader = useCallback((v: HeaderConfig) => setHeaderState(v), []);
-    const setFooter = useCallback((v: FooterConfig) => setFooterState(v), []);
-    const setAboutPage = useCallback((v: AboutPageConfig) => setAboutPageState(v), []);
-    const setContactPage = useCallback((v: ContactPageConfig) => setContactPageState(v), []);
-    const setServicesPage = useCallback((v: ServicesPageConfig) => setServicesPageState(v), []);
-    const setIndustryDetails = useCallback((v: Record<string, IndustryDetail>) => setIndustryDetailsState(v), []);
-    const setHomepageSection = useCallback((key: string, value: any) => {
-        setHomepageData(prev => ({ ...prev, [key]: value }));
-    }, []);
+    const getFullState = useCallback(() => ({
+        header, footer, aboutPage, contactPage, servicesPage, industryDetails, homepageData
+    }), [header, footer, aboutPage, contactPage, servicesPage, industryDetails, homepageData]);
+
+    const setHeader = async (v: HeaderConfig, sync = false) => {
+        setHeaderState(v);
+        if (sync) await syncToBackend({ ...getFullState(), header: v });
+    };
+
+    const setFooter = async (v: FooterConfig, sync = false) => {
+        setFooterState(v);
+        if (sync) await syncToBackend({ ...getFullState(), footer: v });
+    };
+
+    const setAboutPage = async (v: AboutPageConfig, sync = false) => {
+        setAboutPageState(v);
+        if (sync) await syncToBackend({ ...getFullState(), aboutPage: v });
+    };
+
+    const setContactPage = async (v: ContactPageConfig, sync = false) => {
+        setContactPageState(v);
+        if (sync) await syncToBackend({ ...getFullState(), contactPage: v });
+    };
+
+    const setServicesPage = async (v: ServicesPageConfig, sync = false) => {
+        setServicesPageState(v);
+        if (sync) await syncToBackend({ ...getFullState(), servicesPage: v });
+    };
+
+    const setIndustryDetails = async (v: Record<string, IndustryDetail>, sync = false) => {
+        setIndustryDetailsState(v);
+        if (sync) await syncToBackend({ ...getFullState(), industryDetails: v });
+    };
+
+    const setHomepageSection = async (key: string, value: any, sync = false) => {
+        const newHpData = { ...homepageData, [key]: value };
+        setHomepageData(newHpData);
+        if (sync) await syncToBackend({ ...getFullState(), homepageData: newHpData });
+    };
 
     return (
         <CMSContext.Provider value={{
@@ -178,17 +171,16 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
             setHeader, setFooter, setAboutPage, setContactPage, setServicesPage,
             setIndustryDetails, setHomepageSection,
             isLoaded,
+            refreshFromBackend
         }}>
             {children}
         </CMSContext.Provider>
     );
 }
 
-// ─────────────────────────────────────────────
-// Hook
-// ─────────────────────────────────────────────
 export function useCMS() {
     const ctx = useContext(CMSContext);
     if (!ctx) throw new Error('useCMS must be used inside CMSProvider');
     return ctx;
 }
+
