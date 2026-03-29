@@ -249,6 +249,8 @@ export default function LoginScreen() {
                             placeholder="John"
                             placeholderTextColor={Colors.textMuted + '80'}
                             autoCapitalize="words"
+                            autoComplete="given-name"
+                            accessibilityLabel="First Name"
                           />
                         </View>
                       </View>
@@ -262,6 +264,8 @@ export default function LoginScreen() {
                             placeholder="Doe"
                             placeholderTextColor={Colors.textMuted + '80'}
                             autoCapitalize="words"
+                            autoComplete="family-name"
+                            accessibilityLabel="Last Name"
                           />
                         </View>
                       </View>
@@ -278,6 +282,8 @@ export default function LoginScreen() {
                           placeholder="+44 7700 900000"
                           placeholderTextColor={Colors.textMuted + '80'}
                           keyboardType="phone-pad"
+                          autoComplete="tel"
+                          accessibilityLabel="Phone Number"
                         />
                       </View>
                     </View>
@@ -297,6 +303,8 @@ export default function LoginScreen() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      autoComplete="email"
+                      accessibilityLabel="Email Address"
                     />
                   </View>
                 </View>
@@ -312,8 +320,14 @@ export default function LoginScreen() {
                       placeholder="••••••••"
                       placeholderTextColor={Colors.textMuted + '80'}
                       secureTextEntry={!showPassword}
+                      autoComplete={authMode === 'login' ? 'password' : 'new-password'}
+                      accessibilityLabel="Password"
                     />
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <TouchableOpacity 
+                      onPress={() => setShowPassword(!showPassword)}
+                      accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                      accessibilityRole="button"
+                    >
                       {showPassword ? (
                         <EyeOff size={18} color={Colors.textMuted} />
                       ) : (

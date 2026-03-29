@@ -143,6 +143,16 @@ export type ServiceTier = {
     vehicles: VehicleOption[];
 };
 
+export type QuoteDetailsConfig = {
+    pageTitle: string;
+    subTitle: string;
+    lengthLabel: string;
+    widthLabel: string;
+    heightLabel: string;
+    weightLabel: string;
+    buttonText: string;
+};
+
 export type GuestQuoteConfig = {
     pageTitle: string;
     validityText: string;
@@ -418,6 +428,16 @@ export const initialFooter: FooterConfig = {
         { id: '1', label: 'Privacy Policy', url: '/privacy' },
         { id: '2', label: 'Terms of Service', url: '/terms' },
     ]
+};
+
+export const initialQuoteDetails: QuoteDetailsConfig = {
+    pageTitle: 'Package Requirements',
+    subTitle: 'Please provide exact dimensions and weight for an accurate quote.',
+    lengthLabel: 'Length (cm)',
+    widthLabel: 'Width (cm)',
+    heightLabel: 'Height (cm)',
+    weightLabel: 'Weight (kg)',
+    buttonText: 'Calculate Price'
 };
 
 export const initialGuestQuote: GuestQuoteConfig = {

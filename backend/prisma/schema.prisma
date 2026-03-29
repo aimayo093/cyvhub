@@ -764,3 +764,8 @@ model GlobalConfig {
 
   @@index([key])
 }
+
+model JobCounter {
+  id      Int @id @default(1)
+  current Int @default(0)
+}

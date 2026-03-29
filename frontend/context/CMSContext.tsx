@@ -75,16 +75,24 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         if (data.homepageData) setHomepageData(data.homepageData);
     }, []);
 
-    const refreshFromBackend = useCallback(async () => {
+    const refreshFromBackend = useCallback(async (force = false) => {
         try {
+            const now = Date.now();
+            const lastFetchedStr = await AsyncStorage.getItem(`cms_last_fetch_${CMS_CONFIG_KEY}`);
+            const lastFetched = lastFetchedStr ? parseInt(lastFetchedStr, 10) : 0;
+
+            if (!force && (now - lastFetched < 5 * 60 * 1000)) {
+                return;
+            }
+
             const response = await apiClient(`/cms/config/${CMS_CONFIG_KEY}`);
-            if (response && response.config && Object.keys(response.config).length > 0) {
+            if (response && response.config) {
                 applyData(response.config);
-                // Also cache to local storage
                 await AsyncStorage.setItem(`cms_${CMS_CONFIG_KEY}`, JSON.stringify(response.config));
+                await AsyncStorage.setItem(`cms_last_fetch_${CMS_CONFIG_KEY}`, now.toString());
             }
         } catch (e) {
-            console.log('CMSContext: Backend unreachable or config missing, using local cache.');
+            console.warn('[CMSContext] Backend refresh failed:', e);
         }
     }, [applyData]);
 

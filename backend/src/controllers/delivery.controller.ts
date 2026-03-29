@@ -92,13 +92,25 @@ export class DeliveryController {
                  return;
             }
 
+            // 03-29 Fix: Atomic Job Numbering via Transaction
+            const { jobNumber, quoteRequestId } = await prisma.$transaction(async (tx) => {
+                const counter = await tx.jobCounter.upsert({
+                    where: { id: 1 },
+                    update: { current: { increment: 1 } },
+                    create: { id: 1, current: 1 }
+                });
+                
+                const nextNumber = `JOB-${String(counter.current).padStart(6, '0')}`;
+                return { jobNumber: nextNumber, quoteRequestId: quoteResult.quote.id };
+            });
+
             // Generate a random tracking number, CYV-TRK-XXXX
             const randomTrk = `CYV-TRK-${Math.floor(1000 + Math.random() * 9000)}`;
 
             const newDelivery = await prisma.job.create({
                 data: {
                     customerId: userId,
-                    jobNumber: `JOB-${Date.now()}`,
+                    jobNumber: jobNumber,
                     trackingNumber: randomTrk,
                     status: quoteResult.status === 'PENDING_REVIEW' ? 'PENDING_REVIEW' : 'PENDING_DISPATCH', // Honor Margin Gates
                     paymentStatus: 'PENDING',
@@ -114,7 +126,7 @@ export class DeliveryController {
                     vehicleType, specialInstructions, goodsDescription,
                     calculatedPrice: quoteResult.quote.customerTotal, // Guaranteed pure by the core margin engine
                     distanceKm: distanceKm ? parseFloat(distanceKm) : undefined,
-                    quoteRequestId: quoteResult.quote.id // Formal Linkage
+                    quoteRequestId: quoteRequestId // Formal Linkage
                 }
             });
 

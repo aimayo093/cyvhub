@@ -12,20 +12,28 @@ export default function Root({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <meta charSet="utf-8" />
-        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        {/* Fix mobile viewport scaling — ensures the site renders at the correct mobile width */}
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover"
-        />
-        <meta name="theme-color" content="#0a2540" />
-        {/*
-          Disable body/html overflow clipping so ScrollView works correctly.
-          @see https://github.com/expo/expo/blob/main/packages/expo-router/src/static/renderStaticContent.tsx
-        */}
-        <ScrollViewStyleReset />
+        <title>CYVHUB | Smart Logistics & Delivery Infrastructure</title>
+        <meta name="description" content="CYVHUB provides a powerful infrastructure for carriers, drivers, and businesses to manage logistics with real-time tracking, automated dispatch, and AI-driven efficiency." />
+        <meta name="keywords" content="logistics, delivery, courier, freight, AI logistics, tracking, carrier management" />
+        
+        {/* OpenGraph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://cyvhub.com/" />
+        <meta property="og:title" content="CYVHUB | Smart Logistics Infrastructure" />
+        <meta property="og:description" content="Manage your entire logistics operation from a single, powerful platform." />
+        <meta property="og:image" content="https://cyvhub.com/og-image.jpg" />
 
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://cyvhub.com/" />
+        <meta property="twitter:title" content="CYVHUB | Smart Logistics Infrastructure" />
+        <meta property="twitter:description" content="Manage your entire logistics operation from a single, powerful platform." />
+        <meta property="twitter:image" content="https://cyvhub.com/og-image.jpg" />
+
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/icon.png" />
+        
+        <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: rootStyles }} />
       </head>
       <body>{children}</body>

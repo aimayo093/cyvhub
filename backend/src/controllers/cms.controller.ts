@@ -20,7 +20,7 @@ export const getPages = async (req: Request, res: Response) => {
 
 export const getPageBySlug = async (req: Request, res: Response) => {
     try {
-        const { slug } = req.params;
+        const slug = req.params.slug as string;
         const page = await prisma.pageContent.findUnique({
             where: { slug }
         });
@@ -80,19 +80,20 @@ export const upsertPage = async (req: AuthenticatedRequest, res: Response) => {
 
 export const getConfig = async (req: Request, res: Response) => {
     try {
-        const { key } = req.params;
+        const key = req.params.key as string;
+        console.log(`[CMSController] Fetching config for key: ${key}`);
         const config = await prisma.globalConfig.findUnique({
             where: { key }
         });
 
         if (!config) {
-            // Return empty config if not found instead of 404 to avoid frontend breaks
+            console.log(`[CMSController] No config found for key: ${key}, returning empty.`);
             return res.json({ key, config: {} });
         }
 
         res.json(config);
     } catch (error) {
-        console.error('Get Config Error:', error);
+        console.error('[CMSController] Get Config Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -100,14 +101,16 @@ export const getConfig = async (req: Request, res: Response) => {
 export const upsertConfig = async (req: AuthenticatedRequest, res: Response) => {
     try {
         if (req.user?.role !== 'admin') {
-            return res.status(403).json({ error: 'Forbidden' });
+            return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
         const { key, config } = req.body;
 
         if (!key || !config) {
-            return res.status(400).json({ error: 'Missing key or config' });
+            return res.status(400).json({ error: 'Missing key or config in request body' });
         }
+
+        console.log(`[CMSController] Upserting config for key: ${key}`);
 
         const savedConfig = await prisma.globalConfig.upsert({
             where: { key },
@@ -118,13 +121,18 @@ export const upsertConfig = async (req: AuthenticatedRequest, res: Response) => 
             },
             update: {
                 config,
-                updatedBy: req.user.userId
+                updatedBy: req.user.userId,
+                updatedAt: new Date() // Force timestamp update
             }
         });
 
-        res.json({ message: 'Configuration saved globally', config: savedConfig });
+        res.json({ 
+            message: 'Configuration saved globally', 
+            key: savedConfig.key,
+            updatedAt: savedConfig.updatedAt 
+        });
     } catch (error) {
-        console.error('Upsert Config Error:', error);
+        console.error('[CMSController] Upsert Config Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -135,7 +143,7 @@ export const deletePage = async (req: AuthenticatedRequest, res: Response) => {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
         await prisma.pageContent.delete({
             where: { id }
         });

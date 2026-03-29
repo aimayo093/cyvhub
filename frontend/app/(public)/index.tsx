@@ -123,7 +123,15 @@ export default function PublicHome() {
             alert('Please enter both collection and delivery postcodes.');
             return;
         }
-        router.push(`/guest-quote?collection=${encodeURIComponent(collection)}&delivery=${encodeURIComponent(delivery)}&ready=${isReadyNow}&vehicle=${encodeURIComponent(vehicleType)}`);
+        router.push({
+            pathname: '/quote-details' as any,
+            params: {
+                collection,
+                delivery,
+                ready: isReadyNow.toString(),
+                vehicle: vehicleType
+            }
+        });
     };
 
     const scrollToTop = () => {

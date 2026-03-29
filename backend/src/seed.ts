@@ -203,6 +203,70 @@ async function main() {
         ]
     });
 
+    // Seed Vehicle Classes & Pricing Engine
+    const vehicleClasses = [
+        { 
+            name: 'SMALL_VAN', 
+            maxWeight: 400.0, 
+            length: 1.0, 
+            width: 1.2, 
+            height: 1.0, 
+            baseFee: 35.00, 
+            mileage: 1.25,
+            desc: 'Small Van (1x1.2x1m)'
+        },
+        { 
+            name: 'MEDIUM_VAN', 
+            maxWeight: 800.0, 
+            length: 2.0, 
+            width: 1.2, 
+            height: 1.0, 
+            baseFee: 45.00, 
+            mileage: 1.45,
+            desc: 'Medium Van (2x1.2x1m)'
+        },
+        { 
+            name: 'LARGE_VAN', 
+            maxWeight: 1100.0, 
+            length: 3.0, 
+            width: 1.2, 
+            height: 1.7, 
+            baseFee: 65.00, 
+            mileage: 1.75,
+            desc: 'Large Van (3x1.2x1.7m)'
+        }
+    ];
+
+    for (const vc of vehicleClasses) {
+        await (prisma as any).vehicleClass.upsert({
+            where: { name: vc.name },
+            update: {
+                maxWeightKg: vc.maxWeight,
+                maxLengthCm: vc.length * 100, // Convert to CM
+                maxWidthCm: vc.width * 100,
+                maxHeightCm: vc.height * 100,
+                baseFee: vc.baseFee,
+                mileageRate: vc.mileage
+            },
+            create: {
+                name: vc.name,
+                maxWeightKg: vc.maxWeight,
+                maxLengthCm: vc.length * 100,
+                maxWidthCm: vc.width * 100,
+                maxHeightCm: vc.height * 100,
+                baseFee: vc.baseFee,
+                mileageRate: vc.mileage,
+                pricingRules: {
+                    create: [
+                        { name: 'Base Pickup Fee', type: 'BASE_FEE', amount: vc.baseFee },
+                        { name: 'Standard Mileage Rate', type: 'MILEAGE', amount: vc.mileage }
+                    ]
+                }
+            }
+        });
+        console.log(`Ensured Vehicle Class: ${vc.name}`);
+    }
+
     console.log('Seeding finished.');
 }
 

@@ -35,17 +35,22 @@ import complianceRoutes from './routes/compliance.routes';
 
 dotenv.config();
 
-// SEC-3: Refuse to start if JWT_SECRET is not explicitly set in the environment.
-if (!process.env.JWT_SECRET) {
-    if (process.env.VERCEL === '1' && process.env.NODE_ENV === 'production') {
-        // Log error but don't exit during build/import phase on Vercel.
-        // It will fail at runtime when a request hits it, which is safer for deployment.
-        console.error('⚠️ WARNING: JWT_SECRET environment variable is not set.');
-    } else {
-        console.error('❌ FATAL: JWT_SECRET environment variable is not set. Refusing to start.');
-        process.exit(1);
+// SEC-3: Refuse to start if critical environment variables are missing.
+const REQUIRED_ENV_VARS = [
+    'DATABASE_URL',
+    'JWT_SECRET',
+    'NODE_ENV'
+];
+
+REQUIRED_ENV_VARS.forEach(key => {
+    if (!process.env[key]) {
+        console.error(`❌ FATAL: Missing required environment variable: ${key}`);
+        // During Vercel build, we don't want to kill the process, but we warn loudly.
+        if (process.env.VERCEL !== '1') {
+            process.exit(1);
+        }
     }
-}
+});
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -81,19 +86,21 @@ app.use(helmet());
 app.use(cookieParser());
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow server-to-server requests (no origin) and explicit allowlist
-        if (
-            !origin ||
-            allowedOrigins.includes(origin) ||
-            origin.endsWith('cyvhub.com') ||
-            origin.endsWith('.vercel.app') // Allow all Vercel preview/staging URLs
-        ) {
+        // Allow server-to-server requests (no origin)
+        if (!origin) return callback(null, true);
+        
+        const isAllowed = allowedOrigins.includes(origin) || 
+                         origin.endsWith('cyvhub.com') || 
+                         (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost'));
+
+        if (isAllowed) {
             callback(null, true);
         } else {
             callback(new Error(`CORS policy: Origin '${origin}' not allowed.`));
         }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
 
 // ─────────────────────────────────────────────────────────────────────────────

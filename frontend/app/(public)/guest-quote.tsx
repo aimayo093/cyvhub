@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Truck } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GuestQuoteConfig, initialGuestQuote } from '@/constants/cmsDefaults';
@@ -59,39 +58,77 @@ const VehicleCard = ({ title, dimensions, weight, priceEx, priceInc, onBook }: a
     );
 };
 
+import { Truck, Clock, ShieldCheck, MapPin, Package } from 'lucide-react-native';
+import { Alert, ActivityIndicator } from 'react-native';
+import { apiClient } from '@/services/api';
+
 export default function GuestQuotePage() {
-    const { collection, delivery, ready, vehicle } = useLocalSearchParams();
+    const { collection, delivery, ready, vehicle, length, width, height, weight } = useLocalSearchParams();
     const router = useRouter();
     const [config, setConfig] = useState<GuestQuoteConfig>(initialGuestQuote);
+    const [dynamicQuotes, setDynamicQuotes] = useState<any[]>([]);
+    const [distance, setDistance] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
 
-    const hasParams = !!(collection && delivery);
+    const hasParams = !!(collection && delivery && length && width && height && weight);
 
     useEffect(() => {
-        const loadConfig = async () => {
+        const fetchQuotes = async () => {
+            if (!hasParams) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
+                // 1. Fetch CMS text config for page titles/validity
                 const storedConfig = await AsyncStorage.getItem('cms_guestQuoteConfig');
                 if (storedConfig) {
                     setConfig(JSON.parse(storedConfig));
                 }
+
+                // 2. Fetch Dynamic Pricing from Backend
+                const response = await apiClient('/quotes/calculate', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        pickupPostcode: collection,
+                        dropoffPostcode: delivery,
+                        items: [{
+                            lengthCm: Number(length),
+                            widthCm: Number(width),
+                            heightCm: Number(height),
+                            weightKg: Number(weight)
+                        }]
+                    })
+                });
+
+                if (response && response.quotes) {
+                    setDynamicQuotes(response.quotes);
+                    setDistance(response.distanceMiles);
+                }
             } catch (error) {
-                console.error('Failed to load guest quote config:', error);
+                console.error('Failed to fetch dynamic quotes:', error);
+                Alert.alert('Calculation Error', 'We couldn\'t calculate a price for this route. Please contact support.');
             } finally {
                 setIsLoading(false);
             }
         };
-        loadConfig();
-    }, []);
 
-    const handleBook = (service: string, vehicleType: string, price: number) => {
+        fetchQuotes();
+    }, [collection, delivery, length, width, height, weight]);
+
+    const handleBook = (tier: string, vehicleName: string, price: number) => {
         router.push({
             pathname: '/guest-checkout',
             params: {
                 collection: collection as string,
                 delivery: delivery as string,
-                serviceType: service,
-                vehicleType: vehicleType,
-                price: price.toString()
+                serviceType: tier,
+                vehicleType: vehicleName,
+                price: price.toString(),
+                length: length as string,
+                width: width as string,
+                height: height as string,
+                weight: weight as string
             }
         });
     };
@@ -100,18 +137,18 @@ export default function GuestQuotePage() {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={{ marginTop: 16, color: Colors.primary, fontWeight: '600' }}>Calculating best rates...</Text>
             </View>
         );
     }
 
-    // Missing data fallback UI
     if (!hasParams) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 40 }]}>
                 <Truck size={64} color={Colors.primary} style={{ marginBottom: 24 }} />
-                <Text style={[styles.pageTitle, { textAlign: 'center' }]}>Quote Information Missing</Text>
+                <Text style={[styles.pageTitle, { textAlign: 'center' }]}>Requirements Missing</Text>
                 <Text style={[styles.tierDesc, { textAlign: 'center', marginBottom: 32 }]}>
-                    To provide an accurate quote, we need your collection and delivery postcodes. Please start a new request from our home page.
+                    To provide an accurate quote, we need your collection postcode, delivery postcode, and item dimensions.
                 </Text>
                 <TouchableOpacity 
                     style={[styles.bookBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]} 
@@ -129,7 +166,7 @@ export default function GuestQuotePage() {
 
     return (
         <ScrollView style={styles.container}>
-            <Stepper currentStep={1} />
+            <Stepper currentStep={2} />
 
             <View style={styles.content}>
                 <Text style={styles.pageTitle}>{config.pageTitle}</Text>
@@ -137,60 +174,45 @@ export default function GuestQuotePage() {
 
                 <View style={styles.summaryBox}>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Collection postcode:</Text>
-                        <Text style={styles.summaryValue}>{collection as string}</Text>
+                        <MapPin size={16} color={Colors.primary} style={{ marginRight: 8 }} />
+                        <Text style={styles.summaryLabel}>Route:</Text>
+                        <Text style={styles.summaryValue}>{collection} → {delivery} ({distance} miles)</Text>
                     </View>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Delivery postcode:</Text>
-                        <Text style={styles.summaryValue}>{delivery as string}</Text>
+                        <Package size={16} color={Colors.primary} style={{ marginRight: 8 }} />
+                        <Text style={styles.summaryLabel}>Items:</Text>
+                        <Text style={styles.summaryValue}>{length}x{width}x{height}cm, {weight}kg</Text>
                     </View>
                     <TouchableOpacity style={styles.changeBtn} activeOpacity={0.8} onPress={() => router.back()}>
-                        <Text style={styles.changeBtnText}>Change details</Text>
+                        <Text style={styles.changeBtnText}>Edit Details</Text>
                     </TouchableOpacity>
                 </View>
 
-                {config.tiers.map((tier, index) => {
-                    const isLast = index === config.tiers.length - 1;
+                {dynamicQuotes.length === 0 ? (
+                    <View style={styles.noVehicles}>
+                        <Text style={styles.tierTitle}>No suitable vehicles found</Text>
+                        <Text style={styles.tierDesc}>Your items are too large or heavy for our standard same-day fleet. Please contact our special loads team for a manual quote.</Text>
+                    </View>
+                ) : (
+                    <View style={styles.tierSection}>
+                        <Text style={styles.tierTitle}>Available Vehicles</Text>
+                        <Text style={styles.tierDesc}>The following vehicles can safely accommodate your load based on the dimensions provided.</Text>
 
-                    // Parse description for bold markdown (**text**)
-                    const renderDescriptionLines = (text: string) => {
-                        const parts = text.split(/(\*\*.*?\*\*)/g);
-                        return parts.map((part, i) => {
-                            if (part.startsWith('**') && part.endsWith('**')) {
-                                return <Text key={i} style={styles.boldTime}>{part.slice(2, -2)}</Text>;
-                            }
-                            return <Text key={i}>{part}</Text>;
-                        });
-                    };
-
-                    // Filter vehicles if a specific vehicle is passed in via params
-                    const filteredVehicles = vehicle
-                        ? tier.vehicles.filter(v => v.title.toLowerCase().includes((vehicle as string).toLowerCase()))
-                        : tier.vehicles;
-
-                    if (filteredVehicles.length === 0) return null;
-
-                    return (
-                        <View key={tier.id} style={[styles.tierSection, isLast && { borderBottomWidth: 0, paddingBottom: 0 }]}>
-                            <Text style={styles.tierTitle}>{tier.title}</Text>
-                            <Text style={styles.tierDesc}>{renderDescriptionLines(tier.description)}</Text>
-
-                            <View style={styles.cardGrid}>
-                                {filteredVehicles.map(v => (
-                                    <VehicleCard
-                                        key={v.id}
-                                        title={v.title}
-                                        dimensions={v.dimensions}
-                                        weight={v.weight}
-                                        priceEx={v.priceEx}
-                                        priceInc={v.priceInc}
-                                        onBook={() => handleBook(tier.title, v.title, v.priceEx)}
-                                    />
-                                ))}
-                            </View>
+                        <View style={styles.cardGrid}>
+                            {dynamicQuotes.map(q => (
+                                <VehicleCard
+                                    key={q.vehicleId}
+                                    title={q.vehicleName.replace(/_/g, ' ')}
+                                    dimensions={q.dimensions}
+                                    weight={q.maxWeight}
+                                    priceEx={q.totalExVat}
+                                    priceInc={q.totalIncVat}
+                                    onBook={() => handleBook("SAME DAY", q.vehicleName, q.totalExVat)}
+                                />
+                            ))}
                         </View>
-                    );
-                })}
+                    </View>
+                )}
 
                 <View style={styles.bottomActions}>
                     <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.8} onPress={() => router.push('/')}>
@@ -420,5 +442,13 @@ const styles = StyleSheet.create({
         color: '#3498db',
         fontWeight: '700',
         fontSize: 16,
+    },
+    noVehicles: {
+        padding: 40,
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
     }
 });
