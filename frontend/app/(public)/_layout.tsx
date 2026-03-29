@@ -62,6 +62,24 @@ export default function PublicLayout() {
             {/* HEADER */}
             <View style={[styles.header, { paddingTop: header.enableAnnouncement ? 0 : (insets.top || 16) }]}>
                 <View style={styles.headerContent}>
+                    <TouchableOpacity 
+                        style={styles.logoContainer} 
+                        onPress={() => router.push('/')}
+                        activeOpacity={0.7}
+                    >
+                        {header.logoUrl ? (
+                            <Image 
+                                source={{ uri: header.logoUrl }} 
+                                style={styles.logoImage} 
+                                resizeMode="contain" 
+                            />
+                        ) : (
+                            <View style={styles.logoFallback}>
+                                <Text style={styles.logoFallbackText}>CYVHUB</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
                     <View style={[styles.navLinks, (Platform.OS === 'web' && SCREEN_WIDTH < 768) || Platform.OS !== 'web' ? { display: 'none' } : null]}>
                         {header.menuItems?.map((item: any) => (
                             <Link key={item.id} href={item.url as any} asChild>
@@ -228,8 +246,8 @@ const styles = StyleSheet.create({
         cursor: 'pointer',
     },
     logoImage: {
-        width: 140,
-        height: 60,
+        width: 150,
+        height: '100%',
     },
     logoFallback: {
         width: 140,

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
+import ImageUploadField from '@/components/ImageUploadField';
 import {
     HeaderConfig,
     HeroConfig,
@@ -292,7 +293,7 @@ export default function HomepageCMS() {
                             <View style={styles.inputGroup}>
                                 <View style={styles.inputLabelRow}>
                                     <ImageIcon size={14} color={Colors.textSecondary} />
-                                    <Text style={styles.inputLabel}>Background Images URLs</Text>
+                                    <Text style={styles.inputLabel}>Background Images</Text>
                                     <TouchableOpacity
                                         style={[styles.addButton, { paddingVertical: 4, paddingHorizontal: 8, marginLeft: 'auto' }]}
                                         onPress={() => updateHero('bgImages', [...hero.bgImages, ''])}
@@ -302,26 +303,24 @@ export default function HomepageCMS() {
                                     </TouchableOpacity>
                                 </View>
                                 {hero.bgImages.map((img, idx) => (
-                                    <View key={idx} style={[styles.imageInputRow, { marginBottom: 8 }]}>
-                                        <TextInput
-                                            style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                                            value={img}
-                                            onChangeText={t => {
+                                    <View key={idx} style={{ marginBottom: 12 }}>
+                                        <ImageUploadField 
+                                            value={img} 
+                                            onUploadComplete={url => {
                                                 const newImgs = [...hero.bgImages];
-                                                newImgs[idx] = t;
+                                                newImgs[idx] = url;
                                                 updateHero('bgImages', newImgs);
                                             }}
-                                            placeholder="Image URL"
+                                            label={`Hero Background ${idx + 1}`}
                                         />
-                                        {img ? <Image source={{ uri: img }} style={styles.imagePreviewSmall} /> : null}
                                         <TouchableOpacity
                                             onPress={() => {
                                                 const newImgs = hero.bgImages.filter((_, i) => i !== idx);
                                                 updateHero('bgImages', newImgs);
                                             }}
-                                            style={{ padding: 8, backgroundColor: Colors.dangerLight, borderRadius: 8, marginLeft: 8 }}
+                                            style={{ alignSelf: 'flex-end', padding: 4 }}
                                         >
-                                            <Trash2 size={16} color={Colors.danger} />
+                                            <Text style={{ color: Colors.danger, fontSize: 12 }}>Remove Image</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ))}
@@ -464,7 +463,12 @@ export default function HomepageCMS() {
                                 </View>
 
                                 <View style={styles.slideContentSplit}>
-                                    <Image source={{ uri: slide.imageUrl }} style={styles.slideGraphic} />
+                                    <View style={{ flex: 1 }}>
+                                        <ImageUploadField 
+                                            value={slide.imageUrl} 
+                                            onUploadComplete={url => updateSlide(slide.id, 'imageUrl', url)}
+                                        />
+                                    </View>
                                     <View style={styles.slideForm}>
                                         <TextInput
                                             style={[styles.input, styles.inputSmall]}
@@ -506,15 +510,13 @@ export default function HomepageCMS() {
                         <Text style={styles.sectionDesc}>Manage the global top bar.</Text>
                         <View style={styles.card}>
                             <View style={styles.inputGroup}>
-                                <View style={styles.inputLabelRow}>
-                                    <ImageIcon size={14} color={Colors.textSecondary} />
-                                    <Text style={styles.inputLabel}>Logo URL</Text>
-                                </View>
-                                <TextInput
-                                    style={styles.input}
-                                    value={headerConfig.logoUrl}
-                                    onChangeText={t => { setHeaderConfig({ ...headerConfig, logoUrl: t }); setHasUnsavedChanges(true); }}
-                                    placeholder="URL to logo PNG/SVG"
+                                <ImageUploadField 
+                                    label="System Logo"
+                                    value={headerConfig.logoUrl} 
+                                    onUploadComplete={url => {
+                                        setHeaderConfig({ ...headerConfig, logoUrl: url });
+                                        setHasUnsavedChanges(true);
+                                    }}
                                 />
                             </View>
                             <View style={styles.switchRow}>
@@ -1208,11 +1210,16 @@ export default function HomepageCMS() {
                                             const newInds = [...industriesData.industries]; newInds[idx].desc = t;
                                             setIndustriesData({ ...industriesData, industries: newInds }); setHasUnsavedChanges(true);
                                         }} />
-                                        <TextInput style={styles.input} value={industry.imageUrl} placeholder="Image URL for industry" onChangeText={t => {
-                                            const newInds = [...industriesData.industries]; newInds[idx].imageUrl = t;
-                                            setIndustriesData({ ...industriesData, industries: newInds }); setHasUnsavedChanges(true);
-                                        }} />
-                                        {industry.imageUrl ? <Image source={{ uri: industry.imageUrl }} style={{ width: '100%', height: 100, borderRadius: 8, marginTop: 8 }} resizeMode="cover" /> : null}
+                                        <ImageUploadField 
+                                            label="Industry Image"
+                                            value={industry.imageUrl} 
+                                            onUploadComplete={url => {
+                                                const newInds = [...industriesData.industries];
+                                                newInds[idx].imageUrl = url;
+                                                setIndustriesData({ ...industriesData, industries: newInds });
+                                                setHasUnsavedChanges(true);
+                                            }}
+                                        />
                                     </View>
                                 </View>
                             ))}
@@ -1297,13 +1304,18 @@ export default function HomepageCMS() {
                                             setTestimonialsData({ ...testimonialsData, testimonials: newTests }); setHasUnsavedChanges(true);
                                         }} />
                                         <View style={styles.row}>
-                                            <View style={{ flex: 2 }}>
-                                                <TextInput style={[styles.input]} value={test.avatarUrl} placeholder="Avatar Image URL (Optional)" onChangeText={t => {
-                                                    const newTests = [...testimonialsData.testimonials]; newTests[idx].avatarUrl = t;
-                                                    setTestimonialsData({ ...testimonialsData, testimonials: newTests }); setHasUnsavedChanges(true);
-                                                }} />
-                                                {test.avatarUrl ? <Image source={{ uri: test.avatarUrl }} style={{ width: 40, height: 40, borderRadius: 20, marginTop: 4 }} /> : null}
-                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                            <ImageUploadField 
+                                                label="Avatar"
+                                                value={test.avatarUrl} 
+                                                onUploadComplete={url => {
+                                                    const newTests = [...testimonialsData.testimonials];
+                                                    newTests[idx].avatarUrl = url;
+                                                    setTestimonialsData({ ...testimonialsData, testimonials: newTests });
+                                                    setHasUnsavedChanges(true);
+                                                }}
+                                            />
+                                        </View>
                                             <TextInput style={[styles.input, { flex: 1 }]} value={test.rating.toString()} keyboardType="numeric" placeholder="Rating (1-5)" onChangeText={t => {
                                                 const newTests = [...testimonialsData.testimonials]; newTests[idx].rating = parseInt(t) || 5;
                                                 setTestimonialsData({ ...testimonialsData, testimonials: newTests }); setHasUnsavedChanges(true);
@@ -1384,9 +1396,16 @@ export default function HomepageCMS() {
                                             const newSec = [...customSections]; newSec[idx].buttonLink = t; setCustomSections(newSec); setHasUnsavedChanges(true);
                                         }} />
                                     </View>
-                                    <TextInput style={styles.input} value={section.imageUrl} placeholder="Optional Hero Image URL for this section" onChangeText={t => {
-                                        const newSec = [...customSections]; newSec[idx].imageUrl = t; setCustomSections(newSec); setHasUnsavedChanges(true);
-                                    }} />
+                                    <ImageUploadField 
+                                        label="Hero Image"
+                                        value={section.imageUrl} 
+                                        onUploadComplete={url => {
+                                            const newSec = [...customSections];
+                                            newSec[idx].imageUrl = url;
+                                            setCustomSections(newSec);
+                                            setHasUnsavedChanges(true);
+                                        }}
+                                    />
                                     <View style={styles.row}>
                                         <TextInput style={[styles.input, { flex: 1 }]} value={section.alignment} placeholder="Alignment: left, center, right" onChangeText={t => {
                                             const newSec = [...customSections]; newSec[idx].alignment = t as any; setCustomSections(newSec); setHasUnsavedChanges(true);

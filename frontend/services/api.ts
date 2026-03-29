@@ -16,7 +16,11 @@ export const getToken = async () => {
 
 export const apiClient = async (endpoint: string, options: RequestInit = {}) => {
     const headers = new Headers(options.headers || {});
-    headers.set('Content-Type', 'application/json');
+    
+    // SEC-AUDIT: Only set application/json if body is not FormData
+    if (!(options.body instanceof FormData)) {
+        headers.set('Content-Type', 'application/json');
+    }
 
     // SEC-AUDIT-6: Web uses HTTP-only cookies — token is sent automatically by the browser.
     // Mobile uses Bearer token from SecureStore in the Authorization header.

@@ -537,9 +537,10 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     heroContent: {
-        maxWidth: 800,
+        maxWidth: 1200,
         alignItems: 'center',
         zIndex: 2,
+        width: '100%',
     },
     heroTitle: {
         fontSize: Platform.OS === 'web' ? 56 : 40,
