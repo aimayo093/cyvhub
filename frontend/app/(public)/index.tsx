@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Platform, useWindowDimensions } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Truck, Clock, ShieldCheck, Leaf, ArrowRight, Zap, Target, Search, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight } from 'lucide-react-native';
 import Head from 'expo-router/head';
 import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
     initialHero,
@@ -17,9 +18,10 @@ import {
     initialTestimonials,
 } from '@/constants/cmsDefaults';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 
 export default function PublicHome() {
+    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
     const router = useRouter();
     const [collection, setCollection] = useState('');
     const [delivery, setDelivery] = useState('');
@@ -118,11 +120,23 @@ export default function PublicHome() {
         }
     };
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
         if (!collection.trim() || !delivery.trim()) {
             alert('Please enter both collection and delivery postcodes.');
             return;
         }
+
+        try {
+            await AsyncStorage.setItem('last_quote_params', JSON.stringify({
+                collection,
+                delivery,
+                ready: isReadyNow.toString(),
+                vehicle: vehicleType
+            }));
+        } catch (e) {
+            console.error('Failed to save quote params', e);
+        }
+
         router.push({
             pathname: '/quote-details' as any,
             params: {
@@ -513,8 +527,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     heroSection: {
-        minHeight: Platform.OS === 'web' ? 500 : Dimensions.get('window').height - 180,
-        paddingVertical: Platform.OS === 'web' ? 60 : 40,
+        minHeight: Platform.OS === 'web' ? 500 : 600,
+        paddingVertical: 60,
         paddingHorizontal: 20,
         backgroundColor: Colors.navy,
         alignItems: 'center',
@@ -544,10 +558,11 @@ const styles = StyleSheet.create({
         lineHeight: 28,
     },
     heroActionRow: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 16,
         marginBottom: 60,
-        width: Platform.OS === 'web' ? 'auto' : '100%',
+        justifyContent: 'center',
     },
     primaryBtn: {
         backgroundColor: Colors.primary,
@@ -581,7 +596,7 @@ const styles = StyleSheet.create({
     },
     widgetContainer: {
         width: '100%',
-        maxWidth: Platform.OS === 'web' ? 2196 : 500,
+        maxWidth: 1200,
         alignSelf: 'center',
     },
     widgetTabs: {
@@ -629,9 +644,8 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     gridField: {
-        flex: Platform.OS === 'web' ? 1 : undefined,
-        minWidth: Platform.OS === 'web' ? 220 : '100%',
-        marginBottom: Platform.OS !== 'web' ? 16 : 0,
+        flex: 1,
+        minWidth: 280,
     },
     inputLabel: {
         fontSize: 14,
@@ -721,12 +735,14 @@ const styles = StyleSheet.create({
         gap: 24,
     },
     postcodeRow: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 20,
         width: '100%',
     },
     optionsRow: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 24,
         marginTop: 8,
         width: '100%',
@@ -753,7 +769,8 @@ const styles = StyleSheet.create({
         maxWidth: 1200,
         width: '100%',
         alignSelf: 'center',
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'space-around',
         alignItems: 'center',
         gap: 40,
@@ -1176,7 +1193,9 @@ const styles = StyleSheet.create({
         paddingVertical: 40,
     },
     serviceBannerCard: {
-        width: Platform.OS === 'web' ? (SCREEN_WIDTH > 1000 ? '30%' : '45%') : '100%',
+        width: Platform.OS === 'web' ? '30%' : '100%',
+        minWidth: 320,
+        flexGrow: 1,
         height: 350,
         borderRadius: 20,
         overflow: 'hidden',
@@ -1189,7 +1208,9 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     industryCard: {
-        width: Platform.OS === 'web' ? (SCREEN_WIDTH > 1000 ? '22%' : '45%') : '100%',
+        width: Platform.OS === 'web' ? '22%' : '100%',
+        minWidth: 260,
+        flexGrow: 1,
         height: 380,
         borderRadius: 24,
         overflow: 'hidden',

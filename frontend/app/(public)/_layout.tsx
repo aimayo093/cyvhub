@@ -1,6 +1,6 @@
-import { Slot, Link } from 'expo-router';
+import { Slot, Link, useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, useWindowDimensions, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'react-native';
 import { Truck, Navigation, Facebook, Twitter, Linkedin, Instagram, Menu, X, User } from 'lucide-react-native';
@@ -8,9 +8,11 @@ import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 import CookieBanner from '@/components/CookieBanner';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 
 export default function PublicLayout() {
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
+    const router = useRouter();
     const { header, footer } = useCMS();
     const insets = useSafeAreaInsets();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,7 +24,7 @@ export default function PublicLayout() {
         if (header.enableAnnouncement) {
             Animated.loop(
                 Animated.timing(slideAnim, {
-                    toValue: -Dimensions.get('window').width * 1.5,
+                    toValue: -SCREEN_WIDTH * 1.5,
                     duration: 15000,
                     easing: Easing.linear,
                     useNativeDriver: true,
@@ -32,7 +34,8 @@ export default function PublicLayout() {
     }, [header.enableAnnouncement, slideAnim]);
  
     const toggleMenu = () => {
-        const toValue = isMenuOpen ? -Dimensions.get('window').width : 0;
+        const drawerWidth = Math.min(SCREEN_WIDTH * 0.8, 300);
+        const toValue = isMenuOpen ? -drawerWidth : 0;
         Animated.timing(drawerAnim, {
             toValue,
             duration: 300,
@@ -59,21 +62,7 @@ export default function PublicLayout() {
             {/* HEADER */}
             <View style={[styles.header, { paddingTop: header.enableAnnouncement ? 0 : (insets.top || 16) }]}>
                 <View style={styles.headerContent}>
-                    <TouchableOpacity style={styles.menuIcon} onPress={toggleMenu}>
-                        <Menu size={28} color={Colors.primary} />
-                    </TouchableOpacity>
-
-                    <Link href="/(public)" asChild>
-                        <TouchableOpacity style={styles.logoContainer}>
-                            <Image
-                                source={require('@/assets/images/logo-color-no-bg.png')}
-                                style={styles.logoImage}
-                                resizeMode="contain"
-                            />
-                        </TouchableOpacity>
-                    </Link>
-
-                    <View style={styles.navLinks}>
+                    <View style={[styles.navLinks, (Platform.OS === 'web' && SCREEN_WIDTH < 768) || Platform.OS !== 'web' ? { display: 'none' } : null]}>
                         {header.menuItems?.map((item: any) => (
                             <Link key={item.id} href={item.url as any} asChild>
                                 <TouchableOpacity style={styles.navItem}>
@@ -83,15 +72,21 @@ export default function PublicLayout() {
                         ))}
                     </View>
 
-                    <Link href={header.loginBtnUrl as any} asChild>
-                        <TouchableOpacity
-                            style={styles.loginBtn}
-                            activeOpacity={0.8}
-                        >
-                            <User size={18} color="#FFF" style={{ marginRight: 8 }} />
-                            <Text style={styles.loginBtnText}>{header.loginBtnText}</Text>
-                        </TouchableOpacity>
-                    </Link>
+                    <TouchableOpacity 
+                        style={[styles.loginBtn, (Platform.OS === 'web' && SCREEN_WIDTH < 768) || Platform.OS !== 'web' ? { display: 'none' } : null]} 
+                        activeOpacity={0.8}
+                        onPress={() => router.push(header.loginBtnUrl as any)}
+                    >
+                        <User size={18} color="#FFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.loginBtnText}>{header.loginBtnText}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={[styles.menuIcon, Platform.OS === 'web' && SCREEN_WIDTH > 768 ? { display: 'none' } : null]} 
+                        onPress={toggleMenu}
+                    >
+                        <Menu size={28} color={Colors.primary} />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -251,8 +246,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 32,
-        ...(Platform.OS === 'web' && SCREEN_WIDTH < 768 && { display: 'none' }),
-        ...(Platform.OS !== 'web' && { display: 'none' }),
     },
     navItem: {
         paddingVertical: 8,
@@ -269,8 +262,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         flexDirection: 'row',
         alignItems: 'center',
-        ...(Platform.OS === 'web' && SCREEN_WIDTH < 768 && { display: 'none' }),
-        ...(Platform.OS !== 'web' && { display: 'none' }),
     },
     loginBtnText: {
         color: '#FFFFFF',
@@ -279,7 +270,6 @@ const styles = StyleSheet.create({
     },
     menuIcon: {
         padding: 8,
-        ...(Platform.OS === 'web' && SCREEN_WIDTH > 768 && { display: 'none' }),
     },
     drawer: {
         position: 'absolute',

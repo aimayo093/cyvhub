@@ -33,6 +33,10 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/icon.png" />
         
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: rootStyles }} />
       </head>
@@ -42,12 +46,24 @@ export default function Root({ children }: { children: React.ReactNode }) {
 }
 
 const rootStyles = `
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
   html, body, #root {
     height: 100%;
+    width: 100%;
+    max-width: 100vw;
   }
+  
   body {
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
+
   #root {
     display: flex;
     flex: 1;

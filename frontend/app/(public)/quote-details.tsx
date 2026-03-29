@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Dimensions, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Package, Ruler, Weight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QuoteDetailsConfig, initialQuoteDetails } from '@/constants/cmsDefaults';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 
 // Custom Stepper
 const Stepper = ({ currentStep }: { currentStep: number }) => (
@@ -26,6 +26,7 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
 );
 
 export default function QuoteDetailsPage() {
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
     const { collection, delivery, ready, vehicle } = useLocalSearchParams();
     const router = useRouter();
 
@@ -36,23 +37,34 @@ export default function QuoteDetailsPage() {
     const [config, setConfig] = useState<QuoteDetailsConfig>(initialQuoteDetails);
     const [isLoading, setIsLoading] = useState(true);
 
-    React.useEffect(() => {
-        const loadCMS = async () => {
+    useEffect(() => {
+        const loadStoredData = async () => {
             try {
-                const stored = await AsyncStorage.getItem('cms_quoteDetailsConfig');
-                if (stored) {
-                    setConfig(JSON.parse(stored));
+                // Load CMS
+                const storedCMS = await AsyncStorage.getItem('cms_quoteDetailsConfig');
+                if (storedCMS) {
+                    setConfig(JSON.parse(storedCMS));
+                }
+
+                // Pre-fill from previous session if URL params are missing or just for convenience
+                const lastDetails = await AsyncStorage.getItem('last_quote_details');
+                if (lastDetails) {
+                    const parsed = JSON.parse(lastDetails);
+                    if (!length) setLength(parsed.length || '');
+                    if (!width) setWidth(parsed.width || '');
+                    if (!height) setHeight(parsed.height || '');
+                    if (!weight) setWeight(parsed.weight || '');
                 }
             } catch (e) {
-                console.error('Failed to load CMS for quote-details', e);
+                console.error('Failed to load data for quote-details', e);
             } finally {
                 setIsLoading(false);
             }
         };
-        loadCMS();
+        loadStoredData();
     }, []);
 
-    const handleGetPrices = () => {
+    const handleGetPrices = async () => {
         if (!length || !width || !height || !weight) {
             Alert.alert('Missing Information', 'Please fill in all dimensions and weight to get a quote.');
             return;
@@ -91,6 +103,14 @@ export default function QuoteDetailsPage() {
                 [{ text: 'OK' }]
             );
             return;
+        }
+
+        try {
+            await AsyncStorage.setItem('last_quote_details', JSON.stringify({
+                length, width, height, weight
+            }));
+        } catch (e) {
+            console.error('Failed to save quote details', e);
         }
 
         router.push({
@@ -305,11 +325,13 @@ const styles = StyleSheet.create({
     },
     dimRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         alignItems: 'center',
         gap: 12,
     },
     dimInput: {
         flex: 1,
+        minWidth: 100,
         height: 50,
         borderWidth: 1,
         borderColor: '#E2E8F0',

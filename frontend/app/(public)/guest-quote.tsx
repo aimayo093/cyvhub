@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GuestQuoteConfig, initialGuestQuote } from '@/constants/cmsDefaults';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 
 // Top Stepper Component
 const Stepper = ({ currentStep }: { currentStep: number }) => {
@@ -63,18 +63,53 @@ import { Alert, ActivityIndicator } from 'react-native';
 import { apiClient } from '@/services/api';
 
 export default function GuestQuotePage() {
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
     const { collection, delivery, ready, vehicle, length, width, height, weight } = useLocalSearchParams();
     const router = useRouter();
     const [config, setConfig] = useState<GuestQuoteConfig>(initialGuestQuote);
     const [dynamicQuotes, setDynamicQuotes] = useState<any[]>([]);
     const [distance, setDistance] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
-
-    const hasParams = !!(collection && delivery && length && width && height && weight);
+    const [retrievedParams, setRetrievedParams] = useState<any>(null);
 
     useEffect(() => {
         const fetchQuotes = async () => {
-            if (!hasParams) {
+            let activeCollection = collection;
+            let activeDelivery = delivery;
+            let activeLength = length;
+            let activeWidth = width;
+            let activeHeight = height;
+            let activeWeight = weight;
+
+            // Recovery Logic: If URL params are missing, check AsyncStorage
+            if (!activeCollection || !activeDelivery || !activeLength) {
+                try {
+                    const q1 = await AsyncStorage.getItem('last_quote_params');
+                    const q2 = await AsyncStorage.getItem('last_quote_details');
+                    if (q1 && q2) {
+                        const p1 = JSON.parse(q1);
+                        const p2 = JSON.parse(q2);
+                        activeCollection = p1.collection;
+                        activeDelivery = p1.delivery;
+                        activeLength = p2.length;
+                        activeWidth = p2.width;
+                        activeHeight = p2.height;
+                        activeWeight = p2.weight;
+                        setRetrievedParams({ 
+                            collection: activeCollection, 
+                            delivery: activeDelivery, 
+                            length: activeLength, 
+                            width: activeWidth, 
+                            height: activeHeight, 
+                            weight: activeWeight 
+                        });
+                    }
+                } catch (e) {
+                    console.error('State recovery failed', e);
+                }
+            }
+
+            if (!activeCollection || !activeDelivery || !activeLength) {
                 setIsLoading(false);
                 return;
             }
@@ -90,13 +125,13 @@ export default function GuestQuotePage() {
                 const response = await apiClient('/quotes/calculate', {
                     method: 'POST',
                     body: JSON.stringify({
-                        pickupPostcode: collection,
-                        dropoffPostcode: delivery,
+                        pickupPostcode: activeCollection,
+                        dropoffPostcode: activeDelivery,
                         items: [{
-                            lengthCm: Number(length),
-                            widthCm: Number(width),
-                            heightCm: Number(height),
-                            weightKg: Number(weight)
+                            lengthCm: Number(activeLength),
+                            widthCm: Number(activeWidth),
+                            heightCm: Number(activeHeight),
+                            weightKg: Number(activeWeight)
                         }]
                     })
                 });
@@ -116,19 +151,29 @@ export default function GuestQuotePage() {
         fetchQuotes();
     }, [collection, delivery, length, width, height, weight]);
 
+    // Use either URL params or recovered params
+    const finalCollection = collection || retrievedParams?.collection;
+    const finalDelivery = delivery || retrievedParams?.delivery;
+    const finalLength = length || retrievedParams?.length;
+    const finalWidth = width || retrievedParams?.width;
+    const finalHeight = height || retrievedParams?.height;
+    const finalWeight = weight || retrievedParams?.weight;
+
+    const hasAnyParams = !!(finalCollection && finalDelivery && finalLength && finalWidth && finalHeight && finalWeight);
+
     const handleBook = (tier: string, vehicleName: string, price: number) => {
         router.push({
             pathname: '/guest-checkout',
             params: {
-                collection: collection as string,
-                delivery: delivery as string,
+                collection: finalCollection as string,
+                delivery: finalDelivery as string,
                 serviceType: tier,
                 vehicleType: vehicleName,
                 price: price.toString(),
-                length: length as string,
-                width: width as string,
-                height: height as string,
-                weight: weight as string
+                length: finalLength as string,
+                width: finalWidth as string,
+                height: finalHeight as string,
+                weight: finalWeight as string
             }
         });
     };
@@ -142,7 +187,7 @@ export default function GuestQuotePage() {
         );
     }
 
-    if (!hasParams) {
+    if (!hasAnyParams) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 40 }]}>
                 <Truck size={64} color={Colors.primary} style={{ marginBottom: 24 }} />
@@ -176,12 +221,12 @@ export default function GuestQuotePage() {
                     <View style={styles.summaryRow}>
                         <MapPin size={16} color={Colors.primary} style={{ marginRight: 8 }} />
                         <Text style={styles.summaryLabel}>Route:</Text>
-                        <Text style={styles.summaryValue}>{collection} → {delivery} ({distance} miles)</Text>
+                        <Text style={styles.summaryValue}>{finalCollection} → {finalDelivery} ({distance} miles)</Text>
                     </View>
                     <View style={styles.summaryRow}>
                         <Package size={16} color={Colors.primary} style={{ marginRight: 8 }} />
                         <Text style={styles.summaryLabel}>Items:</Text>
-                        <Text style={styles.summaryValue}>{length}x{width}x{height}cm, {weight}kg</Text>
+                        <Text style={styles.summaryValue}>{finalLength}x{finalWidth}x{finalHeight}cm, {finalWeight}kg</Text>
                     </View>
                     <TouchableOpacity style={styles.changeBtn} activeOpacity={0.8} onPress={() => router.back()}>
                         <Text style={styles.changeBtnText}>Edit Details</Text>
@@ -339,14 +384,17 @@ const styles = StyleSheet.create({
         color: '#1a237e',
     },
     cardGrid: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 20,
+        justifyContent: 'center',
     },
     vehicleCard: {
-        flex: 1,
+        minWidth: 280,
+        flexGrow: 1,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        borderRadius: 4,
+        borderRadius: 8,
         padding: 24,
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
