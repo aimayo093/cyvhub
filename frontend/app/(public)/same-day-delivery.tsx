@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Clock, Navigation, CheckCircle, ArrowRight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { Link } from 'expo-router';
 
 export default function SameDayDeliveryPage() {
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
     return (
         <ScrollView style={styles.container}>
             {/* HERO SECTION */}
-            <View style={styles.heroSection}>
+            <View style={[styles.heroSection, { paddingVertical: SCREEN_WIDTH >= 1024 ? 120 : 80 }]}>
                 <Image
                     source={{ uri: 'https://images.unsplash.com/photo-1587293852726-70cdb56c2866?q=80&w=2072&auto=format&fit=crop' }}
                     style={StyleSheet.absoluteFillObject}
@@ -16,8 +17,8 @@ export default function SameDayDeliveryPage() {
                 />
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.7)' }]} />
                 <View style={styles.heroContent}>
-                    <Text style={styles.heroTitle}>Same Day Direct Delivery</Text>
-                    <Text style={styles.heroSubtitle}>
+                    <Text style={[styles.heroTitle, { fontSize: SCREEN_WIDTH >= 1024 ? 56 : 40 }]}>Same Day Direct Delivery</Text>
+                    <Text style={[styles.heroSubtitle, { fontSize: SCREEN_WIDTH >= 1024 ? 20 : 18 }]}>
                         When it absolutely, positively has to be there today. Point-to-point dedicated courier services across mainland UK.
                     </Text>
                 </View>
@@ -26,7 +27,7 @@ export default function SameDayDeliveryPage() {
             {/* CONTENT SECTION */}
             <View style={styles.section}>
                 <View style={styles.contentMax}>
-                    <View style={styles.grid}>
+                    <View style={[styles.grid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         <View style={styles.textCol}>
                             <Text style={styles.h2}>Speed Without Compromise</Text>
                             <Text style={styles.p}>
@@ -80,7 +81,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     heroSection: {
-        paddingVertical: Platform.OS === 'web' ? 120 : 80,
         paddingHorizontal: 20,
         alignItems: 'center',
         justifyContent: 'center',
@@ -90,14 +90,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     heroTitle: {
-        fontSize: Platform.OS === 'web' ? 56 : 40,
         fontWeight: '800',
         color: '#FFFFFF',
         marginBottom: 20,
         textAlign: 'center',
     },
     heroSubtitle: {
-        fontSize: Platform.OS === 'web' ? 20 : 18,
         color: '#E2E8F0',
         textAlign: 'center',
         lineHeight: 28,
@@ -113,7 +111,6 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     grid: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 60,
         alignItems: 'center',
     },

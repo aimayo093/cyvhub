@@ -52,7 +52,10 @@ export default function PublicLayout() {
             )}
 
             {/* HEADER */}
-            <View style={[styles.header, { paddingTop: header.enableAnnouncement ? 0 : (insets.top || 16) }]}>
+            <View style={[styles.header, { 
+                paddingTop: header.enableAnnouncement ? 0 : (insets.top || 16),
+                paddingHorizontal: SCREEN_WIDTH >= 1024 ? 40 : 20
+            }]}>
                 <View style={styles.headerContent}>
                     <TouchableOpacity 
                         style={styles.logoContainer} 
@@ -74,7 +77,7 @@ export default function PublicLayout() {
                         )}
                     </TouchableOpacity>
 
-                    <View style={[styles.navLinks, (Platform.OS === 'web' && SCREEN_WIDTH < 768) || Platform.OS !== 'web' ? { display: 'none' } : null]}>
+                    <View style={[styles.navLinks, SCREEN_WIDTH < 768 ? { display: 'none' } : null]}>
                         {header.menuItems?.map((item: any) => (
                             <Link key={item.id} href={item.url as any} style={styles.navItemLink as any}>
                                 <Text style={styles.navText}>{item.label}</Text>
@@ -83,7 +86,7 @@ export default function PublicLayout() {
                     </View>
 
                     <TouchableOpacity 
-                        style={[styles.loginBtn, (Platform.OS === 'web' && SCREEN_WIDTH < 768) || Platform.OS !== 'web' ? { display: 'none' } : null]} 
+                        style={[styles.loginBtn, SCREEN_WIDTH < 768 ? { display: 'none' } : null]} 
                         activeOpacity={0.8}
                         onPress={() => router.push(header.loginBtnUrl as any)}
                     >
@@ -92,7 +95,7 @@ export default function PublicLayout() {
                     </TouchableOpacity>
 
                     <TouchableOpacity 
-                        style={[styles.menuIcon, Platform.OS === 'web' && SCREEN_WIDTH > 768 ? { display: 'none' } : null]} 
+                        style={[styles.menuIcon, SCREEN_WIDTH >= 768 ? { display: 'none' } : null]} 
                         onPress={toggleMenu}
                     >
                         <Menu size={28} color={Colors.primary} />
@@ -176,7 +179,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: Colors.border,
-        paddingHorizontal: Platform.OS === 'web' ? 40 : 20,
         zIndex: 10,
         ...Platform.select({
             web: {
@@ -315,7 +317,6 @@ const styles = StyleSheet.create({
     },
     footer: {
         backgroundColor: Colors.navy,
-        paddingHorizontal: Platform.OS === 'web' ? 40 : 20,
         paddingTop: 60,
         paddingBottom: 40,
     },

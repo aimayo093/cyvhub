@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, Dimensions, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, Dimensions, TouchableOpacity, Image, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Shield, Leaf, Users, Award, MapPin, Truck, ShieldCheck, Zap, Eye, Target, Rocket, Map, FileText, BriefcaseMedical, Clock, Package } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { Link } from 'expo-router';
@@ -18,6 +18,7 @@ const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
 
 export default function AboutUsPage() {
     const { aboutPage: config, isLoaded } = useCMS();
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
 
     if (!isLoaded) {
         return (
@@ -39,7 +40,7 @@ export default function AboutUsPage() {
                 <meta property="og:type" content="website" />
             </Head>
             {/* HERO SECTION */}
-            <View style={styles.heroSection}>
+            <View style={[styles.heroSection, { paddingVertical: SCREEN_WIDTH >= 1024 ? 140 : 100 }]}>
                 <Image
                     source={{ uri: config.heroImageUrl }}
                     style={StyleSheet.absoluteFillObject}
@@ -47,8 +48,8 @@ export default function AboutUsPage() {
                 />
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.75)' }]} />
                 <View style={styles.heroContent}>
-                    <Text style={styles.heroTitle}>{config.heroTitle}</Text>
-                    <Text style={styles.heroSubtitle}>{config.heroSubtitle}</Text>
+                    <Text style={[styles.heroTitle, { fontSize: SCREEN_WIDTH >= 1024 ? 72 : 48 }]}>{config.heroTitle}</Text>
+                    <Text style={[styles.heroSubtitle, { fontSize: SCREEN_WIDTH >= 1024 ? 24 : 18 }]}>{config.heroSubtitle}</Text>
                 </View>
             </View>
 
@@ -72,10 +73,10 @@ export default function AboutUsPage() {
             {/* STORY SECTION */}
             <View style={styles.section}>
                 <View style={styles.contentMax}>
-                    <View style={styles.storyGrid}>
+                    <View style={[styles.storyGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         <View style={styles.storyText}>
                             <Text style={styles.sectionTag}>{config.storyTag}</Text>
-                            <Text style={styles.sectionTitle}>{config.storyTitle}</Text>
+                            <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>{config.storyTitle}</Text>
                             <Text style={styles.sectionDesc}>{config.storyContent}</Text>
                         </View>
                         <View style={styles.storyVisual}>
@@ -92,7 +93,7 @@ export default function AboutUsPage() {
             {/* MISSION & VISION */}
             <View style={[styles.section, { backgroundColor: Colors.navy }]}>
                 <View style={styles.contentMax}>
-                    <View style={styles.dualGrid}>
+                    <View style={[styles.dualGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         <View style={styles.missionCardInverse}>
                             <View style={styles.iconBoxInverse}>
                                 <Target size={32} color={Colors.primary} />
@@ -114,12 +115,12 @@ export default function AboutUsPage() {
             {/* VALUES SECTION */}
             <View style={styles.section}>
                 <View style={styles.contentMax}>
-                    <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 60 }]}>
+                    <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 60, fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>
                         {config.valuesTitle}
                     </Text>
                     <View style={styles.valuesGrid}>
                         {config.values.map((value) => (
-                            <View key={value.id} style={styles.valueCard}>
+                            <View key={value.id} style={[styles.valueCard, { width: SCREEN_WIDTH >= 1024 ? '31%' : SCREEN_WIDTH >= 768 ? '47%' : '100%' }]}>
                                 <View style={[styles.valueIcon, { backgroundColor: Colors.primary + '15' }]}>
                                     <DynamicIcon name={value.icon} size={28} color={Colors.primary} />
                                 </View>
@@ -134,10 +135,10 @@ export default function AboutUsPage() {
             {/* MILESTONES */}
             <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
                 <View style={styles.contentMax}>
-                    <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 60 }]}>
+                    <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 60, fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>
                         {config.milestonesTitle}
                     </Text>
-                    <View style={styles.milestonesTimeline}>
+                    <View style={[styles.milestonesTimeline, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         {config.milestones.map((milestone, index) => (
                             <View key={index} style={styles.milestoneItem}>
                                 <View style={styles.milestoneYearBox}>
@@ -147,7 +148,7 @@ export default function AboutUsPage() {
                                     <Text style={styles.milestoneTitle}>{milestone.title}</Text>
                                     <Text style={styles.milestoneDesc}>{milestone.desc}</Text>
                                 </View>
-                                {index < config.milestones.length - 1 && Platform.OS === 'web' && (
+                                {index < config.milestones.length - 1 && SCREEN_WIDTH >= 768 && (
                                     <View style={styles.milestoneLine} />
                                 )}
                             </View>
@@ -159,10 +160,10 @@ export default function AboutUsPage() {
             {/* SUSTAINABILITY */}
             <View style={styles.section}>
                 <View style={styles.contentMax}>
-                    <View style={styles.splitGrid}>
+                    <View style={[styles.splitGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         <View style={styles.splitText}>
                             <Text style={styles.sectionTag}>{config.sustainabilityTag}</Text>
-                            <Text style={styles.sectionTitle}>{config.sustainabilityTitle}</Text>
+                            <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>{config.sustainabilityTitle}</Text>
                             <Text style={styles.sectionDesc}>{config.sustainabilityDesc}</Text>
                         </View>
                         <View style={styles.splitText}>
@@ -187,9 +188,9 @@ export default function AboutUsPage() {
             {/* CTA */}
             <View style={styles.ctaSection}>
                 <View style={styles.contentMax}>
-                    <View style={styles.ctaCard}>
+                    <View style={[styles.ctaCard, { padding: SCREEN_WIDTH >= 768 ? 80 : 40, flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         <View style={styles.ctaText}>
-                            <Text style={styles.ctaTitle}>{config.ctaTitle}</Text>
+                            <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 44 : 32 }]}>{config.ctaTitle}</Text>
                             <Text style={styles.ctaDesc}>{config.ctaDesc}</Text>
                         </View>
                         <Link href={config.ctaBtnUrl as any} asChild>
@@ -245,7 +246,6 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     storyGrid: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 80,
         alignItems: 'center',
     },
@@ -264,7 +264,6 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     dualGrid: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 40,
     },
     missionCardInverse: {
@@ -297,7 +296,6 @@ const styles = StyleSheet.create({
         lineHeight: 30,
     },
     milestonesTimeline: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         justifyContent: 'space-between',
         gap: 32,
     },
@@ -385,7 +383,6 @@ const styles = StyleSheet.create({
     },
     heroSection: {
         backgroundColor: Colors.navy,
-        paddingVertical: Platform.OS === 'web' ? 140 : 100,
         paddingHorizontal: 24,
         alignItems: 'center',
         justifyContent: 'center',
@@ -398,7 +395,6 @@ const styles = StyleSheet.create({
         zIndex: 1,
     },
     heroTitle: {
-        fontSize: Platform.OS === 'web' ? 72 : 48,
         fontWeight: '900',
         color: '#FFFFFF',
         marginBottom: 24,
@@ -406,7 +402,6 @@ const styles = StyleSheet.create({
         letterSpacing: -1.5,
     },
     heroSubtitle: {
-        fontSize: Platform.OS === 'web' ? 24 : 18,
         color: '#CBD5E1',
         textAlign: 'center',
         lineHeight: 36,
@@ -426,7 +421,6 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     sectionTitle: {
-        fontSize: Platform.OS === 'web' ? 48 : 36,
         fontWeight: '900',
         color: Colors.navy,
         marginBottom: 24,
@@ -439,7 +433,6 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     splitGrid: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 80,
     },
     splitText: {
@@ -479,7 +472,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     valueCard: {
-        width: Platform.OS === 'web' ? 'calc(33.333% - 22px)' as any : '100%',
         minWidth: 300,
         backgroundColor: '#FFFFFF',
         padding: 48,
@@ -522,8 +514,6 @@ const styles = StyleSheet.create({
     ctaCard: {
         backgroundColor: Colors.navy,
         borderRadius: 40,
-        padding: Platform.OS === 'web' ? 80 : 40,
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 40,
@@ -534,7 +524,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     ctaTitle: {
-        fontSize: Platform.OS === 'web' ? 44 : 32,
         fontWeight: '900',
         color: '#FFF',
         marginBottom: 16,

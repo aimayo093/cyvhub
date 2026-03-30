@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Platform, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Platform, Image, ActivityIndicator, Alert, useWindowDimensions } from 'react-native';
 import { MapPin, Phone, Mail, Send, ChevronDown, ChevronUp, MessageSquare, Clock, Globe, Rocket, FileText, Building2, ShieldCheck } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Head from 'expo-router/head';
@@ -17,6 +17,7 @@ const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
 
 export default function ContactPage() {
     const { contactPage: config, isLoaded } = useCMS();
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
     const [form, setForm] = useState({ name: '', email: '', company: '', message: '' });
     const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
 
@@ -49,7 +50,7 @@ export default function ContactPage() {
                 <meta property="og:type" content="website" />
             </Head>
             {/* HERO SECTION */}
-            <View style={styles.heroSection}>
+            <View style={[styles.heroSection, { paddingVertical: SCREEN_WIDTH >= 1024 ? 140 : 100 }]}>
                 <Image
                     source={{ uri: config.heroImageUrl }}
                     style={StyleSheet.absoluteFillObject}
@@ -57,15 +58,15 @@ export default function ContactPage() {
                 />
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.7)' }]} />
                 <View style={styles.heroContent}>
-                    <Text style={styles.heroTitle}>{config.heroTitle}</Text>
-                    <Text style={styles.heroSubtitle}>{config.heroSubtitle}</Text>
+                    <Text style={[styles.heroTitle, { fontSize: SCREEN_WIDTH >= 1024 ? 72 : 48 }]}>{config.heroTitle}</Text>
+                    <Text style={[styles.heroSubtitle, { fontSize: SCREEN_WIDTH >= 1024 ? 24 : 18 }]}>{config.heroSubtitle}</Text>
                 </View>
             </View>
 
             {/* MAIN CONTACT & FORM */}
             <View style={styles.mainContent}>
                 <View style={styles.contentMax}>
-                    <View style={styles.splitLayout}>
+                    <View style={[styles.splitLayout, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         {/* LEFT: INFO & DEPARTMENTS */}
                         <View style={styles.infoSide}>
                             <Text style={styles.sectionTag}>{config.contactTag}</Text>
@@ -97,7 +98,7 @@ export default function ContactPage() {
                                             <Text style={styles.deptName}>{dept.name}</Text>
                                         </View>
                                         <Text style={styles.deptDesc}>{dept.desc}</Text>
-                                        <View style={styles.deptContact}>
+                                        <View style={[styles.deptContact, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column', gap: SCREEN_WIDTH >= 768 ? 24 : 8 }]}>
                                             <Text style={styles.deptInfo}>{dept.email}</Text>
                                             <Text style={styles.deptInfo}>{dept.phone}</Text>
                                         </View>
@@ -108,11 +109,11 @@ export default function ContactPage() {
 
                         {/* RIGHT: FORM */}
                         <View style={styles.formSide}>
-                            <View style={styles.formCard}>
+                            <View style={[styles.formCard, { padding: SCREEN_WIDTH >= 768 ? 60 : 30 }]}>
                                 <Text style={styles.formTitle}>{config.formTitle}</Text>
                                 <Text style={styles.formDesc}>{config.formDesc}</Text>
 
-                                <View style={styles.inputRow}>
+                                <View style={[styles.inputRow, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                                     <View style={styles.inputGroup}>
                                         <Text style={styles.label}>Full Name</Text>
                                         <TextInput
@@ -173,8 +174,8 @@ export default function ContactPage() {
             {/* STRATEGIC HUBS */}
             <View style={[styles.section, { backgroundColor: Colors.navy }]}>
                 <View style={styles.contentMax}>
-                    <Text style={styles.sectionTagInverse}>{config.hubsTag}</Text>
-                    <Text style={styles.sectionTitleInverse}>{config.hubsTitle}</Text>
+                    <Text style={[styles.sectionTagInverse, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center' }]}>{config.hubsTag}</Text>
+                    <Text style={[styles.sectionTitleInverse, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center', fontSize: SCREEN_WIDTH >= 1024 ? 48 : 36 }]}>{config.hubsTitle}</Text>
                     <View style={styles.hubsGrid}>
                         {config.hubs.map((hub) => (
                             <View key={hub.id} style={styles.hubCard}>
@@ -235,7 +236,6 @@ const styles = StyleSheet.create({
     },
     heroSection: {
         backgroundColor: Colors.navy,
-        paddingVertical: Platform.OS === 'web' ? 140 : 100,
         paddingHorizontal: 24,
         alignItems: 'center',
         justifyContent: 'center',
@@ -248,7 +248,6 @@ const styles = StyleSheet.create({
         zIndex: 1,
     },
     heroTitle: {
-        fontSize: Platform.OS === 'web' ? 72 : 48,
         fontWeight: '900',
         color: '#FFFFFF',
         marginBottom: 24,
@@ -256,7 +255,6 @@ const styles = StyleSheet.create({
         letterSpacing: -1.5,
     },
     heroSubtitle: {
-        fontSize: Platform.OS === 'web' ? 24 : 18,
         color: '#CBD5E1',
         textAlign: 'center',
         lineHeight: 36,
@@ -286,18 +284,14 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 2,
         marginBottom: 16,
-        textAlign: Platform.OS === 'web' ? 'left' : 'center',
     },
     sectionTitleInverse: {
-        fontSize: Platform.OS === 'web' ? 48 : 36,
         fontWeight: '900',
         color: '#FFFFFF',
         marginBottom: 60,
         letterSpacing: -1,
-        textAlign: Platform.OS === 'web' ? 'left' : 'center',
     },
     splitLayout: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 80,
     },
     infoSide: {
@@ -387,8 +381,6 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     deptContact: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-        gap: Platform.OS === 'web' ? 24 : 8,
     },
     deptInfo: {
         fontSize: 14,
@@ -400,7 +392,6 @@ const styles = StyleSheet.create({
     },
     formCard: {
         backgroundColor: '#F8FAFC',
-        padding: Platform.OS === 'web' ? 60 : 30,
         borderRadius: 40,
         borderWidth: 1,
         borderColor: '#E2E8F0',
@@ -419,7 +410,6 @@ const styles = StyleSheet.create({
         lineHeight: 26,
     },
     inputRow: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 20,
         marginBottom: 20,
     },

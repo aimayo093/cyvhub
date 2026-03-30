@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, Dimensions, useWindowDimensions } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { 
@@ -8,10 +8,11 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Removed static Dimensions get
 
 export default function AviationAOGPage() {
     const router = useRouter();
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
     return (
         <View style={{ flex: 1 }}>
             <Head>
@@ -21,7 +22,7 @@ export default function AviationAOGPage() {
 
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
                 {/* HERO SECTION */}
-                <View style={styles.heroSection}>
+                <View style={[styles.heroSection, { paddingVertical: SCREEN_WIDTH >= 1024 ? 140 : 80 }]}>
                     <Image
                         source={{ uri: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&q=80&w=1200' }}
                         style={StyleSheet.absoluteFillObject}
@@ -33,12 +34,12 @@ export default function AviationAOGPage() {
                             <Plane size={14} color="#FFF" style={{ marginRight: 8 }} />
                             <Text style={styles.badgeText}>MISSION CRITICAL</Text>
                         </View>
-                        <Text style={styles.heroTitle}>Aviation & AOG Support</Text>
-                        <Text style={styles.heroSubtitle}>
+                        <Text style={[styles.heroTitle, { fontSize: SCREEN_WIDTH >= 1024 ? 72 : 48 }]}>Aviation & AOG Support</Text>
+                        <Text style={[styles.heroSubtitle, { fontSize: SCREEN_WIDTH >= 1024 ? 22 : 18 }]}>
                             When every minute counts, trust the UK's fastest network for aircraft-on-ground logistics. 
                             24/7/365 dedicated response for mission-critical parts.
                         </Text>
-                        <View style={styles.heroActionRow}>
+                        <View style={[styles.heroActionRow, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                             <TouchableOpacity 
                                 style={styles.primaryBtn}
                                 onPress={() => router.push('/guest-quote?vehicle=Large%20Van&ready=true' as any)}
@@ -55,14 +56,14 @@ export default function AviationAOGPage() {
                     <View style={styles.contentMax}>
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTag}>CAPABILITIES</Text>
-                            <Text style={styles.sectionTitle}>Built for High-Stakes Logistics</Text>
+                            <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>Built for High-Stakes Logistics</Text>
                             <Text style={styles.sectionDesc}>
                                 We understand that AOG situations cost thousands per hour. Our infrastructure is optimized for immediate response.
                             </Text>
                         </View>
 
                         <View style={styles.grid}>
-                            <View style={styles.card}>
+                            <View style={[styles.card, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 768 ? '47%' : '100%' }]}>
                                 <View style={[styles.iconBox, { backgroundColor: '#EEF2FF' }]}>
                                     <Clock size={28} color={Colors.primary} />
                                 </View>
@@ -70,7 +71,7 @@ export default function AviationAOGPage() {
                                 <Text style={styles.cardText}>Nationwide collection within 60 minutes of booking, 24 hours a day.</Text>
                             </View>
 
-                            <View style={styles.card}>
+                            <View style={[styles.card, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 768 ? '47%' : '100%' }]}>
                                 <View style={[styles.iconBox, { backgroundColor: '#F0FDF4' }]}>
                                     <ShieldCheck size={28} color="#16A34A" />
                                 </View>
@@ -78,7 +79,7 @@ export default function AviationAOGPage() {
                                 <Text style={styles.cardText}>Drivers trained in handling sensitive avionics, structural components, and engines.</Text>
                             </View>
 
-                            <View style={styles.card}>
+                            <View style={[styles.card, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 768 ? '47%' : '100%' }]}>
                                 <View style={[styles.iconBox, { backgroundColor: '#FFF7ED' }]}>
                                     <MapPin size={28} color="#EA580C" />
                                 </View>
@@ -86,7 +87,7 @@ export default function AviationAOGPage() {
                                 <Text style={styles.cardText}>Direct airside-adjacent deliveries to all major UK airports and private airfields.</Text>
                             </View>
 
-                            <View style={styles.card}>
+                            <View style={[styles.card, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 768 ? '47%' : '100%' }]}>
                                 <View style={[styles.iconBox, { backgroundColor: '#FEF2F2' }]}>
                                     <Zap size={28} color="#DC2626" />
                                 </View>
@@ -100,10 +101,10 @@ export default function AviationAOGPage() {
                 {/* AOG WORKFLOW */}
                 <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
                     <View style={styles.contentMax}>
-                        <View style={styles.splitRow}>
+                        <View style={[styles.splitRow, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                             <View style={styles.splitText}>
                                 <Text style={styles.sectionTag}>OUR PROCESS</Text>
-                                <Text style={styles.sectionTitle}>The AOG Response Protocol</Text>
+                                <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36, textAlign: 'left' }]}>The AOG Response Protocol</Text>
                                 <View style={styles.stepRow}>
                                     <View style={styles.stepNum}><Text style={styles.stepNumText}>1</Text></View>
                                     <View style={styles.stepInfo}>
@@ -140,9 +141,9 @@ export default function AviationAOGPage() {
                 {/* CTA */}
                 <View style={styles.ctaSection}>
                     <View style={styles.ctaContent}>
-                        <Text style={styles.ctaTitle}>Minimize Downtime Today</Text>
+                        <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 56 : 36 }]}>Minimize Downtime Today</Text>
                         <Text style={styles.ctaDesc}>Join hundreds of aviation partners who trust CYVhub for their most critical logistics needs.</Text>
-                        <View style={styles.ctaActions}>
+                        <View style={[styles.ctaActions, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                             <TouchableOpacity 
                                 style={styles.ctaPrimaryBtn}
                                 onPress={() => router.push('/guest-quote' as any)}
@@ -175,7 +176,6 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     heroSection: {
-        paddingVertical: Platform.OS === 'web' ? 140 : 80,
         paddingHorizontal: 24,
         alignItems: 'center',
         justifyContent: 'center',
@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
         letterSpacing: 2,
     },
     heroTitle: {
-        fontSize: Platform.OS === 'web' ? 72 : 48,
         fontWeight: '900',
         color: '#FFFFFF',
         marginBottom: 24,
@@ -211,7 +210,6 @@ const styles = StyleSheet.create({
         letterSpacing: -1.5,
     },
     heroSubtitle: {
-        fontSize: Platform.OS === 'web' ? 22 : 18,
         color: '#E2E8F0',
         textAlign: 'center',
         lineHeight: 34,
@@ -220,7 +218,6 @@ const styles = StyleSheet.create({
         marginBottom: 48,
     },
     heroActionRow: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 20,
     },
     primaryBtn: {
@@ -256,7 +253,6 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
     },
     sectionTitle: {
-        fontSize: Platform.OS === 'web' ? 48 : 36,
         fontWeight: '900',
         color: '#0F172A',
         textAlign: 'center',
@@ -276,7 +272,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     card: {
-        width: Platform.OS === 'web' ? 'calc(25% - 24px)' as any : '100%',
         minWidth: 260,
         backgroundColor: '#FFFFFF',
         padding: 32,
@@ -309,7 +304,6 @@ const styles = StyleSheet.create({
         lineHeight: 24,
     },
     splitRow: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 80,
         alignItems: 'center',
     },
@@ -382,7 +376,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     ctaTitle: {
-        fontSize: Platform.OS === 'web' ? 56 : 36,
         fontWeight: '900',
         color: '#FFFFFF',
         marginBottom: 24,
@@ -397,7 +390,6 @@ const styles = StyleSheet.create({
         marginBottom: 56,
     },
     ctaActions: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 20,
     },
     ctaPrimaryBtn: {

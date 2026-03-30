@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, ActivityIndicator, Dimensions, useWindowDimensions } from 'react-native';
 import { Link, useLocalSearchParams } from 'expo-router';
 import Head from 'expo-router/head';
 import {
@@ -12,8 +12,7 @@ import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
+// Removed static Dimensions get
 const IconMap: any = {
     Truck, Clock, ShieldCheck, Zap, Package, Map,
     CalendarSync, FileText, Box, Archive, BriefcaseMedical,
@@ -29,6 +28,7 @@ const DynamicIcon = ({ name, size = 24, color = Colors.primary, style = {} }: an
 export default function ServicesPage() {
     const params = useLocalSearchParams();
     const scrollRef = useRef<ScrollView>(null);
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
     const { servicesPage: config, isLoaded } = useCMS();
     const [sectionOffsets, setSectionOffsets] = useState<Record<string, number>>({});
     const [showBackToTop, setShowBackToTop] = useState(false);
@@ -86,7 +86,7 @@ export default function ServicesPage() {
                 onScroll={handleScroll}
             >
                 {/* HERO SECTION */}
-                <View style={styles.heroSection}>
+                <View style={[styles.heroSection, { paddingVertical: SCREEN_WIDTH >= 1024 ? 120 : 80 }]}>
                     <Image
                         source={{ uri: config.heroImageUrl }}
                         style={StyleSheet.absoluteFillObject}
@@ -97,8 +97,8 @@ export default function ServicesPage() {
                         <View style={styles.badge}>
                             <Text style={styles.badgeText}>SECTOR-SPECIFIC EXPERTISE</Text>
                         </View>
-                        <Text style={styles.heroTitle}>{config.heroTitle}</Text>
-                        <Text style={styles.heroSubtitle}>{config.heroSubtitle}</Text>
+                        <Text style={[styles.heroTitle, { fontSize: SCREEN_WIDTH >= 1024 ? 64 : 44 }]}>{config.heroTitle}</Text>
+                        <Text style={[styles.heroSubtitle, { fontSize: SCREEN_WIDTH >= 1024 ? 22 : 18 }]}>{config.heroSubtitle}</Text>
                     </View>
                 </View>
 
@@ -106,12 +106,12 @@ export default function ServicesPage() {
                 <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
                     <View style={styles.contentMax}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitleCenter}>{config.whatWeDeliverTitle}</Text>
+                            <Text style={[styles.sectionTitleCenter, { fontSize: SCREEN_WIDTH >= 1024 ? 42 : 32 }]}>{config.whatWeDeliverTitle}</Text>
                             <View style={[styles.divider, { alignSelf: 'center', marginBottom: 60 }]} />
                         </View>
                         <View style={styles.deliveryItemsGrid}>
                             {config.deliveryItems.map((item) => (
-                                <View key={item.id} style={styles.deliveryItemCard}>
+                                <View key={item.id} style={[styles.deliveryItemCard, { width: SCREEN_WIDTH >= 1024 ? '31%' : '100%' }]}>
                                     <View style={[styles.iconBox, { backgroundColor: Colors.primary + '15', marginBottom: 20 }]}>
                                         <DynamicIcon name={item.icon} size={32} color={Colors.primary} />
                                     </View>
@@ -138,7 +138,8 @@ export default function ServicesPage() {
                                 onLayout={(e) => handleLayout(service.id, e.nativeEvent.layout.y)}
                                 style={[
                                     styles.serviceBlock,
-                                    (index % 2 !== 0 && Platform.OS === 'web') && { flexDirection: 'row-reverse' }
+                                    { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column', gap: SCREEN_WIDTH >= 768 ? 80 : 40 },
+                                    (index % 2 !== 0 && SCREEN_WIDTH >= 768) && { flexDirection: 'row-reverse' }
                                 ]}
                             >
                                 <View style={styles.serviceText}>
@@ -151,7 +152,7 @@ export default function ServicesPage() {
 
                                     <View style={styles.featureGrid}>
                                         {service.features.map((feature, fIndex) => (
-                                            <View key={fIndex} style={styles.featureItem}>
+                                            <View key={fIndex} style={[styles.featureItem, { width: SCREEN_WIDTH >= 768 ? '45%' : '100%' }]}>
                                                 <View style={styles.checkCircle}>
                                                     <ShieldCheck size={14} color="#FFF" />
                                                 </View>
@@ -160,7 +161,7 @@ export default function ServicesPage() {
                                         ))}
                                     </View>
 
-                                    <View style={styles.actionRow}>
+                                    <View style={[styles.actionRow, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column', flexWrap: 'wrap' }]}>
                                         <Link href="/contact" asChild>
                                             <TouchableOpacity style={styles.learnMoreBtn}>
                                                 <Text style={styles.learnMoreText}>Discuss Your Requirements</Text>
@@ -227,7 +228,6 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     heroSection: {
-        paddingVertical: Platform.OS === 'web' ? 120 : 80,
         paddingHorizontal: 20,
         alignItems: 'center',
         justifyContent: 'center',
@@ -253,7 +253,6 @@ const styles = StyleSheet.create({
         letterSpacing: 1.5,
     },
     heroTitle: {
-        fontSize: Platform.OS === 'web' ? 64 : 44,
         fontWeight: '900',
         color: '#FFFFFF',
         marginBottom: 24,
@@ -261,7 +260,6 @@ const styles = StyleSheet.create({
         letterSpacing: -1,
     },
     heroSubtitle: {
-        fontSize: Platform.OS === 'web' ? 22 : 18,
         color: '#CBD5E1',
         textAlign: 'center',
         lineHeight: 32,
@@ -273,15 +271,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     sectionTitleCenter: {
-        fontSize: Platform.OS === 'web' ? 42 : 32,
         fontWeight: '800',
         color: Colors.navy,
         textAlign: 'center',
         marginBottom: 16,
     },
     serviceBlock: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-        gap: Platform.OS === 'web' ? 80 : 40,
         marginBottom: 120,
         alignItems: 'center',
     },
@@ -346,7 +341,6 @@ const styles = StyleSheet.create({
     featureItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        width: Platform.OS === 'web' ? '45%' : '100%',
         gap: 12,
     },
     checkCircle: {
@@ -379,7 +373,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     deliveryItemCard: {
-        width: Platform.OS === 'web' ? 'calc(33.333% - 22px)' as any : '100%',
         minWidth: 300,
         backgroundColor: '#FFFFFF',
         padding: 40,
@@ -459,8 +452,6 @@ const styles = StyleSheet.create({
         color: Colors.navy,
     },
     actionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
         gap: 32,
         marginTop: 10,
     },

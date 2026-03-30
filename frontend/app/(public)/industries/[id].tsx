@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, ActivityIndicator, Dimensions, useWindowDimensions } from 'react-native';
 import { Link, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -12,8 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { IndustryDetail, initialIndustryDetails } from '@/constants/cmsDefaults';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
+// Removed static Dimensions
 const IconMap: any = {
     Truck, Clock, ShieldCheck, Zap, Package, Map,
     CalendarSync, FileText, Box, Archive, BriefcaseMedical,
@@ -31,6 +30,7 @@ export default function IndustryDetailPage() {
     const router = useRouter();
     const [detail, setDetail] = useState<IndustryDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
 
     useFocusEffect(
         useCallback(() => {
@@ -85,7 +85,7 @@ export default function IndustryDetailPage() {
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             {/* HERO SECTION */}
-            <View style={styles.heroSection}>
+            <View style={[styles.heroSection, { paddingVertical: SCREEN_WIDTH >= 1024 ? 140 : 100 }]}>
                 <Image
                     source={{ uri: detail.heroImageUrl }}
                     style={StyleSheet.absoluteFillObject}
@@ -104,8 +104,8 @@ export default function IndustryDetailPage() {
                     <View style={styles.badge}>
                         <Text style={styles.badgeText}>INDUSTRY FOCUS</Text>
                     </View>
-                    <Text style={styles.heroTitle}>{detail.title}</Text>
-                    <Text style={styles.heroSubtitle}>{detail.subtitle}</Text>
+                    <Text style={[styles.heroTitle, { fontSize: SCREEN_WIDTH >= 1024 ? 72 : 44, lineHeight: SCREEN_WIDTH >= 1024 ? 84 : 52 }]}>{detail.title}</Text>
+                    <Text style={[styles.heroSubtitle, { fontSize: SCREEN_WIDTH >= 1024 ? 26 : 20, lineHeight: SCREEN_WIDTH >= 1024 ? 38 : 30 }]}>{detail.subtitle}</Text>
                 </View>
             </View>
 
@@ -126,7 +126,7 @@ export default function IndustryDetailPage() {
             {/* PROBLEM & SOLUTION SECTION */}
             <View style={styles.contentSection}>
                 <View style={styles.contentMax}>
-                    <View style={styles.dualGrid}>
+                    <View style={[styles.dualGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         <View style={styles.contentBlock}>
                             <View style={styles.iconBox}>
                                 <AlertTriangle size={32} color={Colors.primary} />
@@ -148,10 +148,10 @@ export default function IndustryDetailPage() {
             {/* EQUIPMENT & CAPABILITY */}
             <LinearGradient colors={['#F8FAFC', '#FFFFFF']} style={styles.contentSection}>
                 <View style={styles.contentMax}>
-                    <Text style={styles.sectionHeading}>Bespoke Fleet & Capability</Text>
+                    <Text style={[styles.sectionHeading, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>Bespoke Fleet & Capability</Text>
                     <View style={styles.equipmentGrid}>
                         {detail.equipment.map((item, index) => (
-                            <View key={index} style={styles.equipmentCard}>
+                            <View key={index} style={[styles.equipmentCard, { width: SCREEN_WIDTH >= 1024 ? '31%' : '100%' }]}>
                                 <View style={styles.equipmentIconBox}>
                                     <DynamicIcon name={item.icon} size={32} color={Colors.primary} />
                                 </View>
@@ -166,8 +166,8 @@ export default function IndustryDetailPage() {
             {/* PROCESS SECTION */}
             <View style={styles.contentSection}>
                 <View style={styles.contentMax}>
-                    <Text style={styles.sectionHeading}>Our Logistics Workflow</Text>
-                    <View style={styles.processSteps}>
+                    <Text style={[styles.sectionHeading, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>Our Logistics Workflow</Text>
+                    <View style={[styles.processSteps, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                         {detail.processSteps.map((step, index) => (
                             <View key={index} style={styles.processItem}>
                                 <View style={styles.processNumber}>
@@ -177,7 +177,7 @@ export default function IndustryDetailPage() {
                                     <Text style={styles.processTitle}>{step.title}</Text>
                                     <Text style={styles.processDesc}>{step.desc}</Text>
                                 </View>
-                                {index < detail.processSteps.length - 1 && Platform.OS === 'web' && (
+                                {index < detail.processSteps.length - 1 && SCREEN_WIDTH >= 768 && (
                                     <View style={styles.processLine} />
                                 )}
                             </View>
@@ -189,10 +189,10 @@ export default function IndustryDetailPage() {
             {/* FEATURES LIST (GLASSMORPHISM) */}
             <LinearGradient colors={[Colors.navy, '#0A1128']} style={styles.contentSection}>
                 <View style={styles.contentMax}>
-                    <Text style={[styles.sectionHeading, { color: '#FFF' }]}>Industry-Leading Standards</Text>
+                    <Text style={[styles.sectionHeading, { color: '#FFF', fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>Industry-Leading Standards</Text>
                     <View style={styles.featuresGrid}>
                         {detail.features.map((feature, index) => (
-                            <View key={index} style={styles.featureItem}>
+                            <View key={index} style={[styles.featureItem, { width: SCREEN_WIDTH >= 1024 ? '47%' : '100%' }]}>
                                 <View style={styles.checkIcon}>
                                     <ShieldCheck size={20} color={Colors.primary} />
                                 </View>
@@ -206,14 +206,14 @@ export default function IndustryDetailPage() {
             {/* CASE STUDY SECTION */}
             <View style={styles.caseStudySection}>
                 <View style={styles.contentMax}>
-                    <View style={styles.caseStudyCard}>
+                    <View style={[styles.caseStudyCard, { padding: SCREEN_WIDTH >= 1024 ? 100 : 50 }]}>
                         <LinearGradient
                             colors={['rgba(255,255,255,1)', 'rgba(241,245,249,0.5)']}
                             style={StyleSheet.absoluteFillObject}
                         />
                         <Quote size={48} color={Colors.primary} style={styles.quoteIcon} />
                         <Text style={styles.caseStudyTitle}>{detail.caseStudyTitle}</Text>
-                        <Text style={styles.caseStudyQuote}>"{detail.caseStudyQuote}"</Text>
+                        <Text style={[styles.caseStudyQuote, { fontSize: SCREEN_WIDTH >= 768 ? 36 : 24, lineHeight: SCREEN_WIDTH >= 768 ? 52 : 36 }]}>"{detail.caseStudyQuote}"</Text>
                         <View style={styles.authorBox}>
                             <View style={styles.authorInfo}>
                                 <Text style={styles.authorName}>{detail.caseStudyAuthor}</Text>
@@ -283,7 +283,6 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     equipmentCard: {
-        width: Platform.OS === 'web' ? 'calc(33.333% - 20px)' as any : '100%',
         backgroundColor: '#FFFFFF',
         padding: 40,
         borderRadius: 24,
@@ -315,7 +314,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     processSteps: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         justifyContent: 'space-between',
         gap: 40,
         marginTop: 40,
@@ -398,7 +396,6 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     heroSection: {
-        paddingVertical: Platform.OS === 'web' ? 140 : 100,
         paddingHorizontal: 24,
         alignItems: 'center',
         justifyContent: 'center',
@@ -435,15 +432,12 @@ const styles = StyleSheet.create({
         letterSpacing: 2,
     },
     heroTitle: {
-        fontSize: Platform.OS === 'web' ? 72 : 44,
         fontWeight: '900',
         color: '#FFFFFF',
         textAlign: 'center',
         marginBottom: 32,
-        lineHeight: Platform.OS === 'web' ? 84 : 52,
     },
     heroSubtitle: {
-        fontSize: Platform.OS === 'web' ? 26 : 20,
         color: '#CBD5E1',
         textAlign: 'center',
         lineHeight: 38,
@@ -454,7 +448,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     dualGrid: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 60,
     },
     contentBlock: {
@@ -491,7 +484,6 @@ const styles = StyleSheet.create({
         lineHeight: 32,
     },
     sectionHeading: {
-        fontSize: Platform.OS === 'web' ? 48 : 36,
         fontWeight: '900',
         color: Colors.navy,
         textAlign: 'center',
@@ -504,7 +496,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     featureItem: {
-        width: Platform.OS === 'web' ? 'calc(50% - 15px)' as any : '100%',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 20,
@@ -536,7 +527,6 @@ const styles = StyleSheet.create({
     caseStudyCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 48,
-        padding: Platform.OS === 'web' ? 100 : 50,
         alignItems: 'center',
         position: 'relative',
         shadowColor: '#000',
@@ -558,12 +548,7 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
     },
     caseStudyQuote: {
-        fontSize: Platform.OS === 'web' ? 36 : 24,
         fontWeight: '800',
-        color: Colors.navy,
-        textAlign: 'center',
-        lineHeight: Platform.OS === 'web' ? 52 : 36,
-        marginBottom: 48,
         fontStyle: 'italic',
     },
     authorBox: {

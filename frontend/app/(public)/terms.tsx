@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, useWindowDimensions } from 'react-native';
 import Head from 'expo-router/head';
 import Colors from '@/constants/colors';
 
 
 export default function TermsPage() {
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
     return (
         <ScrollView style={styles.container}>
             <Head>
@@ -14,9 +15,9 @@ export default function TermsPage() {
                 <meta property="og:url" content="https://www.cyvhub.com/terms" />
                 <meta property="og:type" content="website" />
             </Head>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingVertical: SCREEN_WIDTH >= 768 ? 80 : 60 }]}>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Terms of Service</Text>
+                    <Text style={[styles.headerTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>Terms of Service</Text>
                     <Text style={styles.headerSubtitle}>
                         Effective Date: {new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
                     </Text>
@@ -72,7 +73,6 @@ const styles = StyleSheet.create({
     },
     header: {
         backgroundColor: Colors.surfaceAlt,
-        paddingVertical: Platform.OS === 'web' ? 80 : 60,
         paddingHorizontal: 20,
         alignItems: 'center',
         borderBottomWidth: 1,
@@ -83,7 +83,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     headerTitle: {
-        fontSize: Platform.OS === 'web' ? 48 : 36,
         fontWeight: '800',
         color: Colors.text,
         marginBottom: 16,

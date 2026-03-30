@@ -170,7 +170,7 @@ export default function PublicHome() {
                 <meta name="twitter:image" content="https://www.cyvhub.com/og-image.png" />
             </Head>
             {/* HERO SECTION */}
-            <View style={[styles.heroSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
+            <View style={[styles.heroSection, { minHeight: SCREEN_WIDTH >= 1024 ? 620 : 700, paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                 {hero.bgImages && hero.bgImages.length > 0 ? hero.bgImages.slice(0, 3).map((imgUrl: string, index: number) => (
                     <Image
                         key={index}
@@ -186,7 +186,7 @@ export default function PublicHome() {
                 <View style={[styles.heroContent, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column', justifyContent: 'space-between', alignItems: SCREEN_WIDTH >= 768 ? 'center' : 'stretch', gap: 40 }]}>
                     <View style={{ flex: 1, alignItems: SCREEN_WIDTH >= 768 ? 'flex-start' : 'center', minWidth: 0 }}>
                         <Text style={[styles.heroTitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center', fontSize: SCREEN_WIDTH >= 1024 ? 56 : SCREEN_WIDTH >= 768 ? 42 : 32 }]}>{hero.headline}</Text>
-                        <Text style={[styles.heroSubtitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center' }]}>{hero.subheading}</Text>
+                        <Text style={[styles.heroSubtitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center', fontSize: SCREEN_WIDTH >= 768 ? 20 : 18 }]}>{hero.subheading}</Text>
                     </View>
 
                     {/* DUAL WIDGET TABS */}
@@ -344,7 +344,7 @@ export default function PublicHome() {
                     <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{howItWorks.title}</Text>
                     <Text style={styles.sectionSubtitle}>{howItWorks.subtitle}</Text>
                 </View>
-                <View style={styles.stepsGrid}>
+                <View style={[styles.stepsGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                     {howItWorks.steps?.map((step: any) => {
                         const IconComponent = step.icon === 'Calculator' ? Calculator : step.icon === 'CheckCircle' ? CheckCircle : MapPin;
                         return (
@@ -372,7 +372,7 @@ export default function PublicHome() {
                         ref={testimonialScrollRef}
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.testimonialsScroll}
+                        contentContainerStyle={[styles.testimonialsScroll, { paddingHorizontal: SCREEN_WIDTH >= 768 ? 0 : 20 }]}
                         onScroll={handleTestimonialScroll}
                         scrollEventThrottle={16}
                         snapToInterval={374}
@@ -417,10 +417,10 @@ export default function PublicHome() {
 
             {/* WHY CHOOSE US */}
             <View style={[styles.whyChooseSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
-                <View style={styles.whyChooseContent}>
+                <View style={[styles.whyChooseContent, { flexDirection: SCREEN_WIDTH >= 1024 ? 'row' : 'column' }]}>
                     <View style={styles.sectionHeaderLeft}>
                         <Text style={styles.sectionTag}>{whyUs.tag}</Text>
-                        <Text style={[styles.sectionTitleWhite, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{whyUs.title}</Text>
+                        <Text style={[styles.sectionTitleWhite, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>{whyUs.title}</Text>
                     </View>
                     <View style={styles.whyChooseGrid}>
                         {whyUs.cards?.map((card: any) => {
@@ -528,7 +528,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     heroSection: {
-        minHeight: Platform.OS === 'web' ? 620 : 700,
         paddingVertical: 60,
         paddingHorizontal: 20,
         backgroundColor: Colors.navy,
@@ -545,7 +544,6 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
     },
     heroTitle: {
-        fontSize: Platform.OS === 'web' ? 56 : 40,
         fontWeight: '800',
         color: '#FFFFFF',
         textAlign: 'center',
@@ -553,7 +551,6 @@ const styles = StyleSheet.create({
         letterSpacing: -1,
     },
     heroSubtitle: {
-        fontSize: Platform.OS === 'web' ? 20 : 18,
         color: '#94A3B8',
         textAlign: 'center',
         marginBottom: 40,
@@ -598,21 +595,12 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     widgetContainer: {
-        width: 480,
+        width: '100%',
+        maxWidth: 480,
         flexShrink: 1,
         flexGrow: 0,
-        minWidth: 300,
     },
-    bookingWidget: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 24,
-        elevation: 12,
-    },
+    // Consolidated bookingWidget at the bottom of the file
     widgetTabs: {
         flexDirection: 'row',
         marginBottom: 16,
@@ -842,7 +830,6 @@ const styles = StyleSheet.create({
         maxWidth: 600,
     },
     stepsGrid: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 32,
     },
     stepCard: {
@@ -899,7 +886,6 @@ const styles = StyleSheet.create({
     },
     testimonialsScroll: {
         paddingVertical: 20,
-        paddingHorizontal: Platform.OS === 'web' ? 0 : 20,
         gap: 24,
     },
     testimonialCard: {
@@ -980,7 +966,6 @@ const styles = StyleSheet.create({
         maxWidth: 1200,
         width: '100%',
         alignSelf: 'center',
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         gap: 60,
         alignItems: 'center',
     },
@@ -996,7 +981,6 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     sectionTitleWhite: {
-        fontSize: 42,
         fontWeight: '800',
         color: '#FFFFFF',
         lineHeight: 50,
@@ -1207,8 +1191,6 @@ const styles = StyleSheet.create({
         paddingVertical: 40,
     },
     serviceBannerCard: {
-        width: Platform.OS === 'web' ? '30%' : '100%',
-        minWidth: 320,
         flexGrow: 1,
         height: 350,
         borderRadius: 20,
@@ -1222,8 +1204,6 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     industryCard: {
-        width: Platform.OS === 'web' ? '22%' : '100%',
-        minWidth: 260,
         flexGrow: 1,
         height: 380,
         borderRadius: 24,
@@ -1232,7 +1212,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     bookingWidget: {
-        backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : '#FFFFFF',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
         borderRadius: 24,
         padding: 32,
         width: '100%',
