@@ -74,10 +74,8 @@ export default function PublicLayout() {
 
                     <View style={[styles.navLinks, (Platform.OS === 'web' && SCREEN_WIDTH < 768) || Platform.OS !== 'web' ? { display: 'none' } : null]}>
                         {header.menuItems?.map((item: any) => (
-                            <Link key={item.id} href={item.url as any} asChild>
-                                <TouchableOpacity style={styles.navItem}>
-                                    <Text style={styles.navText}>{item.label}</Text>
-                                </TouchableOpacity>
+                            <Link key={item.id} href={item.url as any} style={styles.navItemLink as any}>
+                                <Text style={styles.navText}>{item.label}</Text>
                             </Link>
                         ))}
                     </View>
@@ -104,16 +102,12 @@ export default function PublicLayout() {
             {isMenuOpen && (
                 <View style={styles.mobileMenu}>
                     {header.menuItems?.map((item: any) => (
-                        <Link key={item.id} href={item.url as any} asChild>
-                            <TouchableOpacity style={styles.mobileMenuItem} onPress={() => setIsMenuOpen(false)}>
-                                <Text style={styles.mobileMenuItemText}>{item.label}</Text>
-                            </TouchableOpacity>
+                        <Link key={item.id} href={item.url as any} style={styles.mobileMenuItemLink as any} onPress={() => setIsMenuOpen(false)}>
+                            <Text style={styles.mobileMenuItemText}>{item.label}</Text>
                         </Link>
                     ))}
-                    <Link href={header.loginBtnUrl as any} asChild>
-                        <TouchableOpacity style={styles.mobileMenuLoginBtn} onPress={() => setIsMenuOpen(false)}>
-                            <Text style={styles.mobileMenuLoginText}>{header.loginBtnText}</Text>
-                        </TouchableOpacity>
+                    <Link href={header.loginBtnUrl as any} style={styles.mobileMenuLoginBtn as any} onPress={() => setIsMenuOpen(false)}>
+                        <Text style={styles.mobileMenuLoginText}>{header.loginBtnText}</Text>
                     </Link>
                 </View>
             )}
@@ -135,28 +129,28 @@ export default function PublicLayout() {
                                 {footer.companyBio}
                             </Text>
                             <View style={styles.socialRow}>
-                                {footer.facebookUrl && <Link href={footer.facebookUrl as any} asChild><TouchableOpacity style={styles.socialBtn}><Facebook size={20} color={Colors.textInverse} /></TouchableOpacity></Link>}
-                                {footer.twitterUrl && <Link href={footer.twitterUrl as any} asChild><TouchableOpacity style={styles.socialBtn}><Twitter size={20} color={Colors.textInverse} /></TouchableOpacity></Link>}
-                                {footer.linkedinUrl && <Link href={footer.linkedinUrl as any} asChild><TouchableOpacity style={styles.socialBtn}><Linkedin size={20} color={Colors.textInverse} /></TouchableOpacity></Link>}
+                                {footer.facebookUrl && <Link href={footer.facebookUrl as any} style={styles.socialBtn as any}><Facebook size={20} color={Colors.textInverse} /></Link>}
+                                {footer.twitterUrl && <Link href={footer.twitterUrl as any} style={styles.socialBtn as any}><Twitter size={20} color={Colors.textInverse} /></Link>}
+                                {footer.linkedinUrl && <Link href={footer.linkedinUrl as any} style={styles.socialBtn as any}><Linkedin size={20} color={Colors.textInverse} /></Link>}
                             </View>
                         </View>
 
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Company</Text>
                             {footer.companyLinks?.map((link) => (
-                                <Link key={link.id} href={link.url as any} asChild><TouchableOpacity><Text style={styles.footerLink}>{link.label}</Text></TouchableOpacity></Link>
+                                <Link key={link.id} href={link.url as any} style={styles.footerLink as any}>{link.label}</Link>
                             ))}
                         </View>
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Solutions</Text>
                             {footer.solutionsLinks?.map((link) => (
-                                <Link key={link.id} href={link.url as any} asChild><TouchableOpacity><Text style={styles.footerLink}>{link.label}</Text></TouchableOpacity></Link>
+                                <Link key={link.id} href={link.url as any} style={styles.footerLink as any}>{link.label}</Link>
                             ))}
                         </View>
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Legal</Text>
                             {footer.legalLinks?.map((link) => (
-                                <Link key={link.id} href={link.url as any} asChild><TouchableOpacity><Text style={styles.footerLink}>{link.label}</Text></TouchableOpacity></Link>
+                                <Link key={link.id} href={link.url as any} style={styles.footerLink as any}>{link.label}</Link>
                             ))}
                         </View>
                     </View>
@@ -225,7 +219,6 @@ const styles = StyleSheet.create({
         flexShrink: 0,
         height: 40,
         minWidth: 140,
-        cursor: 'pointer',
     },
     logoImage: {
         width: 150,
@@ -249,6 +242,10 @@ const styles = StyleSheet.create({
     },
     navItem: {
         paddingVertical: 8,
+    },
+    navItemLink: {
+        paddingVertical: 8,
+        textDecorationLine: 'none',
     },
     navText: {
         fontSize: 16,
@@ -283,6 +280,13 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#F1F5F9',
+    },
+    mobileMenuItemLink: {
+        display: 'flex',
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+        textDecorationLine: 'none',
     },
     mobileMenuItemText: {
         fontSize: 16,

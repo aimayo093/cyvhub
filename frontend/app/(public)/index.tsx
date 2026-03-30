@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Platform, useWindowDimensions } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Truck, Clock, ShieldCheck, Leaf, ArrowRight, Zap, Target, Search, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight } from 'lucide-react-native';
 import Head from 'expo-router/head';
 import Colors from '@/constants/colors';
@@ -183,9 +183,9 @@ export default function PublicHome() {
                     />
                 )) : null}
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.6)' }]} />
-                <View style={[styles.heroContent, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column-reverse', justifyContent: 'space-between', gap: 40 }]}>
-                    <View style={{ flex: 1, alignItems: SCREEN_WIDTH >= 768 ? 'flex-start' : 'center', width: '100%' }}>
-                        <Text style={[styles.heroTitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center', fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{hero.headline}</Text>
+                <View style={[styles.heroContent, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column', justifyContent: 'space-between', alignItems: SCREEN_WIDTH >= 768 ? 'center' : 'stretch', gap: 40 }]}>
+                    <View style={{ flex: 1, alignItems: SCREEN_WIDTH >= 768 ? 'flex-start' : 'center', minWidth: 0 }}>
+                        <Text style={[styles.heroTitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center', fontSize: SCREEN_WIDTH >= 1024 ? 56 : SCREEN_WIDTH >= 768 ? 42 : 32 }]}>{hero.headline}</Text>
                         <Text style={[styles.heroSubtitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center' }]}>{hero.subheading}</Text>
                     </View>
 
@@ -195,22 +195,22 @@ export default function PublicHome() {
                             <View style={styles.widgetTabs}>
                                 {hero.showGuestWidget && (
                                     <TouchableOpacity
-                                        style={StyleSheet.flatten([styles.widgetTab, activeHeroTab === 'quote' && styles.widgetTabActive])}
+                                        style={[styles.widgetTab, activeHeroTab === 'quote' && styles.widgetTabActive]}
                                         onPress={() => setActiveHeroTab('quote')}
                                         activeOpacity={0.8}
                                     >
                                         <Calculator size={18} color={activeHeroTab === 'quote' ? Colors.primary : Colors.textSecondary} />
-                                        <Text style={StyleSheet.flatten([styles.widgetTabText, activeHeroTab === 'quote' && styles.widgetTabTextActive])}>Get a Quote</Text>
+                                        <Text style={[styles.widgetTabText, activeHeroTab === 'quote' && styles.widgetTabTextActive]}>Get a Quote</Text>
                                     </TouchableOpacity>
                                 )}
                                 {hero.showTrackWidget && (
                                     <TouchableOpacity
-                                        style={StyleSheet.flatten([styles.widgetTab, activeHeroTab === 'track' && styles.widgetTabActive])}
+                                        style={[styles.widgetTab, activeHeroTab === 'track' && styles.widgetTabActive]}
                                         onPress={() => setActiveHeroTab('track')}
                                         activeOpacity={0.8}
                                     >
                                         <Search size={18} color={activeHeroTab === 'track' ? Colors.primary : Colors.textSecondary} />
-                                        <Text style={StyleSheet.flatten([styles.widgetTabText, activeHeroTab === 'track' && styles.widgetTabTextActive])}>Track Parcel</Text>
+                                        <Text style={[styles.widgetTabText, activeHeroTab === 'track' && styles.widgetTabTextActive]}>Track Parcel</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -224,7 +224,7 @@ export default function PublicHome() {
                                         <View style={styles.formContainer}>
                                             <View style={styles.postcodeRow}>
                                                 <View style={styles.gridField}>
-                                                    <Text style={StyleSheet.flatten([styles.inputLabel, { marginBottom: 8 }])}>Collection postcode: <Text style={styles.required}>*</Text></Text>
+                                                    <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Collection postcode: <Text style={styles.required}>*</Text></Text>
                                                     <View style={styles.inputIconWrapper}>
                                                         <MapPin size={18} color={Colors.textMuted} style={styles.inputIcon as any} />
                                                         <TextInput style={styles.inputWithIcon} value={collection} onChangeText={setCollection} placeholder="e.g. EC1A 1BB" />
@@ -232,7 +232,7 @@ export default function PublicHome() {
                                                 </View>
 
                                                 <View style={styles.gridField}>
-                                                    <Text style={StyleSheet.flatten([styles.inputLabel, { marginBottom: 8 }])}>Delivery postcode: <Text style={styles.required}>*</Text></Text>
+                                                    <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Delivery postcode: <Text style={styles.required}>*</Text></Text>
                                                     <View style={styles.inputIconWrapper}>
                                                         <MapPin size={18} color={Colors.textMuted} style={styles.inputIcon as any} />
                                                         <TextInput style={styles.inputWithIcon} value={delivery} onChangeText={setDelivery} placeholder="e.g. M1 1AE" />
@@ -242,13 +242,13 @@ export default function PublicHome() {
 
                                             <View style={styles.optionsRow}>
                                                 {hero.showVehicleSelection && (
-                                                    <View style={StyleSheet.flatten([styles.gridField, { flex: 1.2 }])}>
-                                                        <Text style={StyleSheet.flatten([styles.inputLabel, { marginBottom: 8 }])}>Vehicle Required:</Text>
+                                                    <View style={[styles.gridField, { flex: 1.2 }]}>
+                                                        <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Vehicle Required:</Text>
                                                         <View style={styles.vehicleOptions}>
                                                             {['Small Van', 'Medium Van', 'Large Van'].map(van => (
-                                                                <TouchableOpacity key={van} style={StyleSheet.flatten([styles.vehicleOption, vehicleType === van && styles.vehicleOptionSelected])} onPress={() => setVehicleType(van)} activeOpacity={0.8}>
+                                                                <TouchableOpacity key={van} style={[styles.vehicleOption, vehicleType === van && styles.vehicleOptionSelected]} onPress={() => setVehicleType(van)} activeOpacity={0.8}>
                                                                     <Truck size={16} color={vehicleType === van ? Colors.primary : Colors.textMuted} />
-                                                                    <Text style={StyleSheet.flatten([styles.vehicleText, vehicleType === van && styles.vehicleTextSelected])}>{van}</Text>
+                                                                    <Text style={[styles.vehicleText, vehicleType === van && styles.vehicleTextSelected]}>{van}</Text>
                                                                 </TouchableOpacity>
                                                             ))}
                                                         </View>
@@ -256,16 +256,16 @@ export default function PublicHome() {
                                                 )}
 
                                                 {hero.showDateSelection && (
-                                                    <View style={StyleSheet.flatten([styles.gridField, { flex: 0.8 }])}>
-                                                        <Text style={StyleSheet.flatten([styles.inputLabel, { marginBottom: 8 }])}>Collection Time:</Text>
+                                                    <View style={[styles.gridField, { flex: 0.8 }]}>
+                                                        <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Collection Time:</Text>
                                                         <View style={styles.vehicleOptions}>
-                                                            <TouchableOpacity style={StyleSheet.flatten([styles.vehicleOption, isReadyNow && styles.vehicleOptionSelected])} onPress={() => setIsReadyNow(true)} activeOpacity={0.8}>
+                                                            <TouchableOpacity style={[styles.vehicleOption, isReadyNow && styles.vehicleOptionSelected]} onPress={() => setIsReadyNow(true)} activeOpacity={0.8}>
                                                                 <Clock size={16} color={isReadyNow ? Colors.primary : Colors.textMuted} />
-                                                                <Text style={StyleSheet.flatten([styles.vehicleText, isReadyNow && styles.vehicleTextSelected])}>Ready Now</Text>
+                                                                <Text style={[styles.vehicleText, isReadyNow && styles.vehicleTextSelected]}>Ready Now</Text>
                                                             </TouchableOpacity>
-                                                            <TouchableOpacity style={StyleSheet.flatten([styles.vehicleOption, !isReadyNow && styles.vehicleOptionSelected])} onPress={() => setIsReadyNow(false)} activeOpacity={0.8}>
+                                                            <TouchableOpacity style={[styles.vehicleOption, !isReadyNow && styles.vehicleOptionSelected]} onPress={() => setIsReadyNow(false)} activeOpacity={0.8}>
                                                                 <Calculator size={16} color={!isReadyNow ? Colors.primary : Colors.textMuted} />
-                                                                <Text style={StyleSheet.flatten([styles.vehicleText, !isReadyNow && styles.vehicleTextSelected])}>Pre-book Later</Text>
+                                                                <Text style={[styles.vehicleText, !isReadyNow && styles.vehicleTextSelected]}>Pre-book Later</Text>
                                                             </TouchableOpacity>
                                                         </View>
                                                     </View>
@@ -408,10 +408,7 @@ export default function PublicHome() {
                         {testimonials.testimonials.map((_: any, i: number) => (
                             <View
                                 key={i}
-                                style={StyleSheet.flatten([
-                                    styles.dot,
-                                    activeTestimonialIndex === i && styles.dotActive
-                                ])}
+                                style={[styles.dot, activeTestimonialIndex === i && styles.dotActive]}
                             />
                         ))}
                     </View>
@@ -448,20 +445,23 @@ export default function PublicHome() {
                 </View>
                 <View style={styles.cardsGrid}>
                     {services.banners?.map((banner: any) => (
-                        <Link key={banner.id} href={banner.link as any} asChild>
-                            <TouchableOpacity style={[styles.serviceBannerCard, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 640 ? '48%' : '100%' }]} activeOpacity={0.9}>
-                                <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFillObject} />
-                                <View style={styles.serviceOverlay} />
-                                <View style={styles.serviceBannerContent}>
-                                    <Text style={styles.serviceBannerTitle}>{banner.title}</Text>
-                                    <Text style={styles.serviceBannerDesc}>{banner.desc}</Text>
-                                    <View style={styles.serviceBannerLink}>
-                                        <Text style={styles.serviceBannerLinkText}>Learn More</Text>
-                                        <ArrowRight size={16} color="#FFF" />
-                                    </View>
+                        <TouchableOpacity
+                            key={banner.id}
+                            style={[styles.serviceBannerCard, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 640 ? '48%' : '100%' }]}
+                            activeOpacity={0.9}
+                            onPress={() => router.push(banner.link as any)}
+                        >
+                            <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFillObject} />
+                            <View style={styles.serviceOverlay} />
+                            <View style={styles.serviceBannerContent}>
+                                <Text style={styles.serviceBannerTitle}>{banner.title}</Text>
+                                <Text style={styles.serviceBannerDesc}>{banner.desc}</Text>
+                                <View style={styles.serviceBannerLink}>
+                                    <Text style={styles.serviceBannerLinkText}>Learn More</Text>
+                                    <ArrowRight size={16} color="#FFF" />
                                 </View>
-                            </TouchableOpacity>
-                        </Link>
+                            </View>
+                        </TouchableOpacity>
                     ))}
                 </View>
             </View>
@@ -475,19 +475,22 @@ export default function PublicHome() {
                     </View>
                     <View style={styles.cardsGrid}>
                         {industries.industries.map((ind: any) => (
-                            <Link key={ind.id} href={`/services?industry=${ind.id}` as any} asChild>
-                                <TouchableOpacity style={[styles.industryCard, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 640 ? '48%' : '100%' }]} activeOpacity={0.9}>
-                                    <Image source={{ uri: ind.imageUrl }} style={styles.industryImg} />
-                                    <View style={styles.industryOverlay} />
-                                    <View style={styles.industryContent}>
-                                        <View style={styles.industryHeader}>
-                                            <Text style={styles.industryTitle}>{ind.title}</Text>
-                                            <ArrowUpRight size={20} color="#FFFFFF" />
-                                        </View>
-                                        <Text style={styles.industryDesc}>{ind.desc}</Text>
+                            <TouchableOpacity
+                                key={ind.id}
+                                style={[styles.industryCard, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 640 ? '48%' : '100%' }]}
+                                activeOpacity={0.9}
+                                onPress={() => router.push(`/services?industry=${ind.id}` as any)}
+                            >
+                                <Image source={{ uri: ind.imageUrl }} style={styles.industryImg} />
+                                <View style={styles.industryOverlay} />
+                                <View style={styles.industryContent}>
+                                    <View style={styles.industryHeader}>
+                                        <Text style={styles.industryTitle}>{ind.title}</Text>
+                                        <ArrowUpRight size={20} color="#FFFFFF" />
                                     </View>
-                                </TouchableOpacity>
-                            </Link>
+                                    <Text style={styles.industryDesc}>{ind.desc}</Text>
+                                </View>
+                            </TouchableOpacity>
                         ))}
                     </View>
                 </View>
@@ -499,23 +502,20 @@ export default function PublicHome() {
                     <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{cta.title}</Text>
                     <Text style={styles.ctaDesc}>{cta.desc}</Text>
                     <View style={styles.ctaActionRow}>
-                        <Link href={cta.primaryBtnLink as any} asChild>
-                            <TouchableOpacity
-                                style={styles.ctaPrimaryBtn}
-                                activeOpacity={0.8}
-                                onPress={scrollToTop}
-                            >
-                                <Text style={styles.ctaPrimaryBtnText}>{cta.primaryBtnText}</Text>
-                            </TouchableOpacity>
-                        </Link>
-                        <Link href={cta.secondaryBtnLink as any} asChild>
-                            <TouchableOpacity
-                                style={styles.ctaSecondaryBtn}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.ctaSecondaryBtnText}>{cta.secondaryBtnText}</Text>
-                            </TouchableOpacity>
-                        </Link>
+                        <TouchableOpacity
+                            style={styles.ctaPrimaryBtn}
+                            activeOpacity={0.8}
+                            onPress={() => { scrollToTop(); router.push(cta.primaryBtnLink as any); }}
+                        >
+                            <Text style={styles.ctaPrimaryBtnText}>{cta.primaryBtnText}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.ctaSecondaryBtn}
+                            activeOpacity={0.8}
+                            onPress={() => router.push(cta.secondaryBtnLink as any)}
+                        >
+                            <Text style={styles.ctaSecondaryBtnText}>{cta.secondaryBtnText}</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     heroSection: {
-        minHeight: Platform.OS === 'web' ? 500 : 600,
+        minHeight: Platform.OS === 'web' ? 620 : 700,
         paddingVertical: 60,
         paddingHorizontal: 20,
         backgroundColor: Colors.navy,
@@ -542,6 +542,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         zIndex: 2,
         width: '100%',
+        flexWrap: 'wrap',
     },
     heroTitle: {
         fontSize: Platform.OS === 'web' ? 56 : 40,
@@ -597,9 +598,20 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     widgetContainer: {
-        width: '100%',
-        maxWidth: 1200,
-        alignSelf: 'center',
+        width: 480,
+        flexShrink: 1,
+        flexGrow: 0,
+        minWidth: 300,
+    },
+    bookingWidget: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 24,
+        elevation: 12,
     },
     widgetTabs: {
         flexDirection: 'row',
@@ -647,7 +659,7 @@ const styles = StyleSheet.create({
     },
     gridField: {
         flex: 1,
-        minWidth: 280,
+        minWidth: 120,
     },
     inputLabel: {
         fontSize: 14,
