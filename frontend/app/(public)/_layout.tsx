@@ -18,7 +18,6 @@ export default function PublicLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
  
     const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
-    const drawerAnim = useRef(new Animated.Value(-SCREEN_WIDTH)).current;
 
     useEffect(() => {
         if (header.enableAnnouncement) {
@@ -34,13 +33,6 @@ export default function PublicLayout() {
     }, [header.enableAnnouncement, slideAnim]);
  
     const toggleMenu = () => {
-        const drawerWidth = Math.min(SCREEN_WIDTH * 0.8, 300);
-        const toValue = isMenuOpen ? -drawerWidth : 0;
-        Animated.timing(drawerAnim, {
-            toValue,
-            duration: 300,
-            useNativeDriver: true,
-        }).start();
         setIsMenuOpen(!isMenuOpen);
     };
 
@@ -108,42 +100,32 @@ export default function PublicLayout() {
                 </View>
             </View>
 
-            {/* MOBILE DRAWER */}
-            <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
-                <View style={[styles.drawerHeader, { paddingTop: insets.top + 20 }]}>
-                    <Image
-                        source={require('@/assets/images/logo-color-no-bg.png')}
-                        style={styles.drawerLogo}
-                        resizeMode="contain"
-                    />
-                    <TouchableOpacity onPress={toggleMenu}>
-                        <X size={28} color={Colors.text} />
-                    </TouchableOpacity>
-                </View>
-                <ScrollView contentContainerStyle={styles.drawerContent}>
+            {/* MOBILE ACCORDION MENU */}
+            {isMenuOpen && (
+                <View style={styles.mobileMenu}>
                     {header.menuItems?.map((item: any) => (
                         <Link key={item.id} href={item.url as any} asChild>
-                            <TouchableOpacity style={styles.drawerItem} onPress={toggleMenu}>
-                                <Text style={styles.drawerItemText}>{item.label}</Text>
+                            <TouchableOpacity style={styles.mobileMenuItem} onPress={() => setIsMenuOpen(false)}>
+                                <Text style={styles.mobileMenuItemText}>{item.label}</Text>
                             </TouchableOpacity>
                         </Link>
                     ))}
                     <Link href={header.loginBtnUrl as any} asChild>
-                        <TouchableOpacity style={styles.drawerLoginBtn} onPress={toggleMenu}>
-                            <Text style={styles.drawerLoginText}>{header.loginBtnText}</Text>
+                        <TouchableOpacity style={styles.mobileMenuLoginBtn} onPress={() => setIsMenuOpen(false)}>
+                            <Text style={styles.mobileMenuLoginText}>{header.loginBtnText}</Text>
                         </TouchableOpacity>
                     </Link>
-                </ScrollView>
-            </Animated.View>
+                </View>
+            )}
 
             {/* PAGE CONTENT */}
             <ScrollView style={styles.main} contentContainerStyle={styles.mainContent}>
                 <Slot />
 
                 {/* FOOTER */}
-                <View style={styles.footer}>
+                <View style={[styles.footer, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                     <View style={styles.footerTop}>
-                        <View style={styles.footerColMain}>
+                        <View style={[styles.footerColMain, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Image
                                 source={require('@/assets/images/logo-white-no-bg.png')}
                                 style={styles.footerLogoImage}
@@ -159,19 +141,19 @@ export default function PublicLayout() {
                             </View>
                         </View>
 
-                        <View style={styles.footerCol}>
+                        <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Company</Text>
                             {footer.companyLinks?.map((link) => (
                                 <Link key={link.id} href={link.url as any} asChild><TouchableOpacity><Text style={styles.footerLink}>{link.label}</Text></TouchableOpacity></Link>
                             ))}
                         </View>
-                        <View style={styles.footerCol}>
+                        <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Solutions</Text>
                             {footer.solutionsLinks?.map((link) => (
                                 <Link key={link.id} href={link.url as any} asChild><TouchableOpacity><Text style={styles.footerLink}>{link.label}</Text></TouchableOpacity></Link>
                             ))}
                         </View>
-                        <View style={styles.footerCol}>
+                        <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Legal</Text>
                             {footer.legalLinks?.map((link) => (
                                 <Link key={link.id} href={link.url as any} asChild><TouchableOpacity><Text style={styles.footerLink}>{link.label}</Text></TouchableOpacity></Link>
@@ -289,55 +271,32 @@ const styles = StyleSheet.create({
     menuIcon: {
         padding: 8,
     },
-    drawer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        bottom: 0,
-        width: '80%',
-        maxWidth: 300,
+    mobileMenu: {
         backgroundColor: '#FFFFFF',
-        zIndex: 100,
-        shadowColor: '#000',
-        shadowOffset: { width: 4, height: 0 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 10,
-    },
-    drawerHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingBottom: 20,
         borderBottomWidth: 1,
         borderBottomColor: Colors.border,
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        zIndex: 9,
     },
-    drawerLogo: {
-        width: 120,
-        height: 40,
-    },
-    drawerContent: {
-        padding: 20,
-    },
-    drawerItem: {
+    mobileMenuItem: {
         paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#F1F5F9',
     },
-    drawerItemText: {
-        fontSize: 18,
+    mobileMenuItemText: {
+        fontSize: 16,
         fontWeight: '600',
         color: Colors.text,
     },
-    drawerLoginBtn: {
-        marginTop: 32,
+    mobileMenuLoginBtn: {
+        marginTop: 20,
         backgroundColor: Colors.primary,
-        paddingVertical: 16,
-        borderRadius: 12,
+        paddingVertical: 14,
+        borderRadius: 8,
         alignItems: 'center',
     },
-    drawerLoginText: {
+    mobileMenuLoginText: {
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '700',
@@ -355,17 +314,18 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
     footerTop: {
-        flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         maxWidth: 1200,
         width: '100%',
         alignSelf: 'center',
         justifyContent: 'space-between',
-        gap: 40,
+        gap: 32,
         marginBottom: 40,
     },
     footerColMain: {
-        flex: 2,
-        maxWidth: 400,
+        width: '100%',
+        minWidth: 280,
     },
     footerLogoImage: {
         width: 140,
@@ -397,7 +357,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     footerCol: {
-        flex: 1,
+        width: '100%',
         gap: 16,
     },
     footerLink: {

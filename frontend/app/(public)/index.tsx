@@ -170,7 +170,7 @@ export default function PublicHome() {
                 <meta name="twitter:image" content="https://www.cyvhub.com/og-image.png" />
             </Head>
             {/* HERO SECTION */}
-            <View style={styles.heroSection}>
+            <View style={[styles.heroSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                 {hero.bgImages && hero.bgImages.length > 0 ? hero.bgImages.slice(0, 3).map((imgUrl: string, index: number) => (
                     <Image
                         key={index}
@@ -183,10 +183,11 @@ export default function PublicHome() {
                     />
                 )) : null}
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.6)' }]} />
-                <View style={styles.heroContent}>
-                    <Text style={styles.heroTitle}>{hero.headline}</Text>
-                    <Text style={styles.heroSubtitle}>{hero.subheading}</Text>
-
+                <View style={[styles.heroContent, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column-reverse', justifyContent: 'space-between', gap: 40 }]}>
+                    <View style={{ flex: 1, alignItems: SCREEN_WIDTH >= 768 ? 'flex-start' : 'center', width: '100%' }}>
+                        <Text style={[styles.heroTitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center', fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{hero.headline}</Text>
+                        <Text style={[styles.heroSubtitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center' }]}>{hero.subheading}</Text>
+                    </View>
 
                     {/* DUAL WIDGET TABS */}
                     {(hero.showGuestWidget || hero.showTrackWidget) && (
@@ -319,7 +320,7 @@ export default function PublicHome() {
 
             {/* LIVE STATS BAR */}
             {stats.stats && stats.stats.length > 0 && (
-                <View style={styles.statsSection}>
+                <View style={[styles.statsSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                     <View style={styles.statsInner}>
                         {stats.stats.map((stat: any) => {
                             const IconComponent = stat.icon === 'Package' ? Package : stat.icon === 'Users' ? Users : stat.icon === 'Clock' ? Clock : MapPin;
@@ -338,9 +339,9 @@ export default function PublicHome() {
             )}
 
             {/* HOW IT WORKS */}
-            <View style={styles.howItWorksSection}>
+            <View style={[styles.howItWorksSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>{howItWorks.title}</Text>
+                    <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{howItWorks.title}</Text>
                     <Text style={styles.sectionSubtitle}>{howItWorks.subtitle}</Text>
                 </View>
                 <View style={styles.stepsGrid}>
@@ -364,8 +365,8 @@ export default function PublicHome() {
             {testimonials.testimonials && testimonials.testimonials.length > 0 && (
                 <View style={styles.testimonialsSection}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>{testimonials.title}</Text>
-                        <Text style={styles.sectionSubtitle}>{testimonials.subtitle}</Text>
+                        <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30, paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>{testimonials.title}</Text>
+                        <Text style={[styles.sectionSubtitle, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>{testimonials.subtitle}</Text>
                     </View>
                     <ScrollView
                         ref={testimonialScrollRef}
@@ -418,17 +419,17 @@ export default function PublicHome() {
             )}
 
             {/* WHY CHOOSE US */}
-            <View style={styles.whyChooseSection}>
+            <View style={[styles.whyChooseSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                 <View style={styles.whyChooseContent}>
                     <View style={styles.sectionHeaderLeft}>
                         <Text style={styles.sectionTag}>{whyUs.tag}</Text>
-                        <Text style={styles.sectionTitleWhite}>{whyUs.title}</Text>
+                        <Text style={[styles.sectionTitleWhite, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{whyUs.title}</Text>
                     </View>
                     <View style={styles.whyChooseGrid}>
                         {whyUs.cards?.map((card: any) => {
                             const IconComponent = card.icon === 'Zap' ? Zap : card.icon === 'ShieldCheck' ? ShieldCheck : card.icon === 'TrendingUp' ? TrendingUp : Headset;
                             return (
-                                <View key={card.id} style={styles.whyCard}>
+                                <View key={card.id} style={[styles.whyCard, { width: SCREEN_WIDTH >= 768 ? '31%' : '100%', flexBasis: 'auto' }]}>
                                     <IconComponent size={28} color={Colors.primary} style={styles.whyIcon as any} />
                                     <Text style={styles.whyCardTitle}>{card.title}</Text>
                                     <Text style={styles.whyCardDesc}>{card.desc}</Text>
@@ -440,15 +441,15 @@ export default function PublicHome() {
             </View>
 
             {/* SERVICES OVERVIEW */}
-            <View style={styles.servicesSection}>
+            <View style={[styles.servicesSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>{services.title}</Text>
+                    <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{services.title}</Text>
                     <Text style={styles.sectionSubtitle}>{services.subtitle}</Text>
                 </View>
                 <View style={styles.cardsGrid}>
                     {services.banners?.map((banner: any) => (
                         <Link key={banner.id} href={banner.link as any} asChild>
-                            <TouchableOpacity style={styles.serviceBannerCard} activeOpacity={0.9}>
+                            <TouchableOpacity style={[styles.serviceBannerCard, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 640 ? '48%' : '100%' }]} activeOpacity={0.9}>
                                 <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFillObject} />
                                 <View style={styles.serviceOverlay} />
                                 <View style={styles.serviceBannerContent}>
@@ -467,15 +468,15 @@ export default function PublicHome() {
 
             {/* INDUSTRIES SECTION */}
             {industries.industries && industries.industries.length > 0 && (
-                <View style={styles.industriesSection}>
+                <View style={[styles.industriesSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>{industries.title}</Text>
+                        <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{industries.title}</Text>
                         <Text style={styles.sectionSubtitle}>{industries.subtitle}</Text>
                     </View>
                     <View style={styles.cardsGrid}>
                         {industries.industries.map((ind: any) => (
                             <Link key={ind.id} href={`/services?industry=${ind.id}` as any} asChild>
-                                <TouchableOpacity style={styles.industryCard} activeOpacity={0.9}>
+                                <TouchableOpacity style={[styles.industryCard, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 640 ? '48%' : '100%' }]} activeOpacity={0.9}>
                                     <Image source={{ uri: ind.imageUrl }} style={styles.industryImg} />
                                     <View style={styles.industryOverlay} />
                                     <View style={styles.industryContent}>
@@ -493,9 +494,9 @@ export default function PublicHome() {
             )}
 
             {/* CTA SECTION */}
-            <View style={styles.ctaSection}>
+            <View style={[styles.ctaSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
                 <View style={styles.ctaContent}>
-                    <Text style={styles.ctaTitle}>{cta.title}</Text>
+                    <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{cta.title}</Text>
                     <Text style={styles.ctaDesc}>{cta.desc}</Text>
                     <View style={styles.ctaActionRow}>
                         <Link href={cta.primaryBtnLink as any} asChild>
@@ -1223,7 +1224,9 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 32,
         width: '100%',
-        maxWidth: 700,
+        marginHorizontal: 'auto',
+        alignSelf: 'center',
+        maxWidth: 672,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 20 },
         shadowOpacity: 0.15,
