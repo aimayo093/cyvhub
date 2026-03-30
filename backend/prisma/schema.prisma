@@ -68,7 +68,7 @@ model User {
 model DriverComplianceDocument {
   id             String    @id @default(uuid())
   driverId       String
-  driver         User      @relation("DriverDocs", fields: [driverId], references: [id])
+  driver         User      @relation("DriverDocs", fields: [driverId], references: [id], onDelete: Cascade)
 
   documentType   String    // e.g. "driving_licence" | "motor_insurance" | "mot" | ...
   fileName       String
@@ -86,7 +86,7 @@ model DriverComplianceDocument {
   rejectionReason String?
 
   verifiedByAdminId String?
-  verifiedByAdmin   User?   @relation("ReviewedByAdmin", fields: [verifiedByAdminId], references: [id])
+  verifiedByAdmin   User?   @relation("ReviewedByAdmin", fields: [verifiedByAdminId], references: [id], onDelete: SetNull)
   verifiedAt        DateTime?
 
   createdAt      DateTime  @default(now())
@@ -135,14 +135,14 @@ model Job {
   deliveredAt       DateTime?
 
   // Relationships
-  customerId String
-  customer   User   @relation("CustomerJobs", fields: [customerId], references: [id])
+  customerId String?
+  customer   User?   @relation("CustomerJobs", fields: [customerId], references: [id], onDelete: SetNull)
 
   assignedDriverId String?
-  assignedDriver   User?   @relation("DriverJobs", fields: [assignedDriverId], references: [id])
+  assignedDriver   User?   @relation("DriverJobs", fields: [assignedDriverId], references: [id], onDelete: SetNull)
 
   assignedCarrierId String?
-  assignedCarrier   User?   @relation("CarrierJobs", fields: [assignedCarrierId], references: [id])
+  assignedCarrier   User?   @relation("CarrierJobs", fields: [assignedCarrierId], references: [id], onDelete: SetNull)
 
   businessAccountId String?
   businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id])
@@ -434,7 +434,7 @@ model ComplianceDocument {
   adminNote      String?
 
   verifiedByAdminId String?
-  verifiedByAdmin   User?   @relation("CarrierDocReview", fields: [verifiedByAdminId], references: [id])
+  verifiedByAdmin   User?   @relation("CarrierDocReview", fields: [verifiedByAdminId], references: [id], onDelete: SetNull)
   verifiedAt        DateTime?
 
   carrierId String
