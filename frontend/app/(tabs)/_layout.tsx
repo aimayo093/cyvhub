@@ -47,12 +47,24 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SIDEBAR_WIDTH = 240;
 const isWeb = Platform.OS === "web";
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function TabLayout() {
   const { userRole, logout } = useAuth();
   const { header } = useCMS();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = Dimensions.get('window');
+  // Use window dimensions for responsive breakpoints
+  // isDesktop = true only on web with wide enough screen (desktop/tablet)
+  // On a mobile browser or native app, isDesktop is false -> show drawer
+  const [windowWidth, setWindowWidth] = React.useState(screenWidth);
+  React.useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ window }) => {
+      setWindowWidth(window.width);
+    });
+    return () => sub?.remove();
+  }, []);
+  const isDesktop = isWeb && windowWidth >= 768;
+
   const isDriver = userRole === "driver";
   const isCustomer = userRole === "customer";
   const isAdmin = userRole === "admin";
@@ -106,12 +118,12 @@ export default function TabLayout() {
 
       <View style={[styles.layoutContent, { flex: 1, flexDirection: 'row' }]}>
       {/* === MOBILE SIDEBAR OVERLAY === */}
-      {!isWeb && sidebarOpen && (
+      {!isDesktop && sidebarOpen && (
         <Pressable style={styles.overlay} onPress={closeSidebar} />
       )}
 
       {/* === MOBILE SLIDE-OUT SIDEBAR === */}
-      {!isWeb && (
+      {!isDesktop && (
         <Animated.View
           style={[
             styles.mobileSidebar,
@@ -136,7 +148,7 @@ export default function TabLayout() {
       )}
 
       {/* === WEB PERSISTENT SIDEBAR === */}
-      {isWeb && (
+      {isDesktop && (
         <View style={[styles.webSidebar, { paddingTop: 16, paddingBottom: 16 }]}>
           <SidebarContent
             accent={accent}
@@ -153,8 +165,8 @@ export default function TabLayout() {
 
       {/* === MAIN CONTENT === */}
       <View style={styles.mainContent}>
-        {/* Mobile hamburger header */}
-        {!isWeb && (
+        {/* Mobile hamburger header — shown on mobile browsers AND native */}
+        {!isDesktop && (
           <View style={[styles.mobileHeader, { paddingTop: insets.top + 8 }]}>
             <TouchableOpacity
               onPress={toggleSidebar}
@@ -430,6 +442,8 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
   },
   mobileHeader: {
     flexDirection: "row",
@@ -466,6 +480,7 @@ const styles = StyleSheet.create({
   },
   layoutContent: {
     flex: 1,
+    overflow: 'hidden',
   },
 });
 

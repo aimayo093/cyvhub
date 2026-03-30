@@ -191,7 +191,9 @@ app.use('/api/payroll', payrollRoutes);
 app.use('/api/cron', cronRoutes);
 
 // Admin CMS & Oversight Dashboard
-app.use('/api/cms/pages', cmsRoutes);
+// NOTE: mounted at /api/cms (not /api/cms/pages) so routes like
+// GET  /api/cms/config/:key  and  POST /api/cms/config  resolve correctly.
+app.use('/api/cms', cmsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/commercial', adminCommercialRoutes);
 

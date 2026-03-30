@@ -265,7 +265,7 @@ export type ContactPageConfig = {
 
 // --- Mock Initial Data ---
 export const initialHeader: HeaderConfig = {
-    logoUrl: 'https://cyvhub.com/logo.png',
+    logoUrl: '', // Empty = use local bundled asset fallback in layout
     enableSticky: true,
     enableAnnouncement: true,
     announcementText: '🚀 Breaking News: CYVhub expands nationwide! Click here for details.',

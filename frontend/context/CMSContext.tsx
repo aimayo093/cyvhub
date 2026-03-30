@@ -45,9 +45,10 @@ interface CMSContextValue {
     setServicesPage: (v: ServicesPageConfig, sync?: boolean) => Promise<void>;
     setIndustryDetails: (v: Record<string, IndustryDetail>, sync?: boolean) => Promise<void>;
     setHomepageSection: (key: string, value: any, sync?: boolean) => Promise<void>;
+    setHomepageSections: (updates: Record<string, any>, sync?: boolean) => Promise<void>;
 
     isLoaded: boolean;
-    refreshFromBackend: () => Promise<void>;
+    refreshFromBackend: (force?: boolean) => Promise<void>;
 }
 
 const CMSContext = createContext<CMSContextValue | null>(null);
@@ -105,10 +106,14 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
                     config: fullData
                 })
             });
-            // Update local cache as well
+            // Update local cache
             await AsyncStorage.setItem(`cms_${CMS_CONFIG_KEY}`, JSON.stringify(fullData));
+            // Invalidate the 5-minute throttle so next load re-fetches fresh data
+            await AsyncStorage.removeItem(`cms_last_fetch_${CMS_CONFIG_KEY}`);
+            console.log('[CMSContext] Config synced to backend and cache invalidated.');
         } catch (e) {
-            console.error('CMSContext: Failed to sync to backend:', e);
+            console.error('[CMSContext] Failed to sync to backend:', e);
+            throw e; // Re-throw so callers can catch and show user-facing errors
         }
     }, []);
 
@@ -172,12 +177,23 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         if (sync) await syncToBackend({ ...getFullState(), homepageData: newHpData });
     };
 
+    /**
+     * Batch-update multiple homepage sections and sync once to the backend.
+     * Use this instead of calling setHomepageSection N times to avoid
+     * each call overwriting the previous in a write race.
+     */
+    const setHomepageSections = async (updates: Record<string, any>, sync = false) => {
+        const newHpData = { ...homepageData, ...updates };
+        setHomepageData(newHpData);
+        if (sync) await syncToBackend({ ...getFullState(), homepageData: newHpData });
+    };
+
     return (
         <CMSContext.Provider value={{
             header, footer, aboutPage, contactPage, servicesPage,
             industryDetails, homepageData,
             setHeader, setFooter, setAboutPage, setContactPage, setServicesPage,
-            setIndustryDetails, setHomepageSection,
+            setIndustryDetails, setHomepageSection, setHomepageSections,
             isLoaded,
             refreshFromBackend
         }}>

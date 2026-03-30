@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
+import { useRouter } from 'expo-router';
 import { AuthService } from '@/services/AuthService';
 import { apiClient } from '@/services/api';
 import { DriverProfile, CustomerProfile, AdminProfile, CarrierProfile, UserRole } from '@/types';
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
+  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
@@ -74,7 +76,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     setCustomer(null);
     setAdmin(null);
     setCarrier(null);
-  }, []);
+    // Always redirect to login, not the homepage, regardless of platform
+    try {
+      router.replace('/login' as any);
+    } catch (_) {
+      // router may not be available in all contexts — the auth guard will handle redirect
+    }
+  }, [router]);
 
   const updateDriverStatus = useCallback((status: DriverProfile['currentStatus']) => {
     setDriver(prev => prev ? { ...prev, currentStatus: status } : null);

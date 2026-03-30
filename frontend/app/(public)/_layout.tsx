@@ -66,9 +66,11 @@ export default function PublicLayout() {
                                 resizeMode="contain" 
                             />
                         ) : (
-                            <View style={styles.logoFallback}>
-                                <Text style={styles.logoFallbackText}>CYVHUB</Text>
-                            </View>
+                            <Image
+                                source={require('@/assets/images/logo-color-no-bg.png')}
+                                style={styles.logoImage}
+                                resizeMode="contain"
+                            />
                         )}
                     </TouchableOpacity>
 

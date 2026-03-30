@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -9,7 +9,7 @@ import {
     Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Upload, X, ImageIcon } from 'lucide-react-native';
+import { Upload, X, ImageIcon, AlertCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
 
@@ -21,33 +21,73 @@ interface ImageUploadFieldProps {
 
 export default function ImageUploadField({ value, onUploadComplete, label }: ImageUploadFieldProps) {
     const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const fileInputRef = useRef<any>(null);
 
     const pickImage = async () => {
-        // No permissions request is necessary for launching the image library
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-        });
+        setError(null);
 
-        if (!result.canceled) {
-            uploadImage(result.assets[0].uri);
+        // On web, use native file input as it is more reliable than expo-image-picker
+        if (Platform.OS === 'web') {
+            fileInputRef.current?.click();
+            return;
+        }
+
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                quality: 0.9,
+            });
+            if (!result.canceled && result.assets[0]) {
+                await uploadImage(result.assets[0].uri);
+            }
+        } catch (e) {
+            setError('Could not open image library. Please try again.');
+        }
+    };
+
+    const handleWebFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setError(null);
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('media', file);
+
+            const response = await apiClient('/media/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response?.success && response?.asset?.url) {
+                onUploadComplete(response.asset.url);
+            } else {
+                throw new Error(response?.error || 'Upload failed — no URL returned.');
+            }
+        } catch (err: any) {
+            console.error('[ImageUpload] Web upload error:', err);
+            setError(err?.message || 'Upload failed. Please try again.');
+        } finally {
+            setUploading(false);
+            // Reset the input so the same file can be re-selected
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
     const uploadImage = async (uri: string) => {
         setUploading(true);
+        setError(null);
         try {
             const formData = new FormData();
-            
-            // Handle platform differences for FormData
+
             if (Platform.OS === 'web') {
-                const response = await fetch(uri);
-                const blob = await response.blob();
+                const resp = await fetch(uri);
+                const blob = await resp.blob();
                 formData.append('media', blob, 'upload.jpg');
             } else {
-                // Native
                 formData.append('media', {
                     uri,
                     name: 'upload.jpg',
@@ -60,12 +100,14 @@ export default function ImageUploadField({ value, onUploadComplete, label }: Ima
                 body: formData,
             });
 
-            if (response.success && response.asset?.url) {
+            if (response?.success && response?.asset?.url) {
                 onUploadComplete(response.asset.url);
+            } else {
+                throw new Error(response?.error || 'Upload failed — no URL returned.');
             }
-        } catch (error) {
-            console.error('Upload failed:', error);
-            alert('Upload failed. Please try again.');
+        } catch (err: any) {
+            console.error('[ImageUpload] Upload error:', err);
+            setError(err?.message || 'Upload failed. Please check your connection and try again.');
         } finally {
             setUploading(false);
         }
@@ -74,6 +116,18 @@ export default function ImageUploadField({ value, onUploadComplete, label }: Ima
     return (
         <View style={styles.container}>
             {label && <Text style={styles.label}>{label}</Text>}
+
+            {/* Hidden native file input for web */}
+            {Platform.OS === 'web' && (
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                    style={{ display: 'none' }}
+                    onChange={handleWebFileChange as any}
+                />
+            )}
+
             <View style={styles.row}>
                 <View style={styles.previewContainer}>
                     {value ? (
@@ -89,10 +143,10 @@ export default function ImageUploadField({ value, onUploadComplete, label }: Ima
                         </View>
                     )}
                 </View>
-                
+
                 <View style={styles.actions}>
-                    <TouchableOpacity 
-                        style={styles.uploadBtn} 
+                    <TouchableOpacity
+                        style={[styles.uploadBtn, uploading && styles.uploadBtnDisabled]}
                         onPress={pickImage}
                         disabled={uploading}
                     >
@@ -101,11 +155,11 @@ export default function ImageUploadField({ value, onUploadComplete, label }: Ima
                             {uploading ? 'Uploading...' : 'Choose File'}
                         </Text>
                     </TouchableOpacity>
-                    
+
                     {value ? (
-                        <TouchableOpacity 
-                            style={styles.clearBtn} 
-                            onPress={() => onUploadComplete('')}
+                        <TouchableOpacity
+                            style={styles.clearBtn}
+                            onPress={() => { onUploadComplete(''); setError(null); }}
                             disabled={uploading}
                         >
                             <X size={16} color={Colors.danger} />
@@ -114,6 +168,13 @@ export default function ImageUploadField({ value, onUploadComplete, label }: Ima
                     ) : null}
                 </View>
             </View>
+
+            {error && (
+                <View style={styles.errorRow}>
+                    <AlertCircle size={14} color={Colors.danger} />
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            )}
         </View>
     );
 }
@@ -174,6 +235,9 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         gap: 6,
     },
+    uploadBtnDisabled: {
+        opacity: 0.6,
+    },
     uploadBtnText: {
         color: '#FFF',
         fontSize: 14,
@@ -192,5 +256,16 @@ const styles = StyleSheet.create({
         color: Colors.danger,
         fontSize: 14,
         fontWeight: '600',
+    },
+    errorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 6,
+    },
+    errorText: {
+        fontSize: 12,
+        color: Colors.danger,
+        flex: 1,
     },
 });

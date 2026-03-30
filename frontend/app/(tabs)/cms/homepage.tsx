@@ -65,7 +65,7 @@ export default function HomepageCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { homepageData, header, footer, setHeader, setFooter, setHomepageSection, isLoaded } = useCMS();
+    const { homepageData, header, footer, setHeader, setFooter, setHomepageSection, setHomepageSections, refreshFromBackend, isLoaded } = useCMS();
     const [activeTab, setActiveTab] = useState<TabType>((params.tab as TabType) || 'hero');
 
     const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(initialHeader);
@@ -108,27 +108,33 @@ export default function HomepageCMS() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         try {
-            // Broadcast to global CMS context with sync: true to update backend & local cache
+            // Save header and footer (separate context keys, synced individually)
             await setHeader(headerConfig, true);
             await setFooter(footerConfig, true);
-            
-            // Sync all homepage sections
-            await setHomepageSection('cms_heroConfig', hero, true);
-            await setHomepageSection('cms_slidesConfig', slides, true);
-            await setHomepageSection('cms_howItWorksConfig', howItWorks, true);
-            await setHomepageSection('cms_whyUsConfig', whyUs, true);
-            await setHomepageSection('cms_servicesConfig', servicesData, true);
-            await setHomepageSection('cms_statsConfig', statsData, true);
-            await setHomepageSection('cms_industriesConfig', industriesData, true);
-            await setHomepageSection('cms_testimonialsConfig', testimonialsData, true);
-            await setHomepageSection('cms_customSections', customSections, true);
-            await setHomepageSection('cms_ctaConfig', cta, true);
+
+            // Batch all homepage sections into a SINGLE backend write to avoid
+            // sequential calls overwriting each other in the DB.
+            await setHomepageSections({
+                cms_heroConfig: hero,
+                cms_slidesConfig: slides,
+                cms_howItWorksConfig: howItWorks,
+                cms_whyUsConfig: whyUs,
+                cms_servicesConfig: servicesData,
+                cms_statsConfig: statsData,
+                cms_industriesConfig: industriesData,
+                cms_testimonialsConfig: testimonialsData,
+                cms_customSections: customSections,
+                cms_ctaConfig: cta,
+            }, true);
+
+            // Force-refresh from backend so public site picks up changes immediately
+            await refreshFromBackend(true);
 
             setHasUnsavedChanges(false);
-            alert('Homepage Content Published Globally!');
+            alert('✅ Homepage Content Published Globally!');
         } catch (error) {
-            console.error('Failed to save CMS data', error);
-            alert('Error saving data to backend');
+            console.error('[CMS] Failed to save homepage data:', error);
+            alert('❌ Error saving to backend. Please check your connection and try again.');
         }
     };
 
