@@ -35,6 +35,7 @@ import {
   Brain,
   Radio,
   Layout,
+  Tag,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -592,6 +593,30 @@ function AdminDashboard() {
             </View>
             <ChevronRight size={24} color="#FFF" style={{ zIndex: 1 }} />
           </TouchableOpacity>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>System Config</Text>
+            <View style={styles.quickActionsGrid}>
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/admin-pricing' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.adminPrimary + '15' }]}>
+                  <Tag size={24} color={Colors.adminPrimary} />
+                </View>
+                <Text style={styles.quickActionLabel}>Config Engine</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/admin-compliance' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.success + '15' }]}>
+                  <Shield size={24} color={Colors.success} />
+                </View>
+                <Text style={styles.quickActionLabel}>Compliance</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/users' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.info + '15' }]}>
+                  <Users size={24} color={Colors.info} />
+                </View>
+                <Text style={styles.quickActionLabel}>Users</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>

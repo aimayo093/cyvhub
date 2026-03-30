@@ -34,6 +34,7 @@ export default function QuoteDetailsPage() {
     const [width, setWidth] = useState('');
     const [height, setHeight] = useState('');
     const [weight, setWeight] = useState('');
+    const [quantity, setQuantity] = useState('1');
     const [config, setConfig] = useState<QuoteDetailsConfig>(initialQuoteDetails);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -52,8 +53,9 @@ export default function QuoteDetailsPage() {
                     const parsed = JSON.parse(lastDetails);
                     if (!length) setLength(parsed.length || '');
                     if (!width) setWidth(parsed.width || '');
-                    if (!height) setHeight(parsed.height || '');
-                    if (!weight) setWeight(parsed.weight || '');
+                    if (parsed.height) setHeight(parsed.height || '');
+                    if (parsed.weight) setWeight(parsed.weight || '');
+                    if (parsed.quantity) setQuantity(parsed.quantity || '1');
                 }
             } catch (e) {
                 console.error('Failed to load data for quote-details', e);
@@ -74,9 +76,10 @@ export default function QuoteDetailsPage() {
         const l = parseFloat(length);
         const wd = parseFloat(width);
         const h = parseFloat(height);
+        const q = parseInt(quantity, 10);
 
-        if (isNaN(w) || isNaN(l) || isNaN(wd) || isNaN(h)) {
-            Alert.alert('Invalid Input', 'Please enter numeric values for dimensions and weight.');
+        if (isNaN(w) || isNaN(l) || isNaN(wd) || isNaN(h) || isNaN(q) || q < 1) {
+            Alert.alert('Invalid Input', 'Please enter valid numbers for dimensions, weight, and quantity (min 1).');
             return;
         }
 
@@ -107,7 +110,7 @@ export default function QuoteDetailsPage() {
 
         try {
             await AsyncStorage.setItem('last_quote_details', JSON.stringify({
-                length, width, height, weight
+                length, width, height, weight, quantity: q.toString()
             }));
         } catch (e) {
             console.error('Failed to save quote details', e);
@@ -123,7 +126,8 @@ export default function QuoteDetailsPage() {
                 length,
                 width,
                 height,
-                weight
+                weight,
+                quantity: q.toString()
             }
         });
     };
@@ -192,8 +196,23 @@ export default function QuoteDetailsPage() {
 
                         <View style={styles.inputGroup}>
                             <View style={styles.inputLabelRow}>
+                                <Package size={18} color="#64748b" />
+                                <Text style={styles.inputLabel}>Identical Parcel Quantity</Text>
+                            </View>
+                            <TextInput
+                                style={styles.fullInput}
+                                placeholder="e.g. 1"
+                                keyboardType="number-pad"
+                                value={quantity}
+                                onChangeText={setQuantity}
+                            />
+                            <Text style={styles.weightNote}>Enter how many of these exact same items you're sending.</Text>
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <View style={styles.inputLabelRow}>
                                 <Weight size={18} color="#64748b" />
-                                <Text style={styles.inputLabel}>Total Weight (kg)</Text>
+                                <Text style={styles.inputLabel}>Total Weight (kg) per parcel</Text>
                             </View>
                             <TextInput
                                 style={styles.fullInput}

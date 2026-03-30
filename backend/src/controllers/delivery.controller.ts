@@ -46,7 +46,7 @@ export class DeliveryController {
                 dropoffContactName, dropoffContactPhone, dropoffAddressLine1, dropoffCity, dropoffPostcode, dropoffLatitude, dropoffLongitude, dropoffWindowStart, dropoffWindowEnd,
                 vehicleType, specialInstructions, goodsDescription, distanceKm, priority,
                 // Epic 2/3: Advanced Bookings
-                weightKg = 0, lengthCm = 0, widthCm = 0, heightCm = 0, isReturnTrip = false, extraStops = 0
+                weightKg = 0, lengthCm = 0, widthCm = 0, heightCm = 0, isReturnTrip = false, extraStops = 0, quantity = 1
             } = payload;
 
             // Validate foundational required fields
@@ -73,7 +73,8 @@ export class DeliveryController {
                     weightKg: parseFloat(weightKg), 
                     lengthCm: parseFloat(lengthCm), 
                     widthCm: parseFloat(widthCm), 
-                    heightCm: parseFloat(heightCm) 
+                    heightCm: parseFloat(heightCm),
+                    quantity: parseInt(quantity, 10) || 1
                 }],
                 flags: {
                     stairs: specialInstructions?.toLowerCase().includes('stairs'),
@@ -125,6 +126,9 @@ export class DeliveryController {
                     dropoffWindowStart, dropoffWindowEnd,
                     vehicleType, specialInstructions, goodsDescription,
                     calculatedPrice: quoteResult.quote.customerTotal, // Guaranteed pure by the core margin engine
+                    quantity: quoteResult.additionalMetrics?.quantity || 1,
+                    basePrice: quoteResult.additionalMetrics?.basePrice,
+                    bulkDiscount: quoteResult.additionalMetrics?.bulkDiscount || 0,
                     distanceKm: distanceKm ? parseFloat(distanceKm) : undefined,
                     quoteRequestId: quoteRequestId // Formal Linkage
                 }

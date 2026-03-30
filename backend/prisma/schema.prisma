@@ -134,6 +134,11 @@ model Job {
   estimatedDelivery DateTime?
   deliveredAt       DateTime?
 
+  // Multi-Parcel Analytics
+  quantity          Int       @default(1)
+  basePrice         Float?
+  bulkDiscount      Float     @default(0)
+
   // Relationships
   customerId String?
   customer   User?   @relation("CustomerJobs", fields: [customerId], references: [id], onDelete: SetNull)
@@ -322,6 +327,11 @@ model Quote {
   dropoffPostcode String
   vehicleType     String
   distanceKm      Float
+
+  // Multi-Parcel Optimization Logs
+  quantity        Int       @default(1)
+  basePrice       Float?
+  bulkDiscount    Float     @default(0)
 
   estimatedCost Float
   status        String   @default("VALID") // "VALID" | "ACCEPTED" | "EXPIRED"

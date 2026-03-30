@@ -9,6 +9,7 @@ export class CommercialService {
      */
     static async requestQuote(payload: { pickupPostcode: string, dropoffPostcode: string, distanceMiles: number, items: any[], flags: any }) {
         // 1. Calculate the Chargeable Weight
+        const totalQuantity = payload.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
         const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(payload.items);
 
         // 2. Select Suitable Vehicle (Suitability Engine Layer)
@@ -32,7 +33,7 @@ export class CommercialService {
         }
 
         // 3. Generate Pricing & Payout
-        const pricing = await PricingService.generateCustomerQuote(suitableVehicle.id, adjustedDistanceMiles, chargeableWeightKg, payload.flags);
+        const pricing = await PricingService.generateCustomerQuote(suitableVehicle.id, adjustedDistanceMiles, chargeableWeightKg, payload.flags, totalQuantity);
         const payout = await PayoutService.generateDriverPayout(suitableVehicle.id, adjustedDistanceMiles, chargeableWeightKg, payload.flags);
 
         // 4. Margin Control Gate
@@ -87,7 +88,12 @@ export class CommercialService {
         return {
             approved: true,
             status,
-            quote: quoteRequest
+            quote: quoteRequest,
+            additionalMetrics: {
+                quantity: totalQuantity,
+                basePrice: pricing.originalPerParcelExVat,
+                bulkDiscount: pricing.discountApplied
+            }
         };
     }
 }

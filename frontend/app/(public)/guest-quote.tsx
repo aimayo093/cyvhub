@@ -27,7 +27,10 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
 };
 
 // Vehicle Card Component
-const VehicleCard = ({ title, dimensions, weight, priceEx, priceInc, onBook }: any) => {
+const VehicleCard = ({ title, dimensions, weight, priceEx, priceInc, originalPerParcelExVat, discountApplied, quantity, onBook }: any) => {
+    const isBulk = quantity > 1 && discountApplied > 0;
+    const baseTotal = isBulk ? (originalPerParcelExVat * quantity).toFixed(2) : priceEx.toFixed(2);
+
     return (
         <View style={styles.vehicleCard}>
             <View style={styles.vehicleIconWrapper}>
@@ -42,8 +45,17 @@ const VehicleCard = ({ title, dimensions, weight, priceEx, priceInc, onBook }: a
             </View>
 
             <View style={styles.priceContainer}>
-                <Text style={styles.priceEx}>£{priceEx.toFixed(2)}</Text>
-                <Text style={styles.priceTaxLabel}>excl. VAT</Text>
+                {isBulk && (
+                    <View style={styles.bulkBadgeContainer}>
+                        <Tag size={14} color="#10b981" style={{ marginRight: 6 }} />
+                        <Text style={styles.bulkBadgeText}>Bulk Saving: £{discountApplied.toFixed(2)}</Text>
+                    </View>
+                )}
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+                    {isBulk && <Text style={styles.strikethroughPrice}>£{baseTotal}</Text>}
+                    <Text style={styles.priceEx}>£{priceEx.toFixed(2)}</Text>
+                </View>
+                <Text style={styles.priceTaxLabel}>excl. VAT ({quantity} {quantity === 1 ? 'parcel' : 'parcels'})</Text>
             </View>
 
             <View style={styles.priceIncContainer}>
@@ -58,13 +70,13 @@ const VehicleCard = ({ title, dimensions, weight, priceEx, priceInc, onBook }: a
     );
 };
 
-import { Truck, Clock, ShieldCheck, MapPin, Package } from 'lucide-react-native';
+import { Truck, Clock, ShieldCheck, MapPin, Package, Tag } from 'lucide-react-native';
 import { Alert, ActivityIndicator } from 'react-native';
 import { apiClient } from '@/services/api';
 
 export default function GuestQuotePage() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
-    const { collection, delivery, ready, vehicle, length, width, height, weight } = useLocalSearchParams();
+    const { collection, delivery, ready, vehicle, length, width, height, weight, quantity } = useLocalSearchParams();
     const router = useRouter();
     const [config, setConfig] = useState<GuestQuoteConfig>(initialGuestQuote);
     const [dynamicQuotes, setDynamicQuotes] = useState<any[]>([]);
@@ -80,6 +92,7 @@ export default function GuestQuotePage() {
             let activeWidth = width;
             let activeHeight = height;
             let activeWeight = weight;
+            let activeQuantity = quantity;
 
             // Recovery Logic: If URL params are missing, check AsyncStorage
             if (!activeCollection || !activeDelivery || !activeLength) {
@@ -95,13 +108,15 @@ export default function GuestQuotePage() {
                         activeWidth = p2.width;
                         activeHeight = p2.height;
                         activeWeight = p2.weight;
+                        activeQuantity = p2.quantity;
                         setRetrievedParams({ 
                             collection: activeCollection, 
                             delivery: activeDelivery, 
                             length: activeLength, 
                             width: activeWidth, 
                             height: activeHeight, 
-                            weight: activeWeight 
+                            weight: activeWeight,
+                            quantity: activeQuantity
                         });
                     }
                 } catch (e) {
@@ -131,7 +146,8 @@ export default function GuestQuotePage() {
                             lengthCm: Number(activeLength),
                             widthCm: Number(activeWidth),
                             heightCm: Number(activeHeight),
-                            weightKg: Number(activeWeight)
+                            weightKg: Number(activeWeight),
+                            quantity: Number(activeQuantity) || 1
                         }]
                     })
                 });
@@ -158,6 +174,7 @@ export default function GuestQuotePage() {
     const finalWidth = width || retrievedParams?.width;
     const finalHeight = height || retrievedParams?.height;
     const finalWeight = weight || retrievedParams?.weight;
+    const finalQuantity = quantity || retrievedParams?.quantity || 1;
 
     const hasAnyParams = !!(finalCollection && finalDelivery && finalLength && finalWidth && finalHeight && finalWeight);
 
@@ -173,7 +190,8 @@ export default function GuestQuotePage() {
                 length: finalLength as string,
                 width: finalWidth as string,
                 height: finalHeight as string,
-                weight: finalWeight as string
+                weight: finalWeight as string,
+                quantity: finalQuantity.toString()
             }
         });
     };
@@ -226,7 +244,7 @@ export default function GuestQuotePage() {
                     <View style={styles.summaryRow}>
                         <Package size={16} color={Colors.primary} style={{ marginRight: 8 }} />
                         <Text style={styles.summaryLabel}>Items:</Text>
-                        <Text style={styles.summaryValue}>{finalLength}x{finalWidth}x{finalHeight}cm, {finalWeight}kg</Text>
+                        <Text style={styles.summaryValue}>{finalQuantity}x {finalLength}x{finalWidth}x{finalHeight}cm, {finalWeight}kg</Text>
                     </View>
                     <TouchableOpacity style={styles.changeBtn} activeOpacity={0.8} onPress={() => router.back()}>
                         <Text style={styles.changeBtnText}>Edit Details</Text>
@@ -252,6 +270,9 @@ export default function GuestQuotePage() {
                                     weight={q.maxWeight}
                                     priceEx={q.totalExVat}
                                     priceInc={q.totalIncVat}
+                                    originalPerParcelExVat={q.originalPerParcelExVat}
+                                    discountApplied={q.discountApplied}
+                                    quantity={q.quantity}
                                     onBook={() => handleBook("SAME DAY", q.vehicleName, q.totalExVat)}
                                 />
                             ))}
@@ -440,6 +461,29 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#1a237e',
         marginBottom: 4,
+    },
+    strikethroughPrice: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#94a3b8',
+        textDecorationLine: 'line-through',
+        marginBottom: 8, // align baseline slightly
+    },
+    bulkBadgeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ecfdf5', // emerald-50
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#a7f3d0', // emerald-200
+    },
+    bulkBadgeText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#10b981', // emerald-500
     },
     priceTaxLabel: {
         fontSize: 14,

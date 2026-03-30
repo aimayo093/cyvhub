@@ -39,7 +39,8 @@ export class QuoteController {
                 include: { pricingRules: true }
             });
 
-            // 4. Generate quotes for each vehicle
+            // 4. Generate quotes for each vehicle (incorporating identical parcel scaling)
+            const totalQuantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
             const quotes = [];
             for (const vc of vehicleClasses) {
                 // Check if items fit (LxWxH)
@@ -50,12 +51,15 @@ export class QuoteController {
                 const fits = maxL <= vc.maxLengthCm && maxW <= vc.maxWidthCm && maxH <= vc.maxHeightCm && actualWeightKg <= vc.maxWeightKg;
 
                 if (fits) {
-                    const pricing = await PricingService.generateCustomerQuote(vc.id, miles, chargeableWeightKg, req.body.flags || {});
+                    const pricing = await PricingService.generateCustomerQuote(vc.id, miles, chargeableWeightKg, req.body.flags || {}, totalQuantity);
                     quotes.push({
                         vehicleId: vc.id,
                         vehicleName: vc.name,
                         distanceMiles: miles,
                         chargeableWeightKg,
+                        quantity: totalQuantity,
+                        originalPerParcelExVat: pricing.originalPerParcelExVat,
+                        discountApplied: pricing.discountApplied,
                         totalExVat: pricing.customerTotal,
                         totalIncVat: Number((pricing.customerTotal * 1.20).toFixed(2)),
                         lineItems: pricing.lineItems,
@@ -92,6 +96,9 @@ export class QuoteController {
                 vehicleType,
                 distanceKm,
                 estimatedCost,
+                quantity,
+                basePrice,
+                bulkDiscount,
             } = req.body;
 
             if (!quoteNumber || !customerId || !pickupPostcode || !dropoffPostcode || !vehicleType || !distanceKm || !estimatedCost) {
@@ -111,6 +118,9 @@ export class QuoteController {
                     vehicleType,
                     distanceKm: parseFloat(distanceKm),
                     estimatedCost: parseFloat(estimatedCost),
+                    quantity: quantity ? parseInt(quantity, 10) : 1,
+                    basePrice: basePrice ? parseFloat(basePrice) : null,
+                    bulkDiscount: bulkDiscount ? parseFloat(bulkDiscount) : 0,
                     status: 'VALID',
                     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
                 }
