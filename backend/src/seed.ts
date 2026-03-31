@@ -234,6 +234,16 @@ async function main() {
             baseFee: 65.00, 
             mileage: 1.75,
             desc: 'Large Van (3x1.2x1.7m)'
+        },
+        { 
+            name: 'HGV', 
+            maxWeight: 5000.0, 
+            length: 6.0, 
+            width: 2.4, 
+            height: 2.5, 
+            baseFee: 150.00, 
+            mileage: 3.50,
+            desc: 'HGV / Large Truck (6x2.4x2.5m)'
         }
     ];
 
