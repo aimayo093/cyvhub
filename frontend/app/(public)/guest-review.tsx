@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter, Link } from 'expo-router';
-import { CheckCircle } from 'lucide-react-native';
+import { CheckCircle, ArrowLeft } from 'lucide-react-native';
+import { Alert, ActivityIndicator } from 'react-native';
+import { apiClient } from '@/services/api';
 import Colors from '@/constants/colors';
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
@@ -32,13 +34,57 @@ export default function GuestReviewPage() {
     const vatAmount = price * 0.2;
     const totalIncVat = price + vatAmount;
 
-    const handleConfirmAndPay = () => {
+    const handleConfirmAndPay = async () => {
         setIsSubmitting(true);
-        // Simulate an API call / Payment gateway processing
-        setTimeout(() => {
+        try {
+            const parcels = params.parcels ? JSON.parse(params.parcels as string) : [];
+            
+            const response = await apiClient('/deliveries', {
+                method: 'POST',
+                body: JSON.stringify({
+                    pickupContactName: `${params.firstName} ${params.lastName}`,
+                    pickupContactPhone: '0000000000', // Mock or add field
+                    pickupAddressLine1: params.collectionAddress,
+                    pickupCity: 'Unknown', // Future: Geocode or parse
+                    pickupPostcode: params.collection,
+                    dropoffContactName: `${params.firstName} ${params.lastName}`,
+                    dropoffContactPhone: '0000000000',
+                    dropoffAddressLine1: params.deliveryAddress,
+                    dropoffCity: 'Unknown',
+                    dropoffPostcode: params.delivery,
+                    vehicleType: params.vehicleType,
+                    parcels: parcels.map((p: any) => ({
+                        lengthCm: parseFloat(p.length),
+                        widthCm: parseFloat(p.width),
+                        heightCm: parseFloat(p.height),
+                        weightKg: parseFloat(p.weight),
+                        quantity: parseInt(p.quantity, 10) || 1,
+                        description: p.description || 'Guest Item'
+                    })),
+                    distanceKm: 20, // Future: Use real distance from quote
+                })
+            });
+
+            if (response && response.id) {
+                // Success! Redirect to Payment
+                router.replace({
+                    pathname: '/payment-checkout' as any,
+                    params: {
+                        amount: totalIncVat.toFixed(2),
+                        description: `Delivery ${response.jobNumber}`,
+                        deliveryId: response.id,
+                        trackingNumber: response.trackingNumber,
+                    }
+                });
+            } else {
+                throw new Error('Invalid response from server');
+            }
+        } catch (error: any) {
+            console.error('Booking failed:', error);
+            Alert.alert('Booking Failed', error.message || 'We could not create your booking. Please try again.');
+        } finally {
             setIsSubmitting(false);
-            setIsSuccess(true);
-        }, 2000);
+        }
     };
 
     if (isSuccess) {

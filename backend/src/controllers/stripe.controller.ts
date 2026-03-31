@@ -89,11 +89,20 @@ export class StripeController {
                     const deliveryId = paymentIntent.metadata?.deliveryId;
 
                     if (deliveryId && deliveryId !== 'none') {
-                        // 1. Mark Job as Paid
+                        // 1. Mark Job as Paid and move to PENDING_DISPATCH
+                        // State enforcement: Job only becomes active for dispatch after payment
                         await prisma.job.update({
                             where: { id: deliveryId },
-                            data: { paymentStatus: 'COMPLETED' }
+                            data: { 
+                                paymentStatus: 'COMPLETED',
+                                status: 'PENDING_DISPATCH',
+                                paymentIntentId: paymentIntent.id
+                            }
                         });
+                        
+                        // 1b. Trigger Automated Dispatch Engine
+                        const { DispatchService } = require('../services/dispatch.service');
+                        await DispatchService.dispatchJob(deliveryId);
 
                         // 2. Mark PaymentTransaction as Completed (if exists) or create one
                         const existingTxn = await prisma.paymentTransaction.findFirst({

@@ -65,6 +65,16 @@ export class CommercialService {
                 driverPayoutTotal: payout.driverTotal,
                 marginPercentage: Number(marginPercentage.toFixed(2)),
                 status,
+                parcels: {
+                    create: payload.items.map((item: any) => ({
+                        weightKg: parseFloat(item.weightKg) || 0,
+                        lengthCm: parseFloat(item.lengthCm) || 0,
+                        widthCm: parseFloat(item.widthCm) || 0,
+                        heightCm: parseFloat(item.heightCm) || 0,
+                        quantity: parseInt(item.quantity, 10) || 1,
+                        description: item.description || null
+                    }))
+                },
                 lineItems: {
                     create: [
                         ...pricing.lineItems.map((li: any) => ({ target: li.target, type: li.type, amount: li.amount, description: li.description })),
@@ -72,7 +82,7 @@ export class CommercialService {
                     ]
                 }
             },
-            include: { lineItems: true, vehicle: true }
+            include: { lineItems: true, vehicle: true, parcels: true }
         });
 
         // 6. Spawn Manual Review Case if flagged

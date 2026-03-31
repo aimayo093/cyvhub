@@ -165,6 +165,32 @@ model Job {
   // Epic 2/3: Commercial Engine Quote Linkage
   quoteRequestId String?       @unique
   quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
+
+  // New Integration Fields
+  jobType             String?
+  pickupWindow        String?
+  deliveryWindow        String?
+  paymentIntentId     String?
+  
+  parcels      Parcel[]
+}
+
+model Parcel {
+  id             String   @id @default(uuid())
+  jobId          String?
+  job            Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  quoteRequestId String?
+  quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+
+  weightKg    Float
+  lengthCm    Float
+  widthCm     Float
+  heightCm    Float
+  quantity    Int      @default(1)
+  description String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ==========================================
@@ -716,6 +742,7 @@ model QuoteRequest {
   status String @default("AUTO_APPROVED") // 'AUTO_APPROVED', 'PENDING_REVIEW', 'REJECTED'
 
   lineItems QuoteLineItem[]
+  parcels   Parcel[]
   job       Job?
 
   createdAt DateTime @default(now())

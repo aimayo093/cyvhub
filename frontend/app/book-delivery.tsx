@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,8 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDeliveries } from '@/providers/DeliveriesProvider';
 import { useAuth } from '@/providers/AuthProvider';
+import { apiClient } from '@/services/api';
+import { Plus } from 'lucide-react-native';
 
 const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'HGV'];
 const JOB_TYPES = ['IT Equipment', 'Construction', 'Medical', 'Furniture', 'Office Supplies', 'General Freight', 'Fragile Items', 'Documents'];
@@ -56,12 +58,15 @@ export default function BookDeliveryScreen() {
   const [dropoffContact, setDropoffContact] = useState<string>(
     customer ? `${customer.firstName} ${customer.lastName}` : ''
   );
-  const [packageDescription, setPackageDescription] = useState<string>('');
+  const [parcels, setParcels] = useState<any[]>([
+    { lengthCm: '', widthCm: '', heightCm: '', weightKg: '', quantity: '1', description: '' }
+  ]);
   const [specialInstructions, setSpecialInstructions] = useState<string>('');
   const [selectedVehicle, setSelectedVehicle] = useState<string>('Small Van');
   const [selectedJobType, setSelectedJobType] = useState<string>('General Freight');
   const [selectedPickupWindow, setSelectedPickupWindow] = useState<string>('');
   const [selectedDeliveryWindow, setSelectedDeliveryWindow] = useState<string>('');
+  const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
   const [showVehiclePicker, setShowVehiclePicker] = useState<boolean>(false);
   const [showJobTypePicker, setShowJobTypePicker] = useState<boolean>(false);
   const [showPickupWindowPicker, setShowPickupWindowPicker] = useState<boolean>(false);
@@ -69,21 +74,40 @@ export default function BookDeliveryScreen() {
   const [showSavedLocations, setShowSavedLocations] = useState<LocationTarget | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const estimatePrice = useCallback((): number => {
-    // Pricing logic aligned with VehicleClass baselines
-    const baseRates: Record<string, number> = {
-      'Small Van': 15,
-      'Medium Van': 25,
-      'Large Van': 45,
-      'HGV': 85
-    };
-    
-    const base = baseRates[selectedVehicle] || 25;
-    const cityMultiplier = pickupCity.toLowerCase() !== dropoffCity.toLowerCase() ? 1.5 : 1;
-    const jobTypeMultiplier = selectedJobType === 'Medical' || selectedJobType === 'Fragile Items' ? 1.25 : 1;
-    
-    return Math.round(base * cityMultiplier * jobTypeMultiplier * 100) / 100;
-  }, [selectedVehicle, pickupCity, dropoffCity, selectedJobType]);
+  const fetchPrice = useCallback(async () => {
+    if (!pickupPostcode || !dropoffPostcode || parcels.length === 0) return;
+
+    try {
+      const response = await apiClient('/quotes/calculate', {
+        method: 'POST',
+        body: JSON.stringify({
+          pickupPostcode,
+          dropoffPostcode,
+          items: parcels.map(p => ({
+            lengthCm: parseFloat(p.lengthCm) || 0,
+            widthCm: parseFloat(p.widthCm) || 0,
+            heightCm: parseFloat(p.heightCm) || 0,
+            weightKg: parseFloat(p.weightKg) || 0,
+            quantity: parseInt(p.quantity, 10) || 1
+          }))
+        })
+      });
+
+      if (response && response.quotes) {
+        // Find the quote for the selected vehicle
+        const quote = response.quotes.find((q: any) => q.vehicleName === selectedVehicle);
+        if (quote) {
+            setEstimatedPrice(quote.totalExVat);
+        }
+      }
+    } catch (e) {
+      console.error('Price calculation failed', e);
+    }
+  }, [pickupPostcode, dropoffPostcode, parcels, selectedVehicle]);
+
+  useEffect(() => {
+    fetchPrice();
+  }, [fetchPrice]);
 
   const handleQuickFill = useCallback((target: LocationTarget) => {
     if (!customer) return;
@@ -114,12 +138,13 @@ export default function BookDeliveryScreen() {
       Alert.alert('Missing Info', 'Please fill in all dropoff details.');
       return false;
     }
-    if (!packageDescription.trim()) {
-      Alert.alert('Missing Info', 'Please describe your package.');
+    const parcelsValid = parcels.every(p => p.lengthCm && p.weightKg);
+    if (!parcelsValid) {
+      Alert.alert('Missing Info', 'Please fill in dimensions and weight for all parcels.');
       return false;
     }
     return true;
-  }, [pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, packageDescription]);
+  }, [pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, parcels]);
 
   const handleSubmit = useCallback(async () => {
     if (!validate()) return;
@@ -127,7 +152,7 @@ export default function BookDeliveryScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const price = estimatePrice();
+      const price = estimatedPrice;
       // createDelivery returns a Promise
       const delivery = await createDelivery({
         pickupAddress: pickupAddress.trim(),
@@ -138,7 +163,14 @@ export default function BookDeliveryScreen() {
         dropoffCity: dropoffCity.trim(),
         dropoffPostcode: dropoffPostcode.trim(),
         dropoffContact: dropoffContact.trim(),
-        packageDescription: packageDescription.trim(),
+        parcels: parcels.map(p => ({
+            lengthCm: parseFloat(p.lengthCm),
+            widthCm: parseFloat(p.widthCm),
+            heightCm: parseFloat(p.heightCm),
+            weightKg: parseFloat(p.weightKg),
+            quantity: parseInt(p.quantity, 10) || 1,
+            description: p.description || ''
+        })),
         vehicleType: selectedVehicle,
         estimatedPrice: price,
         estimatedPickup: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
@@ -147,7 +179,7 @@ export default function BookDeliveryScreen() {
         specialInstructions: specialInstructions.trim() || undefined,
         pickupTimeWindow: selectedPickupWindow || undefined,
         deliveryTimeWindow: selectedDeliveryWindow || undefined,
-      });
+      } as any);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Delivery created successfully
@@ -183,7 +215,7 @@ export default function BookDeliveryScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [validate, createDelivery, pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, packageDescription, selectedVehicle, estimatePrice, router, selectedJobType, specialInstructions, selectedPickupWindow, selectedDeliveryWindow]);
+  }, [validate, createDelivery, pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, selectedVehicle, router, selectedJobType, specialInstructions, selectedPickupWindow, selectedDeliveryWindow]);
 
   const renderQuickFill = useCallback((target: LocationTarget) => (
     <View style={styles.savedLocationsWrap}>
@@ -374,20 +406,101 @@ export default function BookDeliveryScreen() {
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <Package size={16} color={Colors.customerPrimary} />
-              <Text style={styles.sectionLabel}>Package Info</Text>
+              <Text style={styles.sectionLabel}>Parcels Information</Text>
             </View>
-            <View style={styles.inputGroup}>
-              <View style={[styles.inputRow, { minHeight: 72, alignItems: 'flex-start', paddingTop: 14 }]}>
-                <TextInput
-                  style={[styles.input, { textAlignVertical: 'top' }]}
-                  placeholder="Describe your package (e.g., 2x boxes, fragile items)"
-                  placeholderTextColor={Colors.textMuted}
-                  value={packageDescription}
-                  onChangeText={setPackageDescription}
-                  multiline
-                  testID="package-description"
-                />
-              </View>
+            <View style={styles.parcelsList}>
+              {parcels.map((parcel, index) => (
+                <View key={index} style={styles.parcelBox}>
+                   <View style={styles.parcelRow}>
+                        <TextInput
+                            style={[styles.smallInput, { flex: 2 }]}
+                            placeholder="Description"
+                            value={parcel.description}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].description = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                        <TextInput
+                            style={[styles.smallInput, { flex: 1 }]}
+                            placeholder="Qty"
+                            keyboardType="numeric"
+                            value={parcel.quantity}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].quantity = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                   </View>
+                   <View style={styles.parcelRow}>
+                        <TextInput
+                            style={styles.smallInput}
+                            placeholder="L (cm)"
+                            keyboardType="numeric"
+                            value={parcel.lengthCm}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].lengthCm = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                        <TextInput
+                            style={styles.smallInput}
+                            placeholder="W"
+                            keyboardType="numeric"
+                            value={parcel.widthCm}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].widthCm = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                        <TextInput
+                            style={styles.smallInput}
+                            placeholder="H"
+                            keyboardType="numeric"
+                            value={parcel.heightCm}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].heightCm = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                        <TextInput
+                            style={styles.smallInput}
+                            placeholder="Kg"
+                            keyboardType="numeric"
+                            value={parcel.weightKg}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].weightKg = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                    </View>
+                    {parcels.length > 1 && (
+                        <TouchableOpacity 
+                            onPress={() => {
+                                const newParcels = [...parcels];
+                                newParcels.splice(index, 1);
+                                setParcels(newParcels);
+                            }}
+                            style={styles.removeParcelBtn}
+                        >
+                            <Text style={styles.removeParcelText}>Remove</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+              ))}
+              <TouchableOpacity 
+                style={styles.addParcelBtn}
+                onPress={() => setParcels([...parcels, { lengthCm: '', widthCm: '', heightCm: '', weightKg: '', quantity: '1', description: '' }])}
+              >
+                <Plus size={14} color={Colors.customerPrimary} />
+                <Text style={styles.addParcelBtnText}>Add Another Parcel Type</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -519,7 +632,7 @@ export default function BookDeliveryScreen() {
               <Text style={styles.estimateSubLabel}>{selectedJobType} · {selectedVehicle}</Text>
             </View>
             <Text style={styles.estimatePrice}>
-              £{pickupCity && dropoffCity ? estimatePrice().toFixed(2) : '--'}
+              £{pickupPostcode && dropoffPostcode && estimatedPrice > 0 ? estimatedPrice.toFixed(2) : '--'}
             </Text>
           </View>
 
@@ -771,5 +884,55 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     color: Colors.customerPrimary,
+  },
+  parcelsList: {
+    gap: 12,
+  },
+  parcelBox: {
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 8,
+  },
+  parcelRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  smallInput: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 40,
+    fontSize: 13,
+    color: Colors.text,
+  },
+  addParcelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.customerPrimary + '40',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+  },
+  addParcelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.customerPrimary,
+  },
+  removeParcelBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+  },
+  removeParcelText: {
+    fontSize: 12,
+    color: Colors.danger,
+    fontWeight: '600',
   },
 });

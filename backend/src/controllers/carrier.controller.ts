@@ -256,7 +256,10 @@ export class CarrierController {
         try {
             const userId = (req as any).user?.userId;
             const user = await prisma.user.findUnique({ where: { id: userId } });
-            if (!user || !user.carrierProfileId) return res.status(403).json({ error: 'No profile' });
+            if (!user || !user.carrierProfileId) {
+                res.status(403).json({ error: 'No profile' });
+                return;
+            }
 
             const { vehicleType, baseRate, perKmRate, perStopRate, weekendSurcharge, outOfHoursSurcharge, heavyGoodsSurcharge } = req.body;
             const rate = await prisma.carrierRate.create({
@@ -285,11 +288,15 @@ export class CarrierController {
             const id = req.params.id as string;
             const userId = (req as any).user?.userId;
             const user = await prisma.user.findUnique({ where: { id: userId } });
-            if (!user || !user.carrierProfileId) return res.status(403).json({ error: 'No profile' });
+            if (!user || !user.carrierProfileId) {
+                res.status(403).json({ error: 'No profile' });
+                return;
+            }
 
             const existing = await prisma.carrierRate.findUnique({ where: { id } });
             if (!existing || existing.carrierId !== user.carrierProfileId) {
-                return res.status(404).json({ error: 'Rate card not found' });
+                res.status(404).json({ error: 'Rate card not found' });
+                return;
             }
 
             const updated = await prisma.carrierRate.update({

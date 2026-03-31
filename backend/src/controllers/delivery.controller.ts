@@ -46,7 +46,13 @@ export class DeliveryController {
                 dropoffContactName, dropoffContactPhone, dropoffAddressLine1, dropoffCity, dropoffPostcode, dropoffLatitude, dropoffLongitude, dropoffWindowStart, dropoffWindowEnd,
                 vehicleType, specialInstructions, goodsDescription, distanceKm, priority,
                 // Epic 2/3: Advanced Bookings
-                weightKg = 0, lengthCm = 0, widthCm = 0, heightCm = 0, isReturnTrip = false, extraStops = 0, quantity = 1
+                isReturnTrip = false, extraStops = 0,
+                // Multi-Parcel Integration
+                parcels = [], 
+                // Legacy fields (fallback)
+                weightKg, lengthCm, widthCm, heightCm, quantity,
+                // Additional Fields
+                jobType, pickupWindow, deliveryWindow
             } = payload;
 
             // Validate foundational required fields
@@ -62,20 +68,23 @@ export class DeliveryController {
             // ==========================================
             // COMMERCIAL ENGINE GATEWAY (Epic 2/3)
             // ==========================================
-            const distanceMiles = distanceKm ? parseFloat(distanceKm) / 1.60934 : 10.0; // Assume 10 miles minimum if unprovided
+            const distanceMiles = distanceKm ? parseFloat(distanceKm) / 1.60934 : 10.0;
             
+            // Normalize items for the commercial engine
+            let itemsToQuote = parcels && parcels.length > 0 ? parcels : [{
+                weightKg: parseFloat(weightKg) || 0,
+                lengthCm: parseFloat(lengthCm) || 0,
+                widthCm: parseFloat(widthCm) || 0,
+                heightCm: parseFloat(heightCm) || 0,
+                quantity: parseInt(quantity, 10) || 1
+            }];
+
             const { CommercialService } = require('../services/commercial.service');
             const quoteResult = await CommercialService.requestQuote({
                 pickupPostcode,
                 dropoffPostcode,
                 distanceMiles,
-                items: [{ 
-                    weightKg: parseFloat(weightKg), 
-                    lengthCm: parseFloat(lengthCm), 
-                    widthCm: parseFloat(widthCm), 
-                    heightCm: parseFloat(heightCm),
-                    quantity: parseInt(quantity, 10) || 1
-                }],
+                items: itemsToQuote,
                 flags: {
                     stairs: specialInstructions?.toLowerCase().includes('stairs'),
                     isReturnTrip: isReturnTrip === true || isReturnTrip === 'true',
@@ -113,9 +122,12 @@ export class DeliveryController {
                     customerId: userId,
                     jobNumber: jobNumber,
                     trackingNumber: randomTrk,
-                    status: quoteResult.status === 'PENDING_REVIEW' ? 'PENDING_REVIEW' : 'PENDING_DISPATCH', // Honor Margin Gates
+                    status: 'PENDING_PAYMENT', // State enforcement: Start at Pending Payment
                     paymentStatus: 'PENDING',
                     priority: priority || 'NORMAL',
+                    jobType,
+                    pickupWindow,
+                    deliveryWindow,
                     pickupContactName, pickupContactPhone, pickupAddressLine1, pickupCity, pickupPostcode,
                     pickupLatitude: pickupLatitude ? parseFloat(pickupLatitude) : 0,
                     pickupLongitude: pickupLongitude ? parseFloat(pickupLongitude) : 0,
@@ -125,12 +137,22 @@ export class DeliveryController {
                     dropoffLongitude: dropoffLongitude ? parseFloat(dropoffLongitude) : 0,
                     dropoffWindowStart, dropoffWindowEnd,
                     vehicleType, specialInstructions, goodsDescription,
-                    calculatedPrice: quoteResult.quote.customerTotal, // Guaranteed pure by the core margin engine
+                    calculatedPrice: quoteResult.quote.customerTotal,
                     quantity: quoteResult.additionalMetrics?.quantity || 1,
                     basePrice: quoteResult.additionalMetrics?.basePrice,
                     bulkDiscount: quoteResult.additionalMetrics?.bulkDiscount || 0,
                     distanceKm: distanceKm ? parseFloat(distanceKm) : undefined,
-                    quoteRequestId: quoteRequestId // Formal Linkage
+                    quoteRequestId: quoteRequestId,
+                    parcels: {
+                        create: itemsToQuote.map((p: any) => ({
+                            weightKg: parseFloat(p.weightKg) || 0,
+                            lengthCm: parseFloat(p.lengthCm) || 0,
+                            widthCm: parseFloat(p.widthCm) || 0,
+                            heightCm: parseFloat(p.heightCm) || 0,
+                            quantity: parseInt(p.quantity, 10) || 1,
+                            description: p.description || null
+                        }))
+                    }
                 }
             });
 

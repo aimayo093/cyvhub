@@ -76,7 +76,7 @@ import { apiClient } from '@/services/api';
 
 export default function GuestQuotePage() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
-    const { collection, delivery, ready, vehicle, length, width, height, weight, quantity } = useLocalSearchParams();
+    const { collection, delivery, ready, vehicle, parcels } = useLocalSearchParams();
     const router = useRouter();
     const [config, setConfig] = useState<GuestQuoteConfig>(initialGuestQuote);
     const [dynamicQuotes, setDynamicQuotes] = useState<any[]>([]);
@@ -88,14 +88,10 @@ export default function GuestQuotePage() {
         const fetchQuotes = async () => {
             let activeCollection = collection;
             let activeDelivery = delivery;
-            let activeLength = length;
-            let activeWidth = width;
-            let activeHeight = height;
-            let activeWeight = weight;
-            let activeQuantity = quantity;
+            let activeParcels = parcels ? JSON.parse(parcels as string) : [];
 
             // Recovery Logic: If URL params are missing, check AsyncStorage
-            if (!activeCollection || !activeDelivery || !activeLength) {
+            if (!activeCollection || !activeDelivery || activeParcels.length === 0) {
                 try {
                     const q1 = await AsyncStorage.getItem('last_quote_params');
                     const q2 = await AsyncStorage.getItem('last_quote_details');
@@ -104,19 +100,11 @@ export default function GuestQuotePage() {
                         const p2 = JSON.parse(q2);
                         activeCollection = p1.collection;
                         activeDelivery = p1.delivery;
-                        activeLength = p2.length;
-                        activeWidth = p2.width;
-                        activeHeight = p2.height;
-                        activeWeight = p2.weight;
-                        activeQuantity = p2.quantity;
+                        activeParcels = p2.parcels || [];
                         setRetrievedParams({ 
                             collection: activeCollection, 
                             delivery: activeDelivery, 
-                            length: activeLength, 
-                            width: activeWidth, 
-                            height: activeHeight, 
-                            weight: activeWeight,
-                            quantity: activeQuantity
+                            parcels: activeParcels
                         });
                     }
                 } catch (e) {
@@ -124,7 +112,7 @@ export default function GuestQuotePage() {
                 }
             }
 
-            if (!activeCollection || !activeDelivery || !activeLength) {
+            if (!activeCollection || !activeDelivery || activeParcels.length === 0) {
                 setIsLoading(false);
                 return;
             }
@@ -142,13 +130,13 @@ export default function GuestQuotePage() {
                     body: JSON.stringify({
                         pickupPostcode: activeCollection,
                         dropoffPostcode: activeDelivery,
-                        items: [{
-                            lengthCm: Number(activeLength),
-                            widthCm: Number(activeWidth),
-                            heightCm: Number(activeHeight),
-                            weightKg: Number(activeWeight),
-                            quantity: Number(activeQuantity) || 1
-                        }]
+                        items: activeParcels.map((p: any) => ({
+                            lengthCm: Number(p.length),
+                            widthCm: Number(p.width),
+                            heightCm: Number(p.height),
+                            weightKg: Number(p.weight),
+                            quantity: Number(p.quantity) || 1
+                        }))
                     })
                 });
 
@@ -165,18 +153,14 @@ export default function GuestQuotePage() {
         };
 
         fetchQuotes();
-    }, [collection, delivery, length, width, height, weight]);
+    }, [collection, delivery, parcels]);
 
     // Use either URL params or recovered params
     const finalCollection = collection || retrievedParams?.collection;
     const finalDelivery = delivery || retrievedParams?.delivery;
-    const finalLength = length || retrievedParams?.length;
-    const finalWidth = width || retrievedParams?.width;
-    const finalHeight = height || retrievedParams?.height;
-    const finalWeight = weight || retrievedParams?.weight;
-    const finalQuantity = quantity || retrievedParams?.quantity || 1;
+    const finalParcels = parcels ? JSON.parse(parcels as string) : (retrievedParams?.parcels || []);
 
-    const hasAnyParams = !!(finalCollection && finalDelivery && finalLength && finalWidth && finalHeight && finalWeight);
+    const hasAnyParams = !!(finalCollection && finalDelivery && finalParcels.length > 0);
 
     const handleBook = (tier: string, vehicleName: string, price: number) => {
         router.push({
@@ -187,11 +171,7 @@ export default function GuestQuotePage() {
                 serviceType: tier,
                 vehicleType: vehicleName,
                 price: price.toString(),
-                length: finalLength as string,
-                width: finalWidth as string,
-                height: finalHeight as string,
-                weight: finalWeight as string,
-                quantity: finalQuantity.toString()
+                parcels: JSON.stringify(finalParcels)
             }
         });
     };
@@ -244,7 +224,9 @@ export default function GuestQuotePage() {
                     <View style={styles.summaryRow}>
                         <Package size={16} color={Colors.primary} style={{ marginRight: 8 }} />
                         <Text style={styles.summaryLabel}>Items:</Text>
-                        <Text style={styles.summaryValue}>{finalQuantity}x {finalLength}x{finalWidth}x{finalHeight}cm, {finalWeight}kg</Text>
+                        <Text style={styles.summaryValue}>
+                            {finalParcels.length} parcel type(s) · {finalParcels.reduce((acc: number, p: any) => acc + (parseInt(p.quantity, 10) || 0), 0)} total units
+                        </Text>
                     </View>
                     <TouchableOpacity style={styles.changeBtn} activeOpacity={0.8} onPress={() => router.back()}>
                         <Text style={styles.changeBtnText}>Edit Details</Text>

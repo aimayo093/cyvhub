@@ -425,11 +425,28 @@ export default function DeliveryDetailScreen() {
         </View>
 
         <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Package size={16} color={Colors.customerPrimary} />
-            <Text style={styles.infoLabel}>Package</Text>
-            <Text style={styles.infoValue}>{delivery.packageDescription}</Text>
-          </View>
+          {delivery.parcels && delivery.parcels.length > 0 ? (
+            <View style={styles.parcelsSubSection}>
+              <View style={styles.infoRow}>
+                <Package size={16} color={Colors.customerPrimary} />
+                <Text style={styles.infoLabel}>Items</Text>
+                <Text style={styles.infoValue}>{delivery.parcels.reduce((sum, p) => sum + p.quantity, 0)} Total</Text>
+              </View>
+              {delivery.parcels.map((parcel, idx) => (
+                <View key={idx} style={styles.parcelMiniItem}>
+                  <Text style={styles.parcelMiniText}>
+                    {parcel.quantity}x {parcel.description || 'Parcel'} ({parcel.lengthCm}x{parcel.widthCm}x{parcel.heightCm}cm, {parcel.weightKg}kg)
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.infoRow}>
+              <Package size={16} color={Colors.customerPrimary} />
+              <Text style={styles.infoLabel}>Package</Text>
+              <Text style={styles.infoValue}>{delivery.packageDescription}</Text>
+            </View>
+          )}
           <View style={styles.infoRow}>
             <Truck size={16} color={Colors.customerPrimary} />
             <Text style={styles.infoLabel}>Vehicle</Text>
@@ -1119,5 +1136,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700' as const,
     color: '#fff',
+  },
+  parcelsSubSection: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+    paddingBottom: 8,
+    marginBottom: 8,
+  },
+  parcelMiniItem: {
+    paddingLeft: 32,
+    paddingVertical: 4,
+  },
+  parcelMiniText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
   },
 });

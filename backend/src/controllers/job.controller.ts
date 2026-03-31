@@ -215,7 +215,7 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
             }
 
             // Job Delivered => Notify Customer
-            if (status === 'COMPLETED' && settings.notifyOnJobDelivered) {
+            if (status === 'COMPLETED' && settings.notifyOnJobDelivered && updatedJob.customerId) {
                 const customer = await prisma.user.findUnique({ where: { id: updatedJob.customerId } });
                 if (customer) {
                     if (customer.email) {

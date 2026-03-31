@@ -29,6 +29,16 @@ export type QuoteStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CON
 
 export type SLAStatus = 'ON_TRACK' | 'AT_RISK' | 'BREACHED' | 'MET';
 
+export interface Parcel {
+  id: string;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+  weightKg: number;
+  quantity: number;
+  description?: string;
+}
+
 export interface Job {
   id: string;
   jobNumber: string;
@@ -68,6 +78,7 @@ export interface Job {
   podPhotos?: number;
   podNotes?: string;
   assignedCarrier?: string;
+  parcels?: Parcel[];
 }
 
 export interface DriverProfile {
@@ -136,6 +147,7 @@ export interface Delivery {
   aiEta?: string;
   aiEtaConfidence?: number;
   paymentStatus?: PaymentStatus;
+  parcels?: Parcel[];
 }
 
 export interface ComplianceItem {

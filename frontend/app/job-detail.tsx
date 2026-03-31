@@ -460,6 +460,28 @@ export default function JobDetailScreen() {
           </View>
         )}
 
+        {job.parcels && job.parcels.length > 0 && (
+          <View style={styles.parcelsSection}>
+            <View style={styles.sectionHeader}>
+              <Package size={16} color={Colors.primary} />
+              <Text style={styles.sectionTitle}>Parcels ({job.parcels.reduce((sum, p) => sum + p.quantity, 0)})</Text>
+            </View>
+            {job.parcels.map((parcel, index) => (
+              <View key={index} style={styles.parcelCard}>
+                <View style={styles.parcelHeader}>
+                  <Text style={styles.parcelName}>
+                    {parcel.quantity}x {parcel.description || 'Parcel'}
+                  </Text>
+                  <Text style={styles.parcelWeight}>{parcel.weightKg} kg</Text>
+                </View>
+                <Text style={styles.parcelDims}>
+                  {parcel.lengthCm}L x {parcel.widthCm}W x {parcel.heightCm}H cm
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {job.specialInstructions && (
           <View style={styles.instructionsSection}>
             <View style={styles.instructionsHeader}>
@@ -1208,5 +1230,53 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     color: Colors.danger,
+  },
+  parcelsSection: {
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  parcelCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  parcelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  parcelName: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  parcelWeight: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600' as const,
+  },
+  parcelDims: {
+    fontSize: 12,
+    color: Colors.textMuted,
   },
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { MapPin, Clock, Truck, ChevronRight, AlertTriangle } from 'lucide-react-native';
+import { MapPin, Clock, Truck, ChevronRight, AlertTriangle, Package } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { Job, JobStatus } from '@/types';
 
@@ -110,6 +110,14 @@ export default React.memo(function JobCard({ job, onPress, compact, isCurrent, i
             <Truck size={13} color={Colors.textMuted} />
             <Text style={styles.footerText}>{job.vehicleType}</Text>
           </View>
+          {job.parcels && job.parcels.length > 0 && (
+            <View style={styles.footerItem}>
+              <Package size={13} color={Colors.textMuted} />
+              <Text style={styles.footerText}>
+                {job.parcels.reduce((sum, p) => sum + p.quantity, 0)} Items
+              </Text>
+            </View>
+          )}
           {job.distanceKm != null && (
             <View style={styles.footerItem}>
               <MapPin size={13} color={Colors.textMuted} />

@@ -30,11 +30,9 @@ export default function QuoteDetailsPage() {
     const { collection, delivery, ready, vehicle } = useLocalSearchParams();
     const router = useRouter();
 
-    const [length, setLength] = useState('');
-    const [width, setWidth] = useState('');
-    const [height, setHeight] = useState('');
-    const [weight, setWeight] = useState('');
-    const [quantity, setQuantity] = useState('1');
+    const [parcels, setParcels] = useState<any[]>([
+        { length: '', width: '', height: '', weight: '', quantity: '1', description: '' }
+    ]);
     const [config, setConfig] = useState<QuoteDetailsConfig>(initialQuoteDetails);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -51,11 +49,18 @@ export default function QuoteDetailsPage() {
                 const lastDetails = await AsyncStorage.getItem('last_quote_details');
                 if (lastDetails) {
                     const parsed = JSON.parse(lastDetails);
-                    if (!length) setLength(parsed.length || '');
-                    if (!width) setWidth(parsed.width || '');
-                    if (parsed.height) setHeight(parsed.height || '');
-                    if (parsed.weight) setWeight(parsed.weight || '');
-                    if (parsed.quantity) setQuantity(parsed.quantity || '1');
+                    if (Array.isArray(parsed.parcels)) {
+                        setParcels(parsed.parcels);
+                    } else if (parsed.length) {
+                        setParcels([{
+                            length: parsed.length || '',
+                            width: parsed.width || '',
+                            height: parsed.height || '',
+                            weight: parsed.weight || '',
+                            quantity: parsed.quantity || '1',
+                            description: ''
+                        }]);
+                    }
                 }
             } catch (e) {
                 console.error('Failed to load data for quote-details', e);
@@ -67,29 +72,15 @@ export default function QuoteDetailsPage() {
     }, []);
 
     const handleGetPrices = async () => {
-        if (!length || !width || !height || !weight) {
-            Alert.alert('Missing Information', 'Please fill in all dimensions and weight to get a quote.');
+        const isValid = parcels.every(p => p.length && p.width && p.height && p.weight && parseInt(p.quantity, 10) > 0);
+        if (!isValid) {
+            Alert.alert('Missing Information', 'Please fill in all dimensions, weight, and quantity for all parcels.');
             return;
         }
 
-        const w = parseFloat(weight);
-        const l = parseFloat(length);
-        const wd = parseFloat(width);
-        const h = parseFloat(height);
-        const q = parseInt(quantity, 10);
+        const totalWeight = parcels.reduce((sum, p) => sum + (parseFloat(p.weight) * parseInt(p.quantity, 10)), 0);
 
-        if (isNaN(w) || isNaN(l) || isNaN(wd) || isNaN(h) || isNaN(q) || q < 1) {
-            Alert.alert('Invalid Input', 'Please enter valid numbers for dimensions, weight, and quantity (min 1).');
-            return;
-        }
-
-        // Check if weight is within standard limits
-        if (w < 1) {
-            Alert.alert('Weight Too Low', 'Minimum weight for a booking is 1kg.');
-            return;
-        }
-
-        if (w > 1300) {
+        if (totalWeight > 1300) {
             Alert.alert(
                 'Special Quote Required',
                 'For shipments over 1,300kg, please contact our support team for a dedicated heavy-load quote.',
@@ -98,20 +89,8 @@ export default function QuoteDetailsPage() {
             return;
         }
 
-        // Basic dimension check for standard Large Van (Max L: 4.2m)
-        if (l > 420 || wd > 210 || h > 210) {
-            Alert.alert(
-                'Oversized Item',
-                'One or more dimensions exceed our standard fleet capacity. Please contact us for a special oversized-load quote.',
-                [{ text: 'OK' }]
-            );
-            return;
-        }
-
         try {
-            await AsyncStorage.setItem('last_quote_details', JSON.stringify({
-                length, width, height, weight, quantity: q.toString()
-            }));
+            await AsyncStorage.setItem('last_quote_details', JSON.stringify({ parcels }));
         } catch (e) {
             console.error('Failed to save quote details', e);
         }
@@ -123,13 +102,27 @@ export default function QuoteDetailsPage() {
                 delivery,
                 ready,
                 vehicle,
-                length,
-                width,
-                height,
-                weight,
-                quantity: q.toString()
+                parcels: JSON.stringify(parcels)
             }
         });
+    };
+
+    const addParcel = () => {
+        setParcels([...parcels, { length: '', width: '', height: '', weight: '', quantity: '1', description: '' }]);
+    };
+
+    const removeParcel = (index: number) => {
+        if (parcels.length > 1) {
+            const newParcels = [...parcels];
+            newParcels.splice(index, 1);
+            setParcels(newParcels);
+        }
+    };
+
+    const updateParcel = (index: number, field: string, value: string) => {
+        const newParcels = [...parcels];
+        newParcels[index] = { ...newParcels[index], [field]: value };
+        setParcels(newParcels);
     };
 
     return (
@@ -161,80 +154,96 @@ export default function QuoteDetailsPage() {
                     </View>
 
                     <View style={styles.formSection}>
-                        <View style={styles.inputGroup}>
-                            <View style={styles.inputLabelRow}>
-                                <Ruler size={18} color="#64748b" />
-                                <Text style={styles.inputLabel}>Dimensions (cm)</Text>
-                            </View>
-                            <View style={styles.dimRow}>
-                                <TextInput
-                                    style={styles.dimInput}
-                                    placeholder="Length"
-                                    keyboardType="numeric"
-                                    value={length}
-                                    onChangeText={setLength}
-                                />
-                                <Text style={styles.dimX}>×</Text>
-                                <TextInput
-                                    style={styles.dimInput}
-                                    placeholder="Width"
-                                    keyboardType="numeric"
-                                    value={width}
-                                    onChangeText={setWidth}
-                                />
-                                <Text style={styles.dimX}>×</Text>
-                                <TextInput
-                                    style={styles.dimInput}
-                                    placeholder="Height"
-                                    keyboardType="numeric"
-                                    value={height}
-                                    onChangeText={setHeight}
-                                />
-                            </View>
-                            <Text style={styles.weightNote}>Max for standard fleet: 420 x 210 x 210 cm</Text>
-                        </View>
+                        {parcels.map((parcel, index) => (
+                            <View key={index} style={styles.parcelCard}>
+                                <View style={styles.parcelHeader}>
+                                    <Text style={styles.parcelTitle}>Parcel #{index + 1}</Text>
+                                    {parcels.length > 1 && (
+                                        <TouchableOpacity onPress={() => removeParcel(index)}>
+                                            <Text style={styles.removeText}>Remove</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
 
-                        <View style={styles.inputGroup}>
-                            <View style={styles.inputLabelRow}>
-                                <Package size={18} color="#64748b" />
-                                <Text style={styles.inputLabel}>Identical Parcel Quantity</Text>
-                            </View>
-                            <TextInput
-                                style={styles.fullInput}
-                                placeholder="e.g. 1"
-                                keyboardType="number-pad"
-                                value={quantity}
-                                onChangeText={setQuantity}
-                            />
-                            <Text style={styles.weightNote}>Enter how many of these exact same items you're sending.</Text>
-                        </View>
+                                <View style={styles.inputGroup}>
+                                    <View style={styles.inputLabelRow}>
+                                        <Ruler size={18} color="#64748b" />
+                                        <Text style={styles.inputLabel}>Dimensions (cm)</Text>
+                                    </View>
+                                    <View style={styles.dimRow}>
+                                        <TextInput
+                                            style={styles.dimInput}
+                                            placeholder="L"
+                                            keyboardType="numeric"
+                                            value={parcel.length}
+                                            onChangeText={(v) => updateParcel(index, 'length', v)}
+                                        />
+                                        <Text style={styles.dimX}>×</Text>
+                                        <TextInput
+                                            style={styles.dimInput}
+                                            placeholder="W"
+                                            keyboardType="numeric"
+                                            value={parcel.width}
+                                            onChangeText={(v) => updateParcel(index, 'width', v)}
+                                        />
+                                        <Text style={styles.dimX}>×</Text>
+                                        <TextInput
+                                            style={styles.dimInput}
+                                            placeholder="H"
+                                            keyboardType="numeric"
+                                            value={parcel.height}
+                                            onChangeText={(v) => updateParcel(index, 'height', v)}
+                                        />
+                                    </View>
+                                </View>
 
-                        <View style={styles.inputGroup}>
-                            <View style={styles.inputLabelRow}>
-                                <Weight size={18} color="#64748b" />
-                                <Text style={styles.inputLabel}>Total Weight (kg) per parcel</Text>
+                                <View style={styles.inputGroup}>
+                                    <View style={styles.inputLabelRow}>
+                                        <Weight size={18} color="#64748b" />
+                                        <Text style={styles.inputLabel}>Weight (kg) per unit</Text>
+                                    </View>
+                                    <TextInput
+                                        style={styles.fullInput}
+                                        placeholder="e.g. 10"
+                                        keyboardType="numeric"
+                                        value={parcel.weight}
+                                        onChangeText={(v) => updateParcel(index, 'weight', v)}
+                                    />
+                                </View>
+
+                                <View style={styles.inputGroup}>
+                                    <View style={styles.inputLabelRow}>
+                                        <Package size={18} color="#64748b" />
+                                        <Text style={styles.inputLabel}>Quantity</Text>
+                                    </View>
+                                    <TextInput
+                                        style={styles.fullInput}
+                                        placeholder="e.g. 1"
+                                        keyboardType="number-pad"
+                                        value={parcel.quantity}
+                                        onChangeText={(v) => updateParcel(index, 'quantity', v)}
+                                    />
+                                </View>
                             </View>
-                            <TextInput
-                                style={styles.fullInput}
-                                placeholder="e.g. 50"
-                                keyboardType="numeric"
-                                value={weight}
-                                onChangeText={setWeight}
-                            />
-                            <View style={styles.weightLimitContainer}>
-                                <Text style={styles.weightNote}>Minimum: <Text style={styles.boldNano}>1kg</Text></Text>
-                                <Text style={styles.weightNote}>Maximum: <Text style={styles.boldNano}>1,300kg</Text></Text>
-                            </View>
-                        </View>
+                        ))}
+
+                        <TouchableOpacity 
+                            style={styles.addParcelBtn}
+                            onPress={addParcel}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.addParcelBtnText}>+ Add Another Parcel Type</Text>
+                        </TouchableOpacity>
 
                         <TouchableOpacity 
                             style={styles.continueBtn}
                             onPress={handleGetPrices}
                             activeOpacity={0.8}
                         >
-                            <Text style={styles.continueBtnText}>Get Automatic Pricing</Text>
+                            <Text style={styles.continueBtnText}>Calculate Unified Price</Text>
                         </TouchableOpacity>
                     </View>
+
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -389,6 +398,45 @@ const styles = StyleSheet.create({
     boldNano: {
         fontWeight: '700',
         color: '#1a237e',
+    },
+    parcelCard: {
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        gap: 16,
+    },
+    parcelHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    parcelTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1a237e',
+    },
+    removeText: {
+        color: '#ef4444',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    addParcelBtn: {
+        backgroundColor: '#f1f5f9',
+        height: 50,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#cbd5e1',
+        borderStyle: 'dashed',
+    },
+    addParcelBtnText: {
+        color: '#64748b',
+        fontSize: 14,
+        fontWeight: '600',
     },
     continueBtn: {
         backgroundColor: Colors.primary,
