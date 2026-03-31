@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { Job, JobStatus, FleetVehicle, CarrierRateCard } from '@/types';
+import { useAuth } from './AuthProvider';
 import { apiClient } from '@/services/api';
 
 const NEXT_STATUS_MAP: Partial<Record<JobStatus, JobStatus>> = {
@@ -28,6 +29,7 @@ export interface AvailabilitySlot {
 }
 
 export const [CarrierProvider, useCarrier] = createContextHook(() => {
+  const { userRole, isAuthenticated } = useAuth();
   const [carrierJobs, setCarrierJobs] = useState<Job[]>([]);
   const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
   const [fleet, setFleet] = useState<FleetVehicle[]>([]);
@@ -39,6 +41,7 @@ export const [CarrierProvider, useCarrier] = createContextHook(() => {
   ]);
 
   const loadCarrierData = useCallback(async () => {
+    if (!isAuthenticated || (userRole !== 'carrier' && userRole !== 'admin')) return;
     try {
       // Assuming api wrapper returns { data: ... } 
       const [fleetRes, driversRes, jobsRes, ratesRes] = await Promise.all([
@@ -59,7 +62,7 @@ export const [CarrierProvider, useCarrier] = createContextHook(() => {
     } catch (e) {
       console.error('Failed to load carrier data', e);
     }
-  }, []);
+  }, [isAuthenticated, userRole]);
 
   React.useEffect(() => {
      loadCarrierData();

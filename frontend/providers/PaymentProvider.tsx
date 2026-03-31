@@ -26,7 +26,7 @@ const STRIPE_CONFIG = {
 };
 
 export const [PaymentProvider, usePayments] = createContextHook(() => {
-  const { isAuthenticated } = useAuth();
+  const { userRole, isAuthenticated } = useAuth();
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]); // Future DB table
   const [summary] = useState<PaymentSummary>({
@@ -48,18 +48,28 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
   const loadPaymentData = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const [txnRes, ledgerRes, stlRes] = await Promise.all([
-        apiClient('/payments/transactions'),
-        apiClient('/payments/ledger'),
-        apiClient('/payments/settlements')
-      ]);
+      const promises = [apiClient('/payments/transactions').catch(() => ({ transactions: [] }))];
+      
+      // Settlements and Ledger only for Carriers and Admins
+      if (userRole === 'carrier' || userRole === 'admin') {
+        promises.push(apiClient('/payments/ledger').catch(() => ({ ledger: [] })));
+        promises.push(apiClient('/payments/settlements').catch(() => ({ settlements: [] })));
+      }
+
+      const results = await Promise.all(promises);
+      const txnRes = results[0];
       setTransactions(txnRes.transactions || txnRes.data?.transactions || []);
-      setAccountingLedger(ledgerRes.ledger || ledgerRes.data?.ledger || []);
-      setSettlements(stlRes.settlements || stlRes.data?.settlements || []);
+
+      if (userRole === 'carrier' || userRole === 'admin') {
+        const ledgerRes = results[1];
+        const stlRes = results[2];
+        setAccountingLedger(ledgerRes.ledger || ledgerRes.data?.ledger || []);
+        setSettlements(stlRes.settlements || stlRes.data?.settlements || []);
+      }
     } catch (e) {
       console.error('Failed to load payment data:', e);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userRole]);
 
   React.useEffect(() => {
     loadPaymentData();

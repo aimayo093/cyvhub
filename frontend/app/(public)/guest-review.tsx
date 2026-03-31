@@ -42,42 +42,44 @@ export default function GuestReviewPage() {
             const response = await apiClient('/deliveries', {
                 method: 'POST',
                 body: JSON.stringify({
+                    guestEmail: params.email,
                     pickupContactName: `${params.firstName} ${params.lastName}`,
-                    pickupContactPhone: '0000000000', // Mock or add field
-                    pickupAddressLine1: params.collectionAddress,
-                    pickupCity: 'Unknown', // Future: Geocode or parse
+                    pickupContactPhone: params.phone || '0000000000', 
+                    pickupAddressLine1: params.collectionAddress || 'Collection Point',
+                    pickupCity: params.collectionCity || 'Unknown', 
                     pickupPostcode: params.collection,
                     dropoffContactName: `${params.firstName} ${params.lastName}`,
-                    dropoffContactPhone: '0000000000',
-                    dropoffAddressLine1: params.deliveryAddress,
-                    dropoffCity: 'Unknown',
+                    dropoffContactPhone: params.phone || '0000000000',
+                    dropoffAddressLine1: params.deliveryAddress || 'Delivery Point',
+                    dropoffCity: params.deliveryCity || 'Unknown',
                     dropoffPostcode: params.delivery,
                     vehicleType: params.vehicleType,
                     parcels: parcels.map((p: any) => ({
-                        lengthCm: parseFloat(p.length),
-                        widthCm: parseFloat(p.width),
-                        heightCm: parseFloat(p.height),
-                        weightKg: parseFloat(p.weight),
+                        lengthCm: parseFloat(p.length) || 0,
+                        widthCm: parseFloat(p.width) || 0,
+                        heightCm: parseFloat(p.height) || 0,
+                        weightKg: parseFloat(p.weight) || 0,
                         quantity: parseInt(p.quantity, 10) || 1,
                         description: p.description || 'Guest Item'
                     })),
-                    distanceKm: 20, // Future: Use real distance from quote
+                    distanceKm: params.distance ? parseFloat(params.distance as string) : 20,
                 })
             });
 
-            if (response && response.id) {
+            if (response && response.data && response.data.id) {
+                const delivery = response.data;
                 // Success! Redirect to Payment
                 router.replace({
                     pathname: '/payment-checkout' as any,
                     params: {
                         amount: totalIncVat.toFixed(2),
-                        description: `Delivery ${response.jobNumber}`,
-                        deliveryId: response.id,
-                        trackingNumber: response.trackingNumber,
+                        description: `Delivery ${delivery.jobNumber}`,
+                        deliveryId: delivery.id,
+                        trackingNumber: delivery.trackingNumber,
                     }
                 });
             } else {
-                throw new Error('Invalid response from server');
+                throw new Error('Could not retrieve delivery ID from response');
             }
         } catch (error: any) {
             console.error('Booking failed:', error);

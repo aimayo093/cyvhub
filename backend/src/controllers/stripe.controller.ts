@@ -46,6 +46,22 @@ export class StripeController {
                 },
             });
 
+            // 03-31 FIX: Create a PENDING transaction record in the DB so the webhook can fulfill it
+            if (deliveryId && deliveryId !== 'none') {
+                 await prisma.paymentTransaction.create({
+                     data: {
+                         type: 'charge',
+                         status: 'PENDING',
+                         amount: amount,
+                         currency: currency.toUpperCase(),
+                         method: 'stripe',
+                         description: description || `Stripe Payment for Delivery ${deliveryId}`,
+                         deliveryId: deliveryId,
+                         stripePaymentId: paymentIntent.id
+                     }
+                 });
+            }
+
             res.status(200).json({
                 clientSecret: paymentIntent.client_secret,
                 paymentIntentId: paymentIntent.id

@@ -95,6 +95,7 @@ export class DeliveryController {
 
             // HARD ENFORCEMENT: Reject immediately if load is overweight/unsuitable
             if (!quoteResult.approved) {
+                 console.warn('[DeliveryController] Quote Rejected:', quoteResult.reason);
                  res.status(422).json({ 
                      error: 'Commercial Rules Engine Rejected Booking', 
                      reason: quoteResult.reason,
@@ -118,25 +119,32 @@ export class DeliveryController {
             // Generate a random tracking number, CYV-TRK-XXXX
             const randomTrk = `CYV-TRK-${Math.floor(1000 + Math.random() * 9000)}`;
 
+            // Default window times if missing (critical for Prisma mandatory fields)
+            const now = new Date();
+            const defaultStart = now.toISOString();
+            const defaultEnd = new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(); // +4 hours
+
             const newDelivery = await prisma.job.create({
                 data: {
                     customerId: userId || null,
                     jobNumber: jobNumber,
                     trackingNumber: randomTrk,
-                    status: 'PENDING_PAYMENT', // State enforcement: Start at Pending Payment
+                    status: 'PENDING_PAYMENT', 
                     paymentStatus: 'PENDING',
                     priority: priority || 'NORMAL',
-                    jobType,
-                    pickupWindow,
-                    deliveryWindow,
+                    jobType: jobType || 'Standard',
+                    pickupWindow: pickupWindow || 'ASAP',
+                    deliveryWindow: deliveryWindow || 'Standard',
                     pickupContactName, pickupContactPhone, pickupAddressLine1, pickupCity, pickupPostcode,
                     pickupLatitude: pickupLatitude ? parseFloat(pickupLatitude) : 0,
                     pickupLongitude: pickupLongitude ? parseFloat(pickupLongitude) : 0,
-                    pickupWindowStart, pickupWindowEnd,
+                    pickupWindowStart: pickupWindowStart || defaultStart,
+                    pickupWindowEnd: pickupWindowEnd || defaultEnd,
                     dropoffContactName, dropoffContactPhone, dropoffAddressLine1, dropoffCity, dropoffPostcode,
                     dropoffLatitude: dropoffLatitude ? parseFloat(dropoffLatitude) : 0,
                     dropoffLongitude: dropoffLongitude ? parseFloat(dropoffLongitude) : 0,
-                    dropoffWindowStart, dropoffWindowEnd,
+                    dropoffWindowStart: dropoffWindowStart || defaultStart,
+                    dropoffWindowEnd: dropoffWindowEnd || defaultEnd,
                     vehicleType, specialInstructions, goodsDescription,
                     calculatedPrice: quoteResult.quote.customerTotal,
                     quantity: quoteResult.additionalMetrics?.quantity || 1,
@@ -162,10 +170,9 @@ export class DeliveryController {
             // ==========================================
             try {
                 const settings = await NotificationService.getSettings();
-                if (settings.notifyOnJobCreated) {
-                    // Try to find registered customer first
-                    let targetEmail = null;
-                    let targetPhone = null;
+                if (settings && settings.notifyOnJobCreated) {
+                    let targetEmail = payload.guestEmail || payload.email;
+                    let targetPhone = pickupContactPhone;
                     let targetName = pickupContactName;
 
                     if (userId) {
@@ -175,13 +182,6 @@ export class DeliveryController {
                             targetPhone = customer.phone;
                             targetName = customer.firstName;
                         }
-                    } else {
-                        // Guest flow: use contact info from payload
-                        // Note: Homepage flow should send guest email in payload if possible
-                        // For now, we'll use pickup info as fallback
-                        targetPhone = pickupContactPhone;
-                        // If we had guestEmail in payload:
-                        targetEmail = payload.guestEmail || payload.email; 
                     }
 
                     if (targetEmail) {
@@ -192,13 +192,17 @@ export class DeliveryController {
                     }
                 }
             } catch (notifErr) {
-                console.error('[DeliveryController] Failed to send creation notification:', notifErr);
+                console.error('[DeliveryController] Notification Error:', notifErr);
             }
 
             res.status(201).json({ data: newDelivery, commercial_breakdown: quoteResult.quote });
-        } catch (error) {
-            console.error('[DeliveryController] Error creating delivery:', error);
-            res.status(500).json({ error: 'Failed to create delivery.' });
+        } catch (error: any) {
+            console.error('[DeliveryController] CRITICAL Error creating delivery:', error);
+            res.status(500).json({ 
+                error: 'Failed to create delivery.', 
+                details: error.message,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
         }
     }
 
