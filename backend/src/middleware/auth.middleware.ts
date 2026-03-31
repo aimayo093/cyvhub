@@ -35,6 +35,26 @@ export const authenticate = (req: AuthenticatedRequest, res: Response, next: Nex
     next();
 };
 
+export const optionalAuthenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    let token: string | undefined;
+
+    if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+    } else if (req.cookies?.cyvhub_session) {
+        token = req.cookies.cyvhub_session;
+    }
+
+    if (token) {
+        const payload = verifyToken(token);
+        if (payload) {
+            req.user = payload;
+        }
+    }
+    
+    next();
+};
+
 export const requireRole = (allowedRoles: string[]) => {
     return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
         if (!req.user || !allowedRoles.includes(req.user.role)) {

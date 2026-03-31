@@ -23,6 +23,7 @@ import {
   FileText,
   Bookmark,
   AlertCircle,
+  Calculator,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -72,6 +73,7 @@ export default function BookDeliveryScreen() {
   const [showPickupWindowPicker, setShowPickupWindowPicker] = useState<boolean>(false);
   const [showDeliveryWindowPicker, setShowDeliveryWindowPicker] = useState<boolean>(false);
   const [showSavedLocations, setShowSavedLocations] = useState<LocationTarget | null>(null);
+  const [isReadyNow, setIsReadyNow] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const fetchPrice = useCallback(async () => {
@@ -177,8 +179,9 @@ export default function BookDeliveryScreen() {
         estimatedDelivery: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
         jobType: selectedJobType,
         specialInstructions: specialInstructions.trim() || undefined,
-        pickupTimeWindow: selectedPickupWindow || undefined,
+        pickupTimeWindow: isReadyNow ? 'READY_NOW' : (selectedPickupWindow || undefined),
         deliveryTimeWindow: selectedDeliveryWindow || undefined,
+        isReadyNow,
       } as any);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -411,29 +414,29 @@ export default function BookDeliveryScreen() {
             <View style={styles.parcelsList}>
               {parcels.map((parcel, index) => (
                 <View key={index} style={styles.parcelBox}>
-                   <View style={styles.parcelRow}>
-                        <TextInput
-                            style={[styles.smallInput, { flex: 2 }]}
-                            placeholder="Description"
-                            value={parcel.description}
-                            onChangeText={(v) => {
-                                const newParcels = [...parcels];
-                                newParcels[index].description = v;
-                                setParcels(newParcels);
-                            }}
-                        />
-                        <TextInput
-                            style={[styles.smallInput, { flex: 1 }]}
-                            placeholder="Qty"
-                            keyboardType="numeric"
-                            value={parcel.quantity}
-                            onChangeText={(v) => {
-                                const newParcels = [...parcels];
-                                newParcels[index].quantity = v;
-                                setParcels(newParcels);
-                            }}
-                        />
-                   </View>
+                    <View style={styles.parcelRow}>
+                         <TextInput
+                             style={[styles.smallInput, { flex: 3 }]}
+                             placeholder="Description (e.g. Box of parts)"
+                             value={parcel.description}
+                             onChangeText={(v) => {
+                                 const newParcels = [...parcels];
+                                 newParcels[index].description = v;
+                                 setParcels(newParcels);
+                             }}
+                         />
+                         <TextInput
+                             style={[styles.smallInput, { flex: 1 }]}
+                             placeholder="Qty"
+                             keyboardType="numeric"
+                             value={parcel.quantity}
+                             onChangeText={(v) => {
+                                 const newParcels = [...parcels];
+                                 newParcels[index].quantity = v;
+                                 setParcels(newParcels);
+                             }}
+                         />
+                    </View>
                    <View style={styles.parcelRow}>
                         <TextInput
                             style={styles.smallInput}
@@ -561,38 +564,65 @@ export default function BookDeliveryScreen() {
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <Clock size={16} color={Colors.customerPrimary} />
-              <Text style={styles.sectionLabel}>Time Windows</Text>
-              <Text style={styles.optionalTag}>Optional</Text>
+              <Text style={styles.sectionLabel}>Collection Time</Text>
+            </View>
+            <View style={styles.vehicleOptions}>
+              <TouchableOpacity 
+                style={[styles.vehicleOption, isReadyNow && styles.vehicleOptionSelected]} 
+                onPress={() => {
+                  setIsReadyNow(true);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }} 
+                activeOpacity={0.8}
+              >
+                <Clock size={14} color={isReadyNow ? '#FFFFFF' : Colors.textMuted} />
+                <Text style={[styles.vehicleText, isReadyNow && styles.vehicleTextSelected]}>Ready Now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.vehicleOption, !isReadyNow && styles.vehicleOptionSelected]} 
+                onPress={() => {
+                  setIsReadyNow(false);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }} 
+                activeOpacity={0.8}
+              >
+                <Calculator size={14} color={!isReadyNow ? '#FFFFFF' : Colors.textMuted} />
+                <Text style={[styles.vehicleText, !isReadyNow && styles.vehicleTextSelected]}>Pre-book Later</Text>
+              </TouchableOpacity>
             </View>
 
-            <Text style={styles.subLabel}>Pickup Window</Text>
-            <TouchableOpacity
-              style={styles.pickerButton}
-              onPress={() => setShowPickupWindowPicker(!showPickupWindowPicker)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.pickerButtonText, !selectedPickupWindow && { color: Colors.textMuted }]}>
-                {selectedPickupWindow ? getWindowLabel(selectedPickupWindow) : 'Select pickup time window'}
-              </Text>
-              <ChevronDown size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
+            {!isReadyNow && (
+              <>
+                <Text style={[styles.subLabel, { marginTop: 14 }]}>Pickup Window</Text>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowPickupWindowPicker(!showPickupWindowPicker)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.pickerButtonText, !selectedPickupWindow && { color: Colors.textMuted }]}>
+                    {selectedPickupWindow ? getWindowLabel(selectedPickupWindow) : 'Select pickup time window'}
+                  </Text>
+                  <ChevronDown size={18} color={Colors.textMuted} />
+                </TouchableOpacity>
 
-            {showPickupWindowPicker && (
-              <View style={styles.pickerOptions}>
-                {TIME_WINDOWS.map(tw => (
-                  <TouchableOpacity
-                    key={tw.value}
-                    style={[styles.pickerOption, selectedPickupWindow === tw.value && styles.pickerOptionActive]}
-                    onPress={() => {
-                      setSelectedPickupWindow(tw.value);
-                      setShowPickupWindowPicker(false);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                  >
-                    <Text style={[styles.pickerOptionText, selectedPickupWindow === tw.value && styles.pickerOptionTextActive]}>{tw.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                {showPickupWindowPicker && (
+                  <View style={styles.pickerOptions}>
+                    {TIME_WINDOWS.map(tw => (
+                      <TouchableOpacity
+                        key={tw.value}
+                        style={[styles.pickerOption, selectedPickupWindow === tw.value && styles.pickerOptionActive]}
+                        onPress={() => {
+                          setSelectedPickupWindow(tw.value);
+                          setShowPickupWindowPicker(false);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                      >
+                        <Text style={[styles.pickerOptionText, selectedPickupWindow === tw.value && styles.pickerOptionTextActive]}>{tw.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
 
             <Text style={[styles.subLabel, { marginTop: 14 }]}>Delivery Window</Text>
@@ -774,6 +804,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     minHeight: 48,
     gap: 10,
+    flexWrap: 'wrap',
+    paddingVertical: 8,
   },
   inputSplit: {
     flexDirection: 'row',
@@ -783,6 +815,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: Colors.text,
+    minWidth: 150,
   },
   subLabel: {
     fontSize: 12,
@@ -898,6 +931,7 @@ const styles = StyleSheet.create({
   },
   parcelRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   smallInput: {
@@ -934,5 +968,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.danger,
     fontWeight: '600',
+  },
+  vehicleOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  vehicleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    flex: 1,
+    minWidth: 120,
+    justifyContent: 'center',
+  },
+  vehicleOptionSelected: {
+    borderColor: Colors.customerPrimary,
+    backgroundColor: Colors.customerPrimary,
+  },
+  vehicleText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '600' as const,
+  },
+  vehicleTextSelected: {
+    color: '#FFFFFF',
+  },
+  formRow: {
+    width: '100%',
   },
 });

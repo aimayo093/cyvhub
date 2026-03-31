@@ -25,17 +25,30 @@ export class DispatchService {
 
             // 1. Determine if it should go to a Driver or Carrier
             // Logic: If total weight > 500kg or explicitly HGV, target Carrier first.
-            const totalWeight = job.parcels.reduce((sum, p) => sum + (p.weightKg * p.quantity), 0);
+            const totalWeight = job.parcels.reduce((sum, p) => sum + (p.weightKg * Number(p.quantity)), 0);
             const isLargeLoad = totalWeight > 500 || job.vehicleType === 'HGV';
-            const targetRole = isLargeLoad ? 'carrier' : 'driver';
+            
+            let targetRole = isLargeLoad ? 'carrier' : 'driver';
 
             // 2. Find eligible active users
-            const candidates = await prisma.user.findMany({
+            let candidates = await prisma.user.findMany({
                 where: {
                     role: targetRole,
                     status: 'ACTIVE',
                 }
             });
+
+            // 2b. Fallback Logic: If no drivers found for small load, try carriers
+            if (candidates.length === 0 && targetRole === 'driver') {
+                console.log(`[DispatchService] No active drivers found for job ${job.jobNumber}. Falling back to carriers.`);
+                targetRole = 'carrier';
+                candidates = await prisma.user.findMany({
+                    where: {
+                        role: 'carrier',
+                        status: 'ACTIVE',
+                    }
+                });
+            }
 
             console.log(`[DispatchService] Found ${candidates.length} potential ${targetRole}s for job ${job.jobNumber}`);
 

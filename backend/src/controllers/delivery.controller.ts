@@ -85,6 +85,7 @@ export class DeliveryController {
                 dropoffPostcode,
                 distanceMiles,
                 items: itemsToQuote,
+                vehicleType, // Pass the selected vehicle type
                 flags: {
                     stairs: specialInstructions?.toLowerCase().includes('stairs'),
                     isReturnTrip: isReturnTrip === true || isReturnTrip === 'true',
@@ -119,7 +120,7 @@ export class DeliveryController {
 
             const newDelivery = await prisma.job.create({
                 data: {
-                    customerId: userId,
+                    customerId: userId || null,
                     jobNumber: jobNumber,
                     trackingNumber: randomTrk,
                     status: 'PENDING_PAYMENT', // State enforcement: Start at Pending Payment
@@ -162,14 +163,32 @@ export class DeliveryController {
             try {
                 const settings = await NotificationService.getSettings();
                 if (settings.notifyOnJobCreated) {
-                    const customer = await prisma.user.findUnique({ where: { id: userId } });
-                    if (customer) {
-                        if (customer.email) {
-                            NotificationService.sendEmail(customer.email, 'Job Created Successfully', `<p>Your job <b>${newDelivery.jobNumber}</b> has been created and is pending dispatch.</p>`);
+                    // Try to find registered customer first
+                    let targetEmail = null;
+                    let targetPhone = null;
+                    let targetName = pickupContactName;
+
+                    if (userId) {
+                        const customer = await prisma.user.findUnique({ where: { id: userId } });
+                        if (customer) {
+                            targetEmail = customer.email;
+                            targetPhone = customer.phone;
+                            targetName = customer.firstName;
                         }
-                        if (customer.phone) {
-                            NotificationService.sendSms(customer.phone, `CYVhub: Your job ${newDelivery.jobNumber} has been created.`);
-                        }
+                    } else {
+                        // Guest flow: use contact info from payload
+                        // Note: Homepage flow should send guest email in payload if possible
+                        // For now, we'll use pickup info as fallback
+                        targetPhone = pickupContactPhone;
+                        // If we had guestEmail in payload:
+                        targetEmail = payload.guestEmail || payload.email; 
+                    }
+
+                    if (targetEmail) {
+                        NotificationService.sendEmail(targetEmail, 'Job Created Successfully', `<p>Hi ${targetName},</p><p>Your job <b>${newDelivery.jobNumber}</b> has been created and is pending payment.</p>`);
+                    }
+                    if (targetPhone) {
+                        NotificationService.sendSms(targetPhone, `CYVhub: Your job ${newDelivery.jobNumber} has been created.`);
                     }
                 }
             } catch (notifErr) {

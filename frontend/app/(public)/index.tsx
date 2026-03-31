@@ -240,12 +240,12 @@ export default function PublicHome() {
                                                 </View>
                                             </View>
 
-                                            <View style={styles.optionsRow}>
-                                                {hero.showVehicleSelection && (
-                                                    <View style={[styles.gridField, { flex: 1.2 }]}>
+                                            {hero.showVehicleSelection && (
+                                                <View style={styles.formRow}>
+                                                    <View style={[styles.gridField, { flex: 1 }]}>
                                                         <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Vehicle Required:</Text>
                                                         <View style={styles.vehicleOptions}>
-                                                            {['Small Van', 'Medium Van', 'Large Van'].map(van => (
+                                                            {['Small Van', 'Medium Van', 'Large Van', 'HGV'].map(van => (
                                                                 <TouchableOpacity key={van} style={[styles.vehicleOption, vehicleType === van && styles.vehicleOptionSelected]} onPress={() => setVehicleType(van)} activeOpacity={0.8}>
                                                                     <Truck size={16} color={vehicleType === van ? Colors.primary : Colors.textMuted} />
                                                                     <Text style={[styles.vehicleText, vehicleType === van && styles.vehicleTextSelected]}>{van}</Text>
@@ -253,10 +253,12 @@ export default function PublicHome() {
                                                             ))}
                                                         </View>
                                                     </View>
-                                                )}
+                                                </View>
+                                            )}
 
-                                                {hero.showDateSelection && (
-                                                    <View style={[styles.gridField, { flex: 0.8 }]}>
+                                            {hero.showDateSelection && (
+                                                <View style={styles.formRow}>
+                                                    <View style={[styles.gridField, { flex: 1 }]}>
                                                         <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Collection Time:</Text>
                                                         <View style={styles.vehicleOptions}>
                                                             <TouchableOpacity style={[styles.vehicleOption, isReadyNow && styles.vehicleOptionSelected]} onPress={() => setIsReadyNow(true)} activeOpacity={0.8}>
@@ -269,8 +271,8 @@ export default function PublicHome() {
                                                             </TouchableOpacity>
                                                         </View>
                                                     </View>
-                                                )}
-                                            </View>
+                                                </View>
+                                            )}
 
                                             <TouchableOpacity
                                                 style={styles.fullWidthContinueBtn}

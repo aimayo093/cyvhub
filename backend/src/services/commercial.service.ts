@@ -7,10 +7,14 @@ export class CommercialService {
      * The master orchestrator for Phase E Quote Generation.
      * Evaluates vehicle suitability, pricing, payouts, and margins.
      */
-    static async requestQuote(payload: { pickupPostcode: string, dropoffPostcode: string, distanceMiles: number, items: any[], flags: any }) {
-        // 1. Calculate the Chargeable Weight
+    static async requestQuote(payload: { pickupPostcode: string, dropoffPostcode: string, distanceMiles: number, items: any[], flags: any, vehicleType?: string }) {
+        // 1. Calculate the Chargeable Weight & Max Dimensions
         const totalQuantity = payload.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
         const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(payload.items);
+        
+        const maxL = payload.items.reduce((max, i) => Math.max(max, i.lengthCm || 0), 0);
+        const maxW = payload.items.reduce((max, i) => Math.max(max, i.widthCm || 0), 0);
+        const maxH = payload.items.reduce((max, i) => Math.max(max, i.heightCm || 0), 0);
 
         // 2. Select Suitable Vehicle (Suitability Engine Layer)
         const vehicles = await (prisma as any).vehicleClass.findMany({
@@ -18,11 +22,41 @@ export class CommercialService {
             orderBy: { maxWeightKg: 'asc' }
         });
 
-        const suitableVehicle = vehicles.find((v: any) => chargeableWeightKg <= v.maxWeightKg);
+        let suitableVehicle;
+        if (payload.vehicleType) {
+            suitableVehicle = vehicles.find((v: any) => v.name === payload.vehicleType);
+            
+            // Validate if the chosen vehicle actually fits the load
+            if (suitableVehicle) {
+                const fits = maxL <= suitableVehicle.maxLengthCm && 
+                            maxW <= suitableVehicle.maxWidthCm && 
+                            maxH <= suitableVehicle.maxHeightCm && 
+                            chargeableWeightKg <= suitableVehicle.maxWeightKg;
+                
+                if (!fits) {
+                    return {
+                        approved: false,
+                        reason: 'VEHICLE_TOO_SMALL',
+                        message: `The selected ${payload.vehicleType} is too small for this load. Please select a larger vehicle.`
+                    };
+                }
+            }
+        }
+
+        // If no vehicle selected or not found, find the smallest one that fits
+        if (!suitableVehicle) {
+            suitableVehicle = vehicles.find((v: any) => 
+                maxL <= v.maxLengthCm && 
+                maxW <= v.maxWidthCm && 
+                maxH <= v.maxHeightCm && 
+                chargeableWeightKg <= v.maxWeightKg
+            );
+        }
+
         if (!suitableVehicle) {
             return {
                 approved: false,
-                reason: 'OVERWEIGHT',
+                reason: 'OVERWEIGHT_OR_OVERSIZE',
                 message: 'Load exceeds all available vehicle capacities. Manual review required.'
             };
         }
