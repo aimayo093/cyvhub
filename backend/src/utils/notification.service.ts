@@ -1,6 +1,6 @@
-import nodemailer from 'nodemailer';
 import axios from 'axios';
 import { prisma } from '../index';
+import * as EmailService from '../services/email.service';
 
 export class NotificationService {
     /**
@@ -18,50 +18,53 @@ export class NotificationService {
     }
 
     /**
-     * Send an email using Nodemailer based on DB settings.
+     * Send an email using Resend (via EmailService).
+     * Legacy SMTP settings are bypassed in favor of the established Resend integration.
      */
     static async sendEmail(to: string, subject: string, htmlBody: string): Promise<boolean> {
+        // We now prioritize Resend for all system emails. 
+        // The NotificationSettings.emailEnabled flag still controls global output.
         const settings = await this.getSettings();
         
-        if (!settings.emailEnabled) {
-            console.log(`[NotificationService] Email disabled. Skipped sending to ${to}`);
-            return false;
-        }
-
-        const host = settings.smtpHost || process.env.SMTP_HOST;
-        const port = settings.smtpPort || parseInt(process.env.SMTP_PORT || '587', 10);
-        const user = settings.smtpUser || process.env.SMTP_USER;
-        const pass = settings.smtpPass || process.env.SMTP_PASS;
-        const fromName = settings.emailFromName || 'CYVhub';
-        const fromAddr = settings.emailFromAddr || user || 'noreply@cyvhub.com';
-
-        if (!host || !user || !pass) {
-            console.error('[NotificationService] SMTP credentials missing.');
-            await this.logNotification('EMAIL', to, subject, 'FAILED', 'Missing SMTP credentials');
+        if (!settings.emailEnabled && process.env.NODE_ENV === 'production') {
+            console.log(`[NotificationService] Email disabled in settings. Skipped sending to ${to}`);
             return false;
         }
 
         try {
-            const transporter = nodemailer.createTransport({
-                host,
-                port,
-                secure: port === 465, // true for 465, false for other ports
-                auth: { user, pass },
-            });
-
-            await transporter.sendMail({
-                from: `"${fromName}" <${fromAddr}>`,
+            // Note: Since we are migrating to structured templates in EmailService, 
+            // this generic method acts as a fallback for simple text alerts.
+            const { Resend } = require('resend');
+            const resend = new Resend(process.env.RESEND_API_KEY);
+            
+            await resend.emails.send({
+                from: 'CYVhub <noreply@cyvhub.com>',
                 to,
                 subject,
                 html: htmlBody,
             });
 
-            console.log(`[NotificationService] Email sent successfully to ${to}`);
+            console.log(`[NotificationService] Email sent successfully via Resend to ${to}`);
             await this.logNotification('EMAIL', to, subject, 'SUCCESS');
             return true;
         } catch (error: any) {
-            console.error(`[NotificationService] Email failed to send to ${to}:`, error.message);
+            console.error(`[NotificationService] Resend failed to send to ${to}:`, error.message);
             await this.logNotification('EMAIL', to, subject, 'FAILED', error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Specialized wrapper for booking confirmations.
+     */
+    static async sendBookingConfirmation(to: string, name: string, job: any) {
+        try {
+            await EmailService.sendBookingConfirmationEmail(to, name, job);
+            await this.logNotification('EMAIL', to, `Booking Confirmed: ${job.jobNumber}`, 'SUCCESS');
+            return true;
+        } catch (error: any) {
+            console.error(`[NotificationService] Failed to send booking confirmation to ${to}:`, error.message);
+            await this.logNotification('EMAIL', to, `Booking Confirmed: ${job.jobNumber}`, 'FAILED', error.message);
             return false;
         }
     }

@@ -22,7 +22,7 @@ export class DeliveryController {
             // Admin sees all
 
             const deliveries = await prisma.job.findMany({
-                where: query,
+                where: query as any,
                 orderBy: { createdAt: 'desc' },
                 include: { quoteRequest: { include: { lineItems: true } } }
             });
@@ -112,12 +112,13 @@ export class DeliveryController {
                     create: { id: 1, current: 1 }
                 });
                 
-                const nextNumber = `JOB-${String(counter.current).padStart(6, '0')}`;
+                const nextNumber = `CYV-${String(counter.current).padStart(6, '0')}`;
                 return { jobNumber: nextNumber, quoteRequestId: quoteResult.quote.id };
             });
 
-            // Generate a random tracking number, CYV-TRK-XXXX
-            const randomTrk = `CYV-TRK-${Math.floor(1000 + Math.random() * 9000)}`;
+            // Generate a professional tracking number linked to the job number
+            const trackingNumber = jobNumber.replace('CYV-', 'CYV-TRK-');
+
 
             // Default window times if missing (critical for Prisma mandatory fields)
             const now = new Date();
@@ -128,7 +129,7 @@ export class DeliveryController {
                 data: {
                     customerId: userId || null,
                     jobNumber: jobNumber,
-                    trackingNumber: randomTrk,
+                    trackingNumber: trackingNumber,
                     status: 'PENDING_PAYMENT', 
                     paymentStatus: 'PENDING',
                     priority: priority || 'NORMAL',
@@ -254,4 +255,57 @@ export class DeliveryController {
         }
     }
 
+    /**
+     * PATCH /api/deliveries/:id
+     * Allows updating job details. Restricted based on status.
+     */
+    static async updateDelivery(req: Request, res: Response): Promise<void> {
+        try {
+            const { id } = req.params;
+            const userId = (req as any).user?.userId;
+            const role = (req as any).user?.role;
+            const updates = req.body;
+
+            const existing = await prisma.job.findUnique({ where: { id: id as string } });
+            if (!existing) {
+                res.status(404).json({ error: 'Delivery not found.' });
+                return;
+            }
+
+            // Ownership check
+            if (role !== 'admin' && existing.customerId !== userId) {
+                res.status(403).json({ error: 'Forbidden. You do not own this delivery.' });
+                return;
+            }
+
+            // Status check - allow edits if not yet dispatched
+            const editableStatuses = ['PENDING_PAYMENT', 'AWAITING_PAYMENT', 'PENDING_DISPATCH'];
+            if (role !== 'admin' && !editableStatuses.includes(existing.status)) {
+                res.status(400).json({ error: `Cannot edit delivery in status: ${existing.status}` });
+                return;
+            }
+
+            // Shallow update of fields
+            const allowedFields = [
+                'pickupContactName', 'pickupContactPhone', 'pickupAddressLine1', 'pickupCity', 'pickupPostcode',
+                'dropoffContactName', 'dropoffContactPhone', 'dropoffAddressLine1', 'dropoffCity', 'dropoffPostcode',
+                'specialInstructions', 'goodsDescription', 'priority', 'jobType'
+            ];
+
+            const filteredUpdates: any = {};
+            for (const key of allowedFields) {
+                if (updates[key] !== undefined) filteredUpdates[key] = updates[key];
+            }
+
+            const updated = await prisma.job.update({
+                where: { id: id as string },
+                data: filteredUpdates
+            });
+
+            res.status(200).json({ data: updated });
+        } catch (error) {
+            console.error('[DeliveryController] Error updating delivery:', error);
+            res.status(500).json({ error: 'Failed to update delivery.' });
+        }
+    }
 }

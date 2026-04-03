@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity } from '
 import { useLocalSearchParams, useRouter, Link } from 'expo-router';
 import { CheckCircle, ArrowLeft } from 'lucide-react-native';
 import { Alert, ActivityIndicator } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { apiClient } from '@/services/api';
 import Colors from '@/constants/colors';
+import { usePayments } from '@/providers/PaymentProvider';
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
     return (
@@ -28,11 +30,16 @@ export default function GuestReviewPage() {
     const params = useLocalSearchParams();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [bookingRef, setBookingRef] = useState<string>('');
 
     const price = Number(params.price || 0);
     const vatAmount = price * 0.2;
     const totalIncVat = price + vatAmount;
+
+    const { usePayments: usePaymentsHook } = require('@/providers/PaymentProvider');
+    const { initiateStripeCheckout } = usePayments();
 
     const handleConfirmAndPay = async () => {
         if (isSubmitting) return; // Prevent double-click
@@ -40,7 +47,7 @@ export default function GuestReviewPage() {
         setErrorMessage(null);
 
         try {
-            // Step 1: Create the delivery booking (status: PENDING_PAYMENT)
+            // Step 1: Create the delivery booking
             const parcels = params.parcels ? JSON.parse(params.parcels as string) : [];
             
             const response = await apiClient('/deliveries', {
@@ -75,19 +82,21 @@ export default function GuestReviewPage() {
             }
 
             const delivery = response.data;
+            setBookingRef(delivery.jobNumber || delivery.trackingNumber);
 
-            // Step 2: Redirect to the payment page — user must complete payment
-            // before booking is confirmed. The payment-checkout page handles
-            // payment method selection, card entry, and Stripe processing.
-            router.replace({
-                pathname: '/payment-checkout' as any,
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            // Delivery created successfully. Redirect to branded checkout.
+            router.push({
+                pathname: '/checkout' as any,
                 params: {
-                    amount: totalIncVat.toFixed(2),
-                    description: `Delivery ${delivery.jobNumber}`,
-                    deliveryId: delivery.id,
-                    trackingNumber: delivery.trackingNumber,
+                    jobId: delivery.id,
+                    jobNumber: delivery.jobNumber,
+                    amount: price.toString(),
+                    pickup: delivery.pickupCity,
+                    dropoff: delivery.dropoffCity,
                 }
             });
+
         } catch (error: any) {
             console.error('Booking failed:', error);
             const msg = error?.message || 'We could not create your booking. Please try again.';
@@ -98,8 +107,24 @@ export default function GuestReviewPage() {
         }
     };
 
-    // NOTE: No success view here — the payment-checkout page shows success
-    // only after actual payment completion (card charged / Stripe confirms).
+    if (isSuccess) {
+        return (
+            <View style={styles.successContainer}>
+                <CheckCircle size={80} color={Colors.success} />
+                <Text style={styles.successTitle}>Booking Confirmed!</Text>
+                <Text style={styles.successDesc}>
+                    Thank you {params.firstName}. Your booking reference is <Text style={{ fontWeight: '700' }}>{bookingRef}</Text>.
+                    {'\n\n'}
+                    We have sent a tracking link and receipt to {params.email}.
+                </Text>
+                <Link href="/" asChild>
+                    <TouchableOpacity style={styles.successBtn} activeOpacity={0.8}>
+                        <Text style={styles.successBtnText}>Return to Home</Text>
+                    </TouchableOpacity>
+                </Link>
+            </View>
+        );
+    }
 
     return (
         <ScrollView style={styles.container}>
@@ -187,7 +212,7 @@ export default function GuestReviewPage() {
                                         <Text style={styles.payBtnText}>Processing...</Text>
                                     </View>
                                 ) : (
-                                    <Text style={styles.payBtnText}>{errorMessage ? 'Retry' : 'Continue to Payment'}</Text>
+                                    <Text style={styles.payBtnText}>{errorMessage ? 'Retry Payment' : 'Confirm & Pay'}</Text>
                                 )}
                             </TouchableOpacity>
                             <Text style={styles.secureText}>🔒 Secure payment via Stripe</Text>

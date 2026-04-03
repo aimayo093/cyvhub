@@ -20,6 +20,7 @@ import aiRoutes from './routes/ai.routes';
 import invoiceRoutes from './routes/invoice.routes';
 import activityRoutes from './routes/activity.routes';
 import stripeRoutes from './routes/stripe.routes';
+import checkoutRoutes from './routes/checkout.routes';
 import mediaRoutes from './routes/media.routes';
 import settingsRoutes from './routes/settings.routes';
 import locationRoutes from './routes/location.routes';
@@ -171,6 +172,7 @@ app.use('/api/auth', authRateLimiter, authRoutes);          // SEC-4: Auth brute
 
 // Stripe API routes (NOT webhook) — mounted after express.json() so req.body is parsed
 app.use('/api/stripe', stripeRoutes);
+app.use('/api/checkout', checkoutRoutes);
 
 // Protected routes — all require JWT authentication (enforced per-router)
 app.use('/api/profile', profileRoutes);

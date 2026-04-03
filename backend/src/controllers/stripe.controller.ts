@@ -220,18 +220,36 @@ export class StripeController {
                     if (deliveryId && deliveryId !== 'none') {
                         // 1. Mark Job as Paid and move to PENDING_DISPATCH
                         // State enforcement: Job only becomes active for dispatch after payment
-                        await prisma.job.update({
+                        const updatedJob = await prisma.job.update({
                             where: { id: deliveryId },
                             data: { 
                                 paymentStatus: 'COMPLETED',
                                 status: 'PENDING_DISPATCH',
                                 paymentIntentId: paymentIntent.id
-                            }
+                            },
+                            include: { customer: true }
                         });
                         
                         // 1b. Trigger Automated Dispatch Engine
                         const { DispatchService } = require('../services/dispatch.service');
                         await DispatchService.dispatchJob(deliveryId);
+
+                        // 1c. Trigger Branded Confirmation Email
+                        const { NotificationService } = require('../utils/notification.service');
+                        let targetEmail = updatedJob.customer?.email;
+                        let targetName = updatedJob.customer?.firstName || updatedJob.pickupContactName;
+
+                        // If guest booking (no customer relation), we might have stored email in metadata or another field
+                        // For now, if no customer, we'll try to find if there's an email in the job's contact fields (fallback)
+                        if (!targetEmail) {
+                            // In a real scenario, we'd capture this during the 'Review' stage for guests
+                            // and store it on the Job record or metadata.
+                            console.log(`[Stripe Webhook] No customer email found for jobId ${deliveryId}. Attempting fallback...`);
+                        }
+
+                        if (targetEmail) {
+                            await NotificationService.sendBookingConfirmation(targetEmail, targetName, updatedJob);
+                        }
 
                         // 2. Mark PaymentTransaction as Completed (if exists) or create one
                         const existingTxn = await prisma.paymentTransaction.findFirst({

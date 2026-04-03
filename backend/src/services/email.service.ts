@@ -116,3 +116,62 @@ export async function sendPasswordResetEmail(
         `),
     });
 }
+
+/**
+ * Sends a booking confirmation email with branded reference and tracking link.
+ */
+export async function sendBookingConfirmationEmail(
+    to: string,
+    recipientName: string,
+    job: {
+        jobNumber: string;
+        trackingNumber: string;
+        pickupCity: string;
+        dropoffCity: string;
+        calculatedPrice: number;
+        paymentStatus: string;
+    }
+): Promise<void> {
+    const trackingUrl = `${APP_URL}/track/${job.trackingNumber}`;
+    const totalAmount = (job.calculatedPrice * 1.2).toFixed(2); // 20% VAT
+
+    await resend.emails.send({
+        from: FROM_ADDRESS,
+        to,
+        subject: `Booking Confirmed: ${job.jobNumber}`,
+        html: emailWrapper(`
+            <tr>
+              <td style="padding:40px 40px 32px;">
+                <h2 style="color:#0a2540;margin:0 0 16px;font-size:20px;">Booking Confirmed!</h2>
+                <p style="color:#4a5568;margin:0 0 24px;line-height:1.6;">
+                  Hi ${recipientName}, your booking <strong>${job.jobNumber}</strong> has been successfully created.
+                </p>
+                
+                <div style="background:#f8fafc;border-radius:8px;padding:20px;margin-bottom:24px;border:1px solid #e2e8f0;">
+                    <p style="margin:0 0 10px;font-size:14px;color:#718096;">Route Summary</p>
+                    <p style="margin:0;font-weight:600;color:#2d3748;">${job.pickupCity} &rarr; ${job.dropoffCity}</p>
+                    <p style="margin:10px 0 0;font-size:14px;color:#718096;">Total Paid (inc. VAT): <strong>£${totalAmount}</strong></p>
+                    <p style="margin:4px 0 0;font-size:14px;color:#718096;">Status: <span style="text-transform: capitalize;">${job.paymentStatus.toLowerCase()}</span></p>
+                </div>
+
+                <p style="color:#4a5568;margin:0 0 12px;line-height:1.6;">
+                    You can track your delivery in real-time using our branded tracking system:
+                </p>
+
+                <table cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="center" style="padding:8px 0 32px;">
+                      <a href="${trackingUrl}" style="display:inline-block;background:#0a2540;color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:16px;font-weight:600;">
+                        Track My Delivery
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="color:#718096;font-size:13px;margin:0 0 4px;line-height:1.6;">Tracking Reference: <strong>${job.trackingNumber}</strong></p>
+                <p style="color:#a0aec0;font-size:12px;margin:0;">Need help? Reply to this email or visit our support center.</p>
+              </td>
+            </tr>
+        `),
+    });
+}

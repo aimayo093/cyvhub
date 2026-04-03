@@ -13,4 +13,7 @@ router.post('/', optionalAuthenticate, DeliveryController.createDelivery);
 // PATCH /api/deliveries/:id/cancel
 router.patch('/:id/cancel', authenticate, DeliveryController.cancelDelivery);
 
+// PATCH /api/deliveries/:id (General update)
+router.patch('/:id', authenticate, DeliveryController.updateDelivery);
+
 export default router;

@@ -187,33 +187,17 @@ export default function BookDeliveryScreen() {
       } as any);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Delivery created successfully
-
-      Alert.alert(
-        'Proceed to Payment',
-        `Your delivery ${delivery.trackingNumber} has been created. Pay £${price.toFixed(2)} now?`,
-        [
-          {
-            text: 'Pay Now',
-            onPress: () => {
-              router.replace({
-                pathname: '/payment-checkout' as any,
-                params: {
-                  amount: price.toFixed(2),
-                  description: `Delivery ${delivery.trackingNumber}`,
-                  deliveryId: delivery.id,
-                  trackingNumber: delivery.trackingNumber,
-                },
-              });
-            },
-          },
-          {
-            text: 'Pay Later',
-            style: 'cancel',
-            onPress: () => router.back(),
-          },
-        ]
-      );
+      // Delivery created successfully. Redirect to branded checkout.
+      router.push({
+        pathname: '/checkout',
+        params: {
+            jobId: delivery.id,
+            jobNumber: delivery.jobNumber,
+            amount: price.toString(),
+            pickup: delivery.pickupCity,
+            dropoff: delivery.dropoffCity,
+        }
+      });
     } catch (error: any) {
       console.error('Delivery creation failed:', error);
       const errorMsg = error?.message || 'Failed to create delivery booking.';
