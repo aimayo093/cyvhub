@@ -79,14 +79,12 @@ export default function GuestReviewPage() {
             const delivery = response.data;
             setBookingRef(delivery.jobNumber || delivery.trackingNumber);
 
-            // Step 2: Initiate Stripe payment intent
+            // Step 2: Initiate Stripe payment — server-side source of truth for amount
             try {
-                const stripeRes = await apiClient('/stripe/create-payment-intent', {
+                const stripeRes = await apiClient('/stripe/create-payment-for-job', {
                     method: 'POST',
                     body: JSON.stringify({
-                        amount: totalIncVat,
-                        description: `Delivery ${delivery.jobNumber}`,
-                        deliveryId: delivery.id,
+                        jobId: delivery.id,
                     })
                 });
 

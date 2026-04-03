@@ -12,23 +12,134 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 export class StripeController {
 
-    // POST /api/stripe/create-payment-intent
-    static async createPaymentIntent(req: Request, res: Response): Promise<void> {
+    // ─────────────────────────────────────────────────────────────────────
+    // POST /api/stripe/create-payment-for-job   (PREFERRED — server-side source of truth)
+    // Frontend sends ONLY the jobId/deliveryId. Backend looks up the
+    // payable amount from the Job record — never trusts the client.
+    // ─────────────────────────────────────────────────────────────────────
+    static async createPaymentForJob(req: Request, res: Response): Promise<void> {
         try {
+            // Defensive: ensure req.body exists
+            const body = req.body || {};
+            const { jobId } = body;
+            const userId = (req as any).user?.userId;
+
+            if (!jobId) {
+                res.status(400).json({ error: 'jobId is required to initialize payment.' });
+                return;
+            }
+
+            // Fetch the job/booking from the database — source of truth for amount
+            const job = await prisma.job.findUnique({ where: { id: jobId } });
+
+            if (!job) {
+                res.status(404).json({ error: 'Booking not found. Please create a booking first.' });
+                return;
+            }
+
+            if (job.paymentStatus === 'COMPLETED') {
+                res.status(400).json({ error: 'Payment has already been completed for this booking.' });
+                return;
+            }
+
+            // Derive amount from the server-side record
+            const calculatedPrice = job.calculatedPrice;
+            if (!calculatedPrice || calculatedPrice <= 0) {
+                res.status(400).json({ error: 'Booking has no valid price. Please contact support.' });
+                return;
+            }
+
+            // Add 20% VAT to get the total payable amount
+            const totalWithVat = calculatedPrice * 1.2;
+            const currency = 'gbp';
+            const description = `CYVhub Delivery ${job.jobNumber || job.trackingNumber}`;
+
             if (!stripe) {
                 // If no Stripe API Key, fallback to a mocked client secret for testing
                 res.status(200).json({
                     clientSecret: 'pi_mocked_secret',
+                    paymentIntentId: `pi_mock_${Date.now()}`,
+                    amount: totalWithVat,
+                    currency,
                     warning: 'Stripe API Key missing. Returning mocked secret.'
                 });
                 return;
             }
 
-            const { amount, currency = 'gbp', description, deliveryId } = req.body;
+            // Create a PaymentIntent with the server-derived amount
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: Math.round(totalWithVat * 100), // Stripe expects amounts in pence
+                currency,
+                description,
+                metadata: {
+                    userId: userId || 'guest',
+                    deliveryId: jobId,
+                    jobNumber: job.jobNumber || '',
+                    trackingNumber: job.trackingNumber || '',
+                },
+                automatic_payment_methods: {
+                    enabled: true,
+                },
+            });
+
+            // Create a PENDING transaction record in the DB so the webhook can fulfill it
+            await prisma.paymentTransaction.create({
+                data: {
+                    type: 'charge',
+                    status: 'PENDING',
+                    amount: totalWithVat,
+                    currency: currency.toUpperCase(),
+                    method: 'stripe',
+                    description,
+                    deliveryId: jobId,
+                    stripePaymentId: paymentIntent.id
+                }
+            });
+
+            // Update job to indicate payment is being processed
+            await prisma.job.update({
+                where: { id: jobId },
+                data: { paymentIntentId: paymentIntent.id }
+            });
+
+            res.status(200).json({
+                clientSecret: paymentIntent.client_secret,
+                paymentIntentId: paymentIntent.id,
+                amount: totalWithVat,
+                currency,
+            });
+        } catch (error: any) {
+            console.error('[StripeController] Error creating payment for job:', error);
+            res.status(500).json({ error: error.message || 'Failed to initialize payment.' });
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // POST /api/stripe/create-payment-intent   (LEGACY — client provides amount)
+    // Kept for backwards compatibility. Has defensive validation.
+    // ─────────────────────────────────────────────────────────────────────
+    static async createPaymentIntent(req: Request, res: Response): Promise<void> {
+        try {
+            // Defensive: ensure req.body exists before destructuring
+            const body = req.body || {};
+            const { amount, currency = 'gbp', description, deliveryId } = body;
             const userId = (req as any).user?.userId;
 
-            if (!amount) {
-                res.status(400).json({ error: 'Amount is required' });
+            if (!amount || typeof amount !== 'number' || amount <= 0) {
+                res.status(400).json({ 
+                    error: 'A valid payment amount is required.',
+                    hint: 'Use POST /api/stripe/create-payment-for-job with a jobId for secure server-side pricing.'
+                });
+                return;
+            }
+
+            if (!stripe) {
+                // If no Stripe API Key, fallback to a mocked client secret for testing
+                res.status(200).json({
+                    clientSecret: 'pi_mocked_secret',
+                    paymentIntentId: `pi_mock_${Date.now()}`,
+                    warning: 'Stripe API Key missing. Returning mocked secret.'
+                });
                 return;
             }
 
@@ -46,7 +157,7 @@ export class StripeController {
                 },
             });
 
-            // 03-31 FIX: Create a PENDING transaction record in the DB so the webhook can fulfill it
+            // Create a PENDING transaction record in the DB so the webhook can fulfill it
             if (deliveryId && deliveryId !== 'none') {
                  await prisma.paymentTransaction.create({
                      data: {
@@ -72,7 +183,9 @@ export class StripeController {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
     // POST /api/stripe/webhook
+    // ─────────────────────────────────────────────────────────────────────
     static async handleWebhook(req: Request, res: Response): Promise<void> {
         if (!stripe) {
             res.status(400).send('Stripe is not configured');

@@ -1,15 +1,16 @@
 import { Router } from 'express';
 import { StripeController } from '../controllers/stripe.controller';
 import { optionalAuthenticate } from '../middleware/auth.middleware';
-// We need raw express middleware for the webhook, so we export it differently
-import express from 'express';
 
 const router = Router();
 
-// Payment intent creation — optionalAuthenticate allows guest checkout
+// Legacy: Payment intent creation with client-provided amount (kept for backwards compatibility)
 router.post('/create-payment-intent', optionalAuthenticate, StripeController.createPaymentIntent);
 
-// Webhook must use express.raw() to parse the body correctly for Stripe signature validation
-router.post('/webhook', express.raw({ type: 'application/json' }), StripeController.handleWebhook);
+// NEW: Secure payment-for-job — backend fetches amount from the Job record (source of truth)
+router.post('/create-payment-for-job', optionalAuthenticate, StripeController.createPaymentForJob);
+
+// Note: The webhook route is mounted separately in index.ts BEFORE express.json()
+// because it requires the raw request body for Stripe signature verification.
 
 export default router;

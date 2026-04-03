@@ -149,9 +149,14 @@ app.use('/api', globalRateLimiter);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Body Parsers
-// STRIPE WEBHOOK must be mounted BEFORE express.json() — needs the raw body
+// STRIPE WEBHOOK must be mounted BEFORE express.json() — needs the raw body.
+// All other Stripe routes (e.g. create-payment-intent) need parsed JSON,
+// so they are mounted AFTER express.json() below.
 // ─────────────────────────────────────────────────────────────────────────────
-app.use('/api/stripe', stripeRoutes);
+import stripeWebhookRouter from 'express';
+const webhookOnlyRouter = stripeWebhookRouter.Router();
+webhookOnlyRouter.post('/webhook', stripeWebhookRouter.raw({ type: 'application/json' }), require('./controllers/stripe.controller').StripeController.handleWebhook);
+app.use('/api/stripe', webhookOnlyRouter);
 
 // SEC-AUDIT-5: Hard limit body to 100kb to block large-payload DoS attacks.
 app.use(express.json({ limit: '100kb' }));
@@ -163,6 +168,9 @@ console.log('🛠 Starting Route Registration...');
 
 // Public routes (with rate limiting)
 app.use('/api/auth', authRateLimiter, authRoutes);          // SEC-4: Auth brute-force protection
+
+// Stripe API routes (NOT webhook) — mounted after express.json() so req.body is parsed
+app.use('/api/stripe', stripeRoutes);
 
 // Protected routes — all require JWT authentication (enforced per-router)
 app.use('/api/profile', profileRoutes);

@@ -92,21 +92,32 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
     trackingNumber?: string,
   ): Promise<{ sessionId: string; transaction: PaymentTransaction }> => {
     try {
-      // 1. Call the real backend endpoint to strictly create a PaymentIntent
-      const response = await apiClient('/stripe/create-payment-intent', {
-        method: 'POST',
-        body: JSON.stringify({ amount, description, deliveryId, trackingNumber })
-      });
+      let response;
+
+      if (deliveryId) {
+        // PREFERRED: Server-side source of truth — backend derives amount from the Job record
+        response = await apiClient('/stripe/create-payment-for-job', {
+          method: 'POST',
+          body: JSON.stringify({ jobId: deliveryId })
+        });
+      } else {
+        // FALLBACK: Legacy flow — client provides amount (used when no job record exists)
+        response = await apiClient('/stripe/create-payment-intent', {
+          method: 'POST',
+          body: JSON.stringify({ amount, description, deliveryId, trackingNumber })
+        });
+      }
 
       const clientSecret = response.clientSecret || response.data?.clientSecret;
       const paymentIntentId = response.paymentIntentId || response.data?.paymentIntentId;
+      const serverAmount = response.amount || amount;
 
       // Create a pending transaction locally for the UI optimistic update
       const transaction: PaymentTransaction = {
         id: `txn-${Date.now()}`,
         type: 'charge',
         status: 'PENDING',
-        amount,
+        amount: serverAmount,
         currency: 'GBP',
         method: 'stripe',
         description,
