@@ -28,9 +28,7 @@ export default function GuestReviewPage() {
     const params = useLocalSearchParams();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [bookingRef, setBookingRef] = useState<string>('');
 
     const price = Number(params.price || 0);
     const vatAmount = price * 0.2;
@@ -42,7 +40,7 @@ export default function GuestReviewPage() {
         setErrorMessage(null);
 
         try {
-            // Step 1: Create the delivery booking
+            // Step 1: Create the delivery booking (status: PENDING_PAYMENT)
             const parcels = params.parcels ? JSON.parse(params.parcels as string) : [];
             
             const response = await apiClient('/deliveries', {
@@ -77,32 +75,19 @@ export default function GuestReviewPage() {
             }
 
             const delivery = response.data;
-            setBookingRef(delivery.jobNumber || delivery.trackingNumber);
 
-            // Step 2: Initiate Stripe payment — server-side source of truth for amount
-            try {
-                const stripeRes = await apiClient('/stripe/create-payment-for-job', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        jobId: delivery.id,
-                    })
-                });
-
-                // Payment intent created successfully — in production this would
-                // open the Stripe payment sheet. For demo, mark as success.
-                if (stripeRes && (stripeRes.clientSecret || stripeRes.data?.clientSecret)) {
-                    setIsSuccess(true);
-                } else {
-                    // Payment intent created but unexpected response shape
-                    setIsSuccess(true);
+            // Step 2: Redirect to the payment page — user must complete payment
+            // before booking is confirmed. The payment-checkout page handles
+            // payment method selection, card entry, and Stripe processing.
+            router.replace({
+                pathname: '/payment-checkout' as any,
+                params: {
+                    amount: totalIncVat.toFixed(2),
+                    description: `Delivery ${delivery.jobNumber}`,
+                    deliveryId: delivery.id,
+                    trackingNumber: delivery.trackingNumber,
                 }
-            } catch (paymentError: any) {
-                console.error('Payment initialization failed:', paymentError);
-                // Booking was created but payment failed — inform user clearly
-                setErrorMessage(
-                    `Your booking ${delivery.jobNumber} was created, but payment could not be initialized: ${paymentError?.message || 'Unknown error'}. Please contact support or try again.`
-                );
-            }
+            });
         } catch (error: any) {
             console.error('Booking failed:', error);
             const msg = error?.message || 'We could not create your booking. Please try again.';
@@ -113,24 +98,8 @@ export default function GuestReviewPage() {
         }
     };
 
-    if (isSuccess) {
-        return (
-            <View style={styles.successContainer}>
-                <CheckCircle size={80} color={Colors.success} />
-                <Text style={styles.successTitle}>Booking Confirmed!</Text>
-                <Text style={styles.successDesc}>
-                    Thank you {params.firstName}. Your booking reference is <Text style={{ fontWeight: '700' }}>{bookingRef}</Text>.
-                    {'\n\n'}
-                    We have sent a tracking link and receipt to {params.email}.
-                </Text>
-                <Link href="/" asChild>
-                    <TouchableOpacity style={styles.successBtn} activeOpacity={0.8}>
-                        <Text style={styles.successBtnText}>Return to Home</Text>
-                    </TouchableOpacity>
-                </Link>
-            </View>
-        );
-    }
+    // NOTE: No success view here — the payment-checkout page shows success
+    // only after actual payment completion (card charged / Stripe confirms).
 
     return (
         <ScrollView style={styles.container}>
@@ -218,7 +187,7 @@ export default function GuestReviewPage() {
                                         <Text style={styles.payBtnText}>Processing...</Text>
                                     </View>
                                 ) : (
-                                    <Text style={styles.payBtnText}>{errorMessage ? 'Retry Payment' : 'Confirm & Pay'}</Text>
+                                    <Text style={styles.payBtnText}>{errorMessage ? 'Retry' : 'Continue to Payment'}</Text>
                                 )}
                             </TouchableOpacity>
                             <Text style={styles.secureText}>🔒 Secure payment via Stripe</Text>
