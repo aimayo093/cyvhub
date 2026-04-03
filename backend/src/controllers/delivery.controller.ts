@@ -308,4 +308,37 @@ export class DeliveryController {
             res.status(500).json({ error: 'Failed to update delivery.' });
         }
     }
+
+    // GET /api/deliveries/:id
+    static async getDeliveryById(req: Request, res: Response): Promise<void> {
+        try {
+            const { id } = req.params;
+            const userId = (req as any).user?.userId;
+            const role = (req as any).user?.role;
+
+            const delivery = await prisma.job.findUnique({
+                where: { id: id as string },
+                include: { 
+                    quoteRequest: { include: { lineItems: true } },
+                    parcels: true 
+                }
+            });
+
+            if (!delivery) {
+                res.status(404).json({ error: 'Delivery not found.' });
+                return;
+            }
+
+            // SEC-AUDIT-2: IDOR Protection
+            if (role !== 'admin' && delivery.customerId !== userId) {
+                res.status(403).json({ error: 'Forbidden. Access restricted to the owner.' });
+                return;
+            }
+
+            res.status(200).json({ data: delivery });
+        } catch (error) {
+            console.error('[DeliveryController] Error fetching delivery by ID:', error);
+            res.status(500).json({ error: 'Failed to retrieve delivery details.' });
+        }
+    }
 }

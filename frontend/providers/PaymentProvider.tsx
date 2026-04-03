@@ -183,6 +183,51 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
   }, [transactions]);
 
   // ──────────────────────────────────────────────
+  // PAYPAL CHECKOUT FLOW
+  // ──────────────────────────────────────────────
+
+  /**
+   * Initiates a PayPal Checkout session.
+   * Scaffolding for full integration.
+   */
+  const initiatePaypalCheckout = useCallback(async (
+    amount: number,
+    description: string,
+    deliveryId?: string,
+  ): Promise<{ approvalUrl: string; transaction: PaymentTransaction }> => {
+    try {
+      // B2-FE-3: Call backend to create PayPal order
+      const response = await apiClient('/paypal/create-order', {
+        method: 'POST',
+        body: JSON.stringify({ amount, description, deliveryId })
+      });
+
+      const approvalUrl = response.approvalUrl || response.data?.approvalUrl;
+      const orderId = response.orderId || response.data?.orderId;
+
+      const transaction: PaymentTransaction = {
+        id: `txn-pp-${Date.now()}`,
+        type: 'charge',
+        status: 'PENDING',
+        amount,
+        currency: 'GBP',
+        method: 'paypal',
+        description,
+        deliveryId,
+        paypalOrderId: orderId,
+        createdAt: new Date().toISOString(),
+      };
+
+      setTransactions(prev => [transaction, ...prev]);
+
+      return { approvalUrl, transaction };
+    } catch (e) {
+      console.error('Failed to create PayPal order:', e);
+      throw e;
+    }
+  }, []);
+
+  // ──────────────────────────────────────────────
   // STANDARD PAYMENT PROCESSING (existing)
   // ──────────────────────────────────────────────
 
@@ -383,6 +428,8 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
     initiateStripeCheckout,
     handlePaymentReturn,
     getPaymentStatus,
+    // PayPal Checkout
+    initiatePaypalCheckout,
     // Standard payments
     processPayment,
     processRefund,

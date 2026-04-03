@@ -547,6 +547,7 @@ export interface PaymentTransaction {
   cardLast4?: string;
   paypalEmail?: string;
   stripePaymentId?: string;
+  paypalOrderId?: string;
   createdAt: string;
   completedAt?: string;
 }

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -29,6 +28,7 @@ import Colors from '@/constants/colors';
 import { usePayments } from '@/providers/PaymentProvider';
 import { useDeliveries } from '@/providers/DeliveriesProvider';
 import { PaymentMethod, PaymentCard } from '@/types';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 const PAYPAL_BLUE = '#0070BA';
 const STRIPE_PURPLE = '#635BFF';
@@ -106,11 +106,6 @@ export default function PaymentCheckoutScreen() {
       return;
     }
 
-    if (selectedMethod === 'paypal' && paypalAccounts.length === 0) {
-      Alert.alert('No PayPal', 'Please link a PayPal account first.');
-      return;
-    }
-
     setIsProcessing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -133,9 +128,8 @@ export default function PaymentCheckoutScreen() {
       const errorMsg = e?.message || 'Please try again or use a different payment method.';
       Alert.alert('Payment Failed', errorMsg);
     }
-  }, [amount, selectedMethod, selectedCardId, paypalAccounts, processPayment, description, params, updateDeliveryPayment]);
+  }, [amount, selectedMethod, selectedCardId, processPayment, description, params, updateDeliveryPayment]);
 
-  // Stripe Checkout flow — demo mode auto-simulates the redirect and payment completion
   const handleStripeCheckout = useCallback(async () => {
     if (amount <= 0) {
       Alert.alert('Error', 'Invalid payment amount');
@@ -153,7 +147,6 @@ export default function PaymentCheckoutScreen() {
         params.trackingNumber,
       );
 
-      // Demo: simulate redirect and auto-complete after 2 seconds
       setTimeout(async () => {
         const result = await handlePaymentReturn('cyvhub://payment-success');
         if (result.success && params.deliveryId) {
@@ -254,238 +247,192 @@ export default function PaymentCheckoutScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ResponsiveContainer backgroundColor={Colors.background}>
       <Stack.Screen
         options={{
-          title: 'Payment',
+          title: 'Secure Payment',
           headerStyle: { backgroundColor: Colors.navy },
           headerTintColor: Colors.textInverse,
           headerTitleStyle: { fontWeight: '600' as const },
         }}
       />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.amountCard}>
-          <Text style={styles.amountLabel}>Total Amount</Text>
-          <Text style={styles.amountValue}>£{amount.toFixed(2)}</Text>
-          <Text style={styles.amountDesc}>{description}</Text>
-          <View style={styles.secureRow}>
-            <Lock size={12} color={Colors.success} />
-            <Text style={styles.secureText}>Secured with 256-bit encryption</Text>
-          </View>
+      <View style={styles.amountCard}>
+        <Text style={styles.amountLabel}>Total Amount</Text>
+        <Text style={styles.amountValue}>£{amount.toFixed(2)}</Text>
+        <Text style={styles.amountDesc}>{description}</Text>
+        <View style={styles.secureRow}>
+          <Lock size={12} color={Colors.success} />
+          <Text style={styles.secureText}>Secured with 256-bit encryption</Text>
         </View>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          <View style={styles.methodRow}>
-            <TouchableOpacity
-              style={[styles.methodCard, selectedMethod === 'stripe' && styles.methodCardActive]}
-              onPress={() => { setSelectedMethod('stripe'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-              activeOpacity={0.7}
-            >
-              <CreditCard size={24} color={selectedMethod === 'stripe' ? Colors.customerPrimary : Colors.textMuted} />
-              <Text style={[styles.methodLabel, selectedMethod === 'stripe' && styles.methodLabelActive]}>
-                Card
-              </Text>
-              <Text style={styles.methodSub}>Stripe</Text>
-              {selectedMethod === 'stripe' && (
-                <View style={styles.methodCheck}>
-                  <CheckCircle size={16} color={Colors.customerPrimary} />
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.methodCard, selectedMethod === 'paypal' && styles.methodCardActivePaypal]}
-              onPress={() => { setSelectedMethod('paypal'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.paypalLogo, selectedMethod === 'paypal' && { color: PAYPAL_BLUE }]}>P</Text>
-              <Text style={[styles.methodLabel, selectedMethod === 'paypal' && { color: PAYPAL_BLUE }]}>
-                PayPal
-              </Text>
-              <Text style={styles.methodSub}>Quick pay</Text>
-              {selectedMethod === 'paypal' && (
-                <View style={[styles.methodCheck, { backgroundColor: PAYPAL_BLUE + '15' }]}>
-                  <CheckCircle size={16} color={PAYPAL_BLUE} />
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {selectedMethod === 'stripe' && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Select Card</Text>
-              <TouchableOpacity
-                style={styles.addCardBtn}
-                onPress={() => setShowAddCard(true)}
-                activeOpacity={0.7}
-              >
-                <Plus size={14} color={Colors.customerPrimary} />
-                <Text style={styles.addCardText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-
-            {cards.map((card) => (
-              <TouchableOpacity
-                key={card.id}
-                style={[styles.cardItem, selectedCardId === card.id && styles.cardItemActive]}
-                onPress={() => { setSelectedCardId(card.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                activeOpacity={0.7}
-              >
-                <CardIcon brand={card.brand} />
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardBrand}>{card.brand.charAt(0).toUpperCase() + card.brand.slice(1)}</Text>
-                  <Text style={styles.cardLast4}>•••• {card.last4}</Text>
-                </View>
-                <Text style={styles.cardExpiry}>{String(card.expiryMonth).padStart(2, '0')}/{card.expiryYear}</Text>
-                {selectedCardId === card.id && <CheckCircle size={18} color={Colors.customerPrimary} />}
-              </TouchableOpacity>
-            ))}
-
-            {cards.length === 0 && (
-              <TouchableOpacity
-                style={styles.emptyCardPrompt}
-                onPress={() => setShowAddCard(true)}
-                activeOpacity={0.7}
-              >
-                <CreditCard size={28} color={Colors.textMuted} />
-                <Text style={styles.emptyCardText}>No cards saved</Text>
-                <Text style={styles.emptyCardSub}>Tap to add a card</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {selectedMethod === 'paypal' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>PayPal Account</Text>
-            {paypalAccounts.length > 0 ? (
-              paypalAccounts.map(acc => (
-                <View key={acc.id} style={styles.paypalItem}>
-                  <View style={styles.paypalIcon}>
-                    <Text style={styles.paypalIconText}>P</Text>
-                  </View>
-                  <View style={styles.paypalInfo}>
-                    <Text style={styles.paypalEmail}>{acc.email}</Text>
-                    <Text style={styles.paypalLabel}>PayPal Account</Text>
-                  </View>
-                  <CheckCircle size={18} color={PAYPAL_BLUE} />
-                </View>
-              ))
-            ) : (
-              <View style={styles.paypalConnectCard}>
-                <View style={styles.paypalConnectIcon}>
-                  <Text style={styles.paypalConnectIconText}>P</Text>
-                </View>
-                <Text style={styles.paypalConnectTitle}>Connect PayPal</Text>
-                <Text style={styles.paypalConnectSub}>You'll be redirected to PayPal to authorize payment</Text>
-                <TouchableOpacity style={styles.paypalConnectBtn} activeOpacity={0.8}>
-                  <Text style={styles.paypalConnectBtnText}>Connect PayPal Account</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
-
-        <View style={styles.breakdownCard}>
-          <View style={styles.breakdownRow}>
-            <Text style={styles.breakdownLabel}>Delivery cost</Text>
-            <Text style={styles.breakdownValue}>£{(amount * 0.83).toFixed(2)}</Text>
-          </View>
-          <View style={styles.breakdownRow}>
-            <Text style={styles.breakdownLabel}>VAT (20%)</Text>
-            <Text style={styles.breakdownValue}>£{(amount * 0.17).toFixed(2)}</Text>
-          </View>
-          <View style={styles.breakdownDivider} />
-          <View style={styles.breakdownRow}>
-            <Text style={styles.breakdownTotalLabel}>Total</Text>
-            <Text style={styles.breakdownTotalValue}>£{amount.toFixed(2)}</Text>
-          </View>
-        </View>
-
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Payment Method</Text>
+        <View style={styles.methodRow}>
           <TouchableOpacity
-            style={[
-              styles.payBtn,
-              isProcessing && styles.payBtnProcessing,
-              selectedMethod === 'paypal' && styles.payBtnPaypal,
-            ]}
-            onPress={handlePay}
-            disabled={isProcessing}
-            activeOpacity={0.8}
-            testID="pay-button"
+            style={[styles.methodCard, selectedMethod === 'stripe' && styles.methodCardActive]}
+            onPress={() => { setSelectedMethod('stripe'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            activeOpacity={0.7}
           >
-            {isProcessing ? (
-              <View style={styles.processingRow}>
-                <ActivityIndicator color="#FFFFFF" size="small" />
-                <Text style={styles.payBtnText}>Processing...</Text>
+            <CreditCard size={24} color={selectedMethod === 'stripe' ? Colors.customerPrimary : Colors.textMuted} />
+            <Text style={[styles.methodLabel, selectedMethod === 'stripe' && styles.methodLabelActive]}>
+              Card
+            </Text>
+            <Text style={styles.methodSub}>Stripe</Text>
+            {selectedMethod === 'stripe' && (
+              <View style={styles.methodCheck}>
+                <CheckCircle size={16} color={Colors.customerPrimary} />
               </View>
-            ) : (
-              <>
-                {selectedMethod === 'stripe' ? (
-                  <Lock size={18} color="#FFFFFF" />
-                ) : (
-                  <Zap size={18} color="#FFFFFF" />
-                )}
-                <Text style={styles.payBtnText}>
-                  Pay £{amount.toFixed(2)} with {selectedMethod === 'stripe' ? 'Card' : 'PayPal'}
-                </Text>
-              </>
             )}
           </TouchableOpacity>
-        </Animated.View>
 
-        <View style={styles.trustRow}>
-          <Shield size={14} color={Colors.textMuted} />
-          <Text style={styles.trustText}>
-            Payments processed securely by {selectedMethod === 'stripe' ? 'Stripe' : 'PayPal'}
-          </Text>
+          <TouchableOpacity
+            style={[styles.methodCard, selectedMethod === 'paypal' && styles.methodCardActivePaypal]}
+            onPress={() => { setSelectedMethod('paypal'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.paypalLogo, selectedMethod === 'paypal' && { color: PAYPAL_BLUE }]}>P</Text>
+            <Text style={[styles.methodLabel, selectedMethod === 'paypal' && { color: PAYPAL_BLUE }]}>
+              PayPal
+            </Text>
+            <Text style={styles.methodSub}>Quick pay</Text>
+            {selectedMethod === 'paypal' && (
+              <View style={[styles.methodCheck, { backgroundColor: PAYPAL_BLUE + '15' }]}>
+                <CheckCircle size={16} color={PAYPAL_BLUE} />
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
+      </View>
 
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
+      {selectedMethod === 'stripe' && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Select Card</Text>
+            <TouchableOpacity
+              style={styles.addCardBtn}
+              onPress={() => setShowAddCard(true)}
+              activeOpacity={0.7}
+            >
+              <Plus size={14} color={Colors.customerPrimary} />
+              <Text style={styles.addCardText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+
+          {cards.map((card) => (
+            <TouchableOpacity
+              key={card.id}
+              style={[styles.cardItem, selectedCardId === card.id && styles.cardItemActive]}
+              onPress={() => { setSelectedCardId(card.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+              activeOpacity={0.7}
+            >
+              <CardIcon brand={card.brand} />
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardBrand}>{card.brand.charAt(0).toUpperCase() + card.brand.slice(1)}</Text>
+                <Text style={styles.cardLast4}>•••• {card.last4}</Text>
+              </View>
+              <Text style={styles.cardExpiry}>{String(card.expiryMonth).padStart(2, '0')}/{card.expiryYear}</Text>
+              {selectedCardId === card.id && <CheckCircle size={18} color={Colors.customerPrimary} />}
+            </TouchableOpacity>
+          ))}
+
+          {cards.length === 0 && (
+            <TouchableOpacity
+              style={styles.emptyCardPrompt}
+              onPress={() => setShowAddCard(true)}
+              activeOpacity={0.7}
+            >
+              <CreditCard size={28} color={Colors.textMuted} />
+              <Text style={styles.emptyCardText}>No cards saved</Text>
+              <Text style={styles.emptyCardSub}>Tap to add a card</Text>
+            </TouchableOpacity>
+          )}
         </View>
+      )}
 
+      {selectedMethod === 'paypal' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PayPal Account</Text>
+          {paypalAccounts.length > 0 ? (
+            paypalAccounts.map(acc => (
+              <View key={acc.id} style={styles.paypalItem}>
+                <View style={styles.paypalIcon}>
+                  <Text style={styles.paypalIconText}>P</Text>
+                </View>
+                <View style={styles.paypalInfo}>
+                  <Text style={styles.paypalEmail}>{acc.email}</Text>
+                  <Text style={styles.paypalLabel}>PayPal Account</Text>
+                </View>
+                <CheckCircle size={18} color={PAYPAL_BLUE} />
+              </View>
+            ))
+          ) : (
+            <View style={styles.paypalConnectCard}>
+              <View style={styles.paypalConnectIcon}>
+                <Text style={styles.paypalConnectIconText}>P</Text>
+              </View>
+              <Text style={styles.paypalConnectTitle}>Connect PayPal</Text>
+              <Text style={styles.paypalConnectSub}>You'll be redirected to PayPal to authorize payment</Text>
+              <TouchableOpacity style={styles.paypalConnectBtn} activeOpacity={0.8}>
+                <Text style={styles.paypalConnectBtnText}>Connect PayPal Account</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
+      <Animated.View style={{ transform: [{ scale: pulseAnim }], marginTop: 24 }}>
         <TouchableOpacity
-          style={[styles.stripeCheckoutBtn, isStripeRedirecting && { opacity: 0.7 }]}
-          onPress={handleStripeCheckout}
-          disabled={isStripeRedirecting || isProcessing}
+          style={[
+            styles.payBtn,
+            isProcessing && styles.payBtnProcessing,
+            selectedMethod === 'paypal' && styles.payBtnPaypal,
+          ]}
+          onPress={handlePay}
+          disabled={isProcessing}
           activeOpacity={0.8}
-          testID="stripe-checkout-button"
         >
-          {isStripeRedirecting ? (
+          {isProcessing ? (
             <View style={styles.processingRow}>
               <ActivityIndicator color="#FFFFFF" size="small" />
-              <Text style={styles.stripeCheckoutBtnText}>Redirecting to Stripe...</Text>
+              <Text style={styles.payBtnText}>Processing...</Text>
             </View>
           ) : (
             <>
-              <ExternalLink size={18} color="#FFFFFF" />
-              <Text style={styles.stripeCheckoutBtnText}>
-                Pay £{amount.toFixed(2)} via Stripe Checkout
+              {selectedMethod === 'stripe' ? (
+                <Lock size={18} color="#FFFFFF" />
+              ) : (
+                <Zap size={18} color="#FFFFFF" />
+              )}
+              <Text style={styles.payBtnText}>
+                Pay £{amount.toFixed(2)} with {selectedMethod === 'stripe' ? 'Card' : 'PayPal'}
               </Text>
             </>
           )}
         </TouchableOpacity>
+      </Animated.View>
 
-        <View style={styles.trustRow}>
-          <Lock size={14} color={STRIPE_PURPLE} />
-          <Text style={[styles.trustText, { color: STRIPE_PURPLE }]}>
-            Stripe Checkout opens a secure hosted payment page
-          </Text>
-        </View>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      <TouchableOpacity
+        style={[styles.stripeCheckoutBtn, isStripeRedirecting && { opacity: 0.7 }]}
+        onPress={handleStripeCheckout}
+        disabled={isStripeRedirecting || isProcessing}
+        activeOpacity={0.8}
+      >
+        {isStripeRedirecting ? (
+          <View style={styles.processingRow}>
+            <ActivityIndicator color="#FFFFFF" size="small" />
+            <Text style={styles.stripeCheckoutBtnText}>Redirecting to Stripe...</Text>
+          </View>
+        ) : (
+          <>
+            <ExternalLink size={18} color="#FFFFFF" />
+            <Text style={styles.stripeCheckoutBtnText}>
+              Pay £{amount.toFixed(2)} via Stripe Checkout
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
 
       <Modal visible={showAddCard} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalContainer}>
@@ -495,7 +442,6 @@ export default function PaymentCheckoutScreen() {
               <X size={24} color={Colors.text} />
             </TouchableOpacity>
           </View>
-
           <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalContent}>
             <View style={styles.cardFormSection}>
               <Text style={styles.formLabel}>Card Number</Text>
@@ -509,11 +455,9 @@ export default function PaymentCheckoutScreen() {
                   onChangeText={(text) => setNewCardNumber(text.replace(/\D/g, '').slice(0, 16))}
                   keyboardType="number-pad"
                   maxLength={16}
-                  testID="card-number"
                 />
               </View>
             </View>
-
             <View style={styles.formRow}>
               <View style={[styles.cardFormSection, { flex: 1 }]}>
                 <Text style={styles.formLabel}>Expiry</Text>
@@ -546,7 +490,6 @@ export default function PaymentCheckoutScreen() {
                 </View>
               </View>
             </View>
-
             <TouchableOpacity
               style={styles.addCardSubmitBtn}
               onPress={handleAddCard}
@@ -555,27 +498,15 @@ export default function PaymentCheckoutScreen() {
               <Plus size={18} color="#FFFFFF" />
               <Text style={styles.addCardSubmitText}>Add Card</Text>
             </TouchableOpacity>
-
-            <View style={styles.trustRow}>
-              <Shield size={14} color={Colors.textMuted} />
-              <Text style={styles.trustText}>Card details are encrypted and stored securely by Stripe</Text>
-            </View>
           </ScrollView>
         </View>
       </Modal>
-    </View>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  scrollView: { flex: 1 },
-  content: {
-    padding: 16,
-    maxWidth: Platform.OS === 'web' ? 800 : '100%',
-    width: '100%',
-    alignSelf: 'center',
-  },
   amountCard: {
     backgroundColor: Colors.navy,
     borderRadius: 20,
@@ -652,20 +583,6 @@ const styles = StyleSheet.create({
   paypalConnectSub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
   paypalConnectBtn: { backgroundColor: PAYPAL_BLUE, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, marginTop: 8 },
   paypalConnectBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#FFFFFF' },
-  breakdownCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  breakdownLabel: { fontSize: 14, color: Colors.textSecondary },
-  breakdownValue: { fontSize: 14, fontWeight: '500' as const, color: Colors.text },
-  breakdownDivider: { height: 1, backgroundColor: Colors.borderLight, marginVertical: 6 },
-  breakdownTotalLabel: { fontSize: 15, fontWeight: '700' as const, color: Colors.text },
-  breakdownTotalValue: { fontSize: 18, fontWeight: '800' as const, color: Colors.customerPrimary },
   payBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -680,8 +597,6 @@ const styles = StyleSheet.create({
   payBtnProcessing: { opacity: 0.85 },
   payBtnText: { fontSize: 17, fontWeight: '700' as const, color: '#FFFFFF' },
   processingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
-  trustText: { fontSize: 12, color: Colors.textMuted, textAlign: 'center' },
   successContainer: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -743,22 +658,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   addCardSubmitText: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF' },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.textMuted,
-  },
   stripeCheckoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -767,7 +666,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     height: 58,
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 24,
   },
   stripeCheckoutBtnText: {
     fontSize: 17,
