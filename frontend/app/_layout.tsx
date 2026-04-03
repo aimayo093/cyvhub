@@ -41,6 +41,8 @@ function RootLayoutNav() {
       seg === 'terms' ||
       seg === 'privacy' ||
       seg === 'payment-checkout' ||
+      seg === 'checkout' ||
+      seg === 'track' ||
       seg === 'book-delivery';
 
     if (!isAuthenticated) {
@@ -317,6 +319,26 @@ function RootLayoutNav() {
         options={{
           title: "Notification Settings",
           headerShown: false,
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="checkout"
+        options={{
+          headerTitle: "Secure Checkout",
+          headerStyle: { backgroundColor: Colors.navy },
+          headerTintColor: Colors.textInverse,
+          headerTitleStyle: { fontWeight: '600' as const },
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="track"
+        options={{
+          headerTitle: "Track Delivery",
+          headerStyle: { backgroundColor: Colors.navy },
+          headerTintColor: Colors.textInverse,
+          headerTitleStyle: { fontWeight: '600' as const },
           presentation: 'card',
         }}
       />

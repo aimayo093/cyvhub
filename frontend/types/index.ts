@@ -111,6 +111,7 @@ export interface CustomerProfile {
   defaultPostcode?: string;
   totalDeliveries: number;
   memberSince: string;
+  businessAccountId?: string | null;
 }
 
 export interface Delivery {

@@ -38,7 +38,6 @@ export default function GuestReviewPage() {
     const vatAmount = price * 0.2;
     const totalIncVat = price + vatAmount;
 
-    const { usePayments: usePaymentsHook } = require('@/providers/PaymentProvider');
     const { initiateStripeCheckout } = usePayments();
 
     const handleConfirmAndPay = async () => {

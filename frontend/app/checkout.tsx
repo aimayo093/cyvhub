@@ -21,12 +21,14 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
-import { usePayment } from '@/providers/PaymentProvider';
+import { usePayments } from '@/providers/PaymentProvider';
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function CheckoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { initiateStripeCheckout } = usePayment();
+  const { initiateStripeCheckout } = usePayments();
+  const { customer, userRole } = useAuth();
 
   const jobId = params.jobId as string;
   const jobNumber = params.jobNumber as string;
@@ -36,6 +38,25 @@ export default function CheckoutScreen() {
 
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'invoice'>('card');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Identify business account status: Customer with a linked businessAccountId
+  const isBusinessUser = userRole === 'customer' && customer?.businessAccountId != null;
+
+  if (!jobId || isNaN(amount) || amount <= 0) {
+    return (
+      <View style={styles.errorContainer}>
+         <Package size={48} color={Colors.danger} />
+         <Text style={styles.errorTitle}>Invalid Order Details</Text>
+         <Text style={styles.errorDesc}>We couldn't retrieve the details for this booking. Please try again from the history tab.</Text>
+         <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.replace('/')}
+         >
+            <Text style={styles.backButtonText}>Go Home</Text>
+         </TouchableOpacity>
+      </View>
+    );
+  }
 
   const handlePayment = async () => {
     setIsSubmitting(true);
@@ -55,7 +76,7 @@ export default function CheckoutScreen() {
           Alert.alert(
             'Success',
             'Order placed successfully. An invoice has been sent to your registered business email.',
-            [{ text: 'OK', onPress: () => router.replace('/(tabs)/history') }]
+            [{ text: 'OK', onPress: () => router.replace('/(tabs)/history' as any) }]
           );
         }
       }
@@ -133,22 +154,24 @@ export default function CheckoutScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.methodCard, paymentMethod === 'invoice' && styles.methodCardActive]}
-            onPress={() => setPaymentMethod('invoice')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.radio, paymentMethod === 'invoice' && styles.radioActive]}>
-                {paymentMethod === 'invoice' && <View style={styles.radioInner} />}
-            </View>
-            <View style={styles.methodIcon}>
-               <FileText size={24} color={paymentMethod === 'invoice' ? Colors.customerPrimary : Colors.textMuted} />
-            </View>
-            <View style={{ flex: 1 }}>
-               <Text style={styles.methodName}>Business Invoice</Text>
-               <Text style={styles.methodDesc}>Pay via bank transfer (30-day terms)</Text>
-            </View>
-          </TouchableOpacity>
+          {isBusinessUser && (
+            <TouchableOpacity 
+                style={[styles.methodCard, paymentMethod === 'invoice' && styles.methodCardActive]}
+                onPress={() => setPaymentMethod('invoice')}
+                activeOpacity={0.7}
+            >
+                <View style={[styles.radio, paymentMethod === 'invoice' && styles.radioActive]}>
+                    {paymentMethod === 'invoice' && <View style={styles.radioInner} />}
+                </View>
+                <View style={styles.methodIcon}>
+                   <FileText size={24} color={paymentMethod === 'invoice' ? Colors.customerPrimary : Colors.textMuted} />
+                </View>
+                <View style={{ flex: 1 }}>
+                   <Text style={styles.methodName}>Business Invoice</Text>
+                   <Text style={styles.methodDesc}>Pay via bank transfer (30-day terms)</Text>
+                </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.trustBanner}>
@@ -367,5 +390,37 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.navy,
+    marginTop: 20,
+  },
+  errorDesc: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 32,
+    lineHeight: 20,
+  },
+  backButton: {
+    backgroundColor: Colors.customerPrimary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });
