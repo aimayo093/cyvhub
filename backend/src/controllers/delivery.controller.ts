@@ -330,9 +330,27 @@ export class DeliveryController {
             }
 
             // SEC-AUDIT-2: IDOR Protection
-            if (role !== 'admin' && delivery.customerId !== userId) {
-                res.status(403).json({ error: 'Forbidden. Access restricted to the owner.' });
-                return;
+            const isGuestJob = !delivery.customerId;
+            const isPaymentPending = ['PENDING_PAYMENT', 'AWAITING_PAYMENT'].includes(delivery.status);
+
+            // Access Logic:
+            // 1. Admin always has access
+            // 2. Authenticated user (owner) always has access
+            // 3. Guest (no userId) can access ONLY if it's a Guest Job and Payment is Pending
+            if (role !== 'admin') {
+                if (userId) {
+                    // Authenticated user must be the owner
+                    if (delivery.customerId !== userId) {
+                        res.status(403).json({ error: 'Forbidden. Access restricted to the owner.' });
+                        return;
+                    }
+                } else {
+                    // Guest user (not logged in) - only allow if the job has no customerId and is pending payment
+                    if (!isGuestJob || !isPaymentPending) {
+                        res.status(401).json({ error: 'Unauthorized. Please log in to view this booking.' });
+                        return;
+                    }
+                }
             }
 
             res.status(200).json({ data: delivery });

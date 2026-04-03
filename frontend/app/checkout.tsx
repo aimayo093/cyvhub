@@ -8,6 +8,8 @@ import {
   Alert,
   Platform,
   Image,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
@@ -44,18 +46,33 @@ export default function CheckoutScreen() {
 
   // Hydrate full job data to fix "Unknown" fields
   const fetchJobDetails = useCallback(async () => {
-    if (!jobId) return;
+    if (!jobId) {
+      console.error('[Checkout] No jobId found in params:', params);
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
     try {
+      console.log(`[Checkout] Fetching job details for: ${jobId}`);
       const response = await apiClient(`/deliveries/${jobId}`);
+      
       if (response && response.data) {
+        console.log('[Checkout] Job data retrieved successfully:', response.data.jobNumber);
         setJob(response.data);
+      } else {
+        console.error('[Checkout] Job data empty or invalid format:', response);
       }
-    } catch (error) {
-      console.error('Failed to fetch job details:', error);
+    } catch (error: any) {
+      console.error('[Checkout] API call failed:', error?.message || error);
+      // Log more context for debugging
+      if (error?.status === 401 || error?.status === 403) {
+        console.warn('[Checkout] Permission denied. This usually means Guest access is blocked or session expired.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [jobId]);
+  }, [jobId, params]);
 
   useEffect(() => {
     fetchJobDetails();
@@ -110,10 +127,17 @@ export default function CheckoutScreen() {
         <View style={styles.errorContainer}>
           <Package size={48} color={Colors.danger} />
           <Text style={styles.errorTitle}>Booking Not Found</Text>
-          <Text style={styles.errorDesc}>We couldn't retrieve your booking details. Please try again.</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
+          <Text style={styles.errorDesc}>We couldn't retrieve your booking details. This might be due to a temporary connection issue or an expired session.</Text>
+          
+          <View style={styles.errorActions}>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchJobDetails}>
+              <Text style={styles.retryButtonText}>Retry Loading</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Text style={styles.backButtonText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ResponsiveContainer>
     );
@@ -508,13 +532,29 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   backButton: {
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  backButtonText: {
+    color: Colors.text,
+    fontWeight: '700',
+  },
+  retryButton: {
     backgroundColor: Colors.customerPrimary,
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
   },
-  backButtonText: {
+  retryButtonText: {
     color: '#fff',
     fontWeight: '700',
+  },
+  errorActions: {
+    flexDirection: 'row',
+    gap: 12,
   },
 });

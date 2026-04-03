@@ -116,6 +116,7 @@ export interface CustomerProfile {
 
 export interface Delivery {
   id: string;
+  jobNumber: string;
   trackingNumber: string;
   status: DeliveryStatus;
   pickupAddress: string;
@@ -133,6 +134,7 @@ export interface Delivery {
   packageDescription: string;
   vehicleType: string;
   estimatedPrice: number;
+  calculatedPrice: number;
   driverName?: string;
   driverPhone?: string;
   driverId?: string;

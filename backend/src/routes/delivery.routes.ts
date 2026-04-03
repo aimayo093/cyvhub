@@ -14,7 +14,7 @@ router.post('/', optionalAuthenticate, DeliveryController.createDelivery);
 router.patch('/:id/cancel', authenticate, DeliveryController.cancelDelivery);
 
 // GET /api/deliveries/:id
-router.get('/:id', authenticate, DeliveryController.getDeliveryById);
+router.get('/:id', optionalAuthenticate, DeliveryController.getDeliveryById);
 
 // PATCH /api/deliveries/:id (General update)
 router.patch('/:id', authenticate, DeliveryController.updateDelivery);

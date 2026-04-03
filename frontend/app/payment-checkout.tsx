@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import {
