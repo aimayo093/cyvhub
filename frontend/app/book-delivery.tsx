@@ -155,16 +155,18 @@ export default function BookDeliveryScreen() {
 
     try {
       const price = estimatedPrice;
-      // createDelivery returns a Promise
+      // createDelivery returns a Promise — field names must match backend schema
       const delivery = await createDelivery({
-        pickupAddress: pickupAddress.trim(),
+        pickupAddressLine1: pickupAddress.trim(),
         pickupCity: pickupCity.trim(),
         pickupPostcode: pickupPostcode.trim(),
-        pickupContact: pickupContact.trim(),
-        dropoffAddress: dropoffAddress.trim(),
+        pickupContactName: pickupContact.trim(),
+        pickupContactPhone: '0000000000',
+        dropoffAddressLine1: dropoffAddress.trim(),
         dropoffCity: dropoffCity.trim(),
         dropoffPostcode: dropoffPostcode.trim(),
-        dropoffContact: dropoffContact.trim(),
+        dropoffContactName: dropoffContact.trim(),
+        dropoffContactPhone: '0000000000',
         parcels: parcels.map(p => ({
             lengthCm: parseFloat(p.lengthCm),
             widthCm: parseFloat(p.widthCm),
@@ -212,13 +214,14 @@ export default function BookDeliveryScreen() {
           },
         ]
       );
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Failed to create delivery booking.');
+    } catch (error: any) {
+      console.error('Delivery creation failed:', error);
+      const errorMsg = error?.message || 'Failed to create delivery booking.';
+      Alert.alert('Booking Failed', errorMsg);
     } finally {
       setIsSubmitting(false);
     }
-  }, [validate, createDelivery, pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, selectedVehicle, router, selectedJobType, specialInstructions, selectedPickupWindow, selectedDeliveryWindow]);
+  }, [validate, createDelivery, pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, selectedVehicle, router, selectedJobType, specialInstructions, selectedPickupWindow, selectedDeliveryWindow, estimatedPrice, parcels, isReadyNow]);
 
   const renderQuickFill = useCallback((target: LocationTarget) => (
     <View style={styles.savedLocationsWrap}>

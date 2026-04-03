@@ -39,7 +39,9 @@ function RootLayoutNav() {
       seg === 'forgot-password' ||
       seg === 'reset-password' ||
       seg === 'terms' ||
-      seg === 'privacy';
+      seg === 'privacy' ||
+      seg === 'payment-checkout' ||
+      seg === 'book-delivery';
 
     if (!isAuthenticated) {
       if (Platform.OS !== 'web') {

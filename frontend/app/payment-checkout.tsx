@@ -128,9 +128,10 @@ export default function PaymentCheckoutScreen() {
       setIsProcessing(false);
       setIsComplete(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (e) {
+    } catch (e: any) {
       setIsProcessing(false);
-      Alert.alert('Payment Failed', 'Please try again or use a different payment method.');
+      const errorMsg = e?.message || 'Please try again or use a different payment method.';
+      Alert.alert('Payment Failed', errorMsg);
     }
   }, [amount, selectedMethod, selectedCardId, paypalAccounts, processPayment, description, params, updateDeliveryPayment]);
 
@@ -162,9 +163,10 @@ export default function PaymentCheckoutScreen() {
         setIsComplete(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }, 2000);
-    } catch (e) {
+    } catch (e: any) {
       setIsStripeRedirecting(false);
-      Alert.alert('Checkout Failed', 'Could not connect to Stripe. Please try another method.');
+      const errorMsg = e?.message || 'Could not connect to Stripe. Please try another method.';
+      Alert.alert('Checkout Failed', errorMsg);
     }
   }, [amount, description, params, initiateStripeCheckout, handlePaymentReturn, updateDeliveryPayment]);
 
