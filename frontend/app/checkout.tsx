@@ -41,7 +41,7 @@ export default function CheckoutScreen() {
 
   const [status, setStatus] = useState<CheckoutStatus>('loading');
   const [job, setJob] = useState<Delivery | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('card');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('stripe');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -158,9 +158,9 @@ export default function CheckoutScreen() {
     }
     const amountStr = totalAmount.toFixed(2);
     if (paymentMethod === 'invoice') return 'Confirm Booking';
-    if (paymentMethod === 'paypal') return `Pay £${amountStr} with PayPal`;
-    if (paymentMethod === 'stripe') return `Pay £${amountStr} with Stripe`;
-    return `Pay £${amountStr} Now`;
+    if (paymentMethod === 'paypal') return 'PayPal Coming Soon';
+    if (paymentMethod === 'stripe') return `Pay £${amountStr} Securely`;
+    return `Pay £${amountStr} Securely`;
   };
 
   const handlePayment = async () => {
@@ -168,32 +168,9 @@ export default function CheckoutScreen() {
     try {
       console.log(`[Checkout] Processing payment via: ${paymentMethod}`);
       
-      if (paymentMethod === 'card') {
-        // useHostedSession = false for inline card flow (Future: Stripe Elements)
-        await initiateStripeCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId, false);
-      } else if (paymentMethod === 'paypal') {
-        const { approvalUrl } = await initiatePaypalCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId);
-        if (approvalUrl) {
-          console.log(`[Checkout] Success: Redirecting to PayPal: ${approvalUrl}`);
-          if (Platform.OS === 'web') {
-            window.location.href = approvalUrl;
-          } else {
-            await Linking.openURL(approvalUrl);
-          }
-        } else {
-          throw new Error('Could not initialize PayPal checkout. Please try another method.');
-        }
-      } else if (paymentMethod === 'stripe') {
+      if (paymentMethod === 'stripe') {
         // useHostedSession = true for Stripe-hosted payment page
         await initiateStripeCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId, true);
-      } else if (paymentMethod === 'invoice') {
-        const response = await apiClient('/checkout/invoice', {
-          method: 'POST',
-          body: JSON.stringify({ jobId }),
-        });
-        if (response && response.data) {
-          router.replace({ pathname: '/(tabs)/history' as any });
-        }
       }
     } catch (error: any) {
       console.error('[Checkout] Payment failed:', error);
@@ -203,7 +180,7 @@ export default function CheckoutScreen() {
       // NOTE: For redirections (PayPal/Stripe Checkout), we don't reset isSubmitting
       // because we want the spinner to stay until the page actually redirects/unmounts.
       // If it fails before redirect, the catch block handles it.
-      if (paymentMethod === 'card' || paymentMethod === 'invoice') {
+      if (paymentMethod === 'stripe') {
         setIsSubmitting(false);
       }
     }
@@ -349,42 +326,23 @@ export default function CheckoutScreen() {
 
       <View style={styles.methodsList}>
         <PaymentMethodOption
-          id="card"
-          title="Add / Pay with Card"
-          description="Secure payment via Stripe"
-          icon={<CreditCard size={24} color={paymentMethod === 'card' ? Colors.customerPrimary : Colors.textMuted} />}
-          selected={paymentMethod === 'card'}
-          onSelect={() => setPaymentMethod('card')}
-        />
-
-        <PaymentMethodOption
-          id="paypal"
-          title="PayPal"
-          description="Pay via your PayPal account"
-          icon={<Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/174/174861.png' }} style={{ width: 24, height: 24 }} />}
-          selected={paymentMethod === 'paypal'}
-          onSelect={() => setPaymentMethod('paypal')}
-        />
-
-        <PaymentMethodOption
           id="stripe"
-          title="Stripe Direct"
+          title="Secure Card Payment"
           description="One-click checkout with Stripe"
           icon={<Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/5968/5968560.png' }} style={{ width: 24, height: 24 }} />}
           selected={paymentMethod === 'stripe'}
           onSelect={() => setPaymentMethod('stripe')}
         />
 
-        {isBusinessUser && (
-          <PaymentMethodOption
-            id="invoice"
-            title="Business Invoice"
-            description="30-day payment terms"
-            icon={<FileText size={24} color={paymentMethod === 'invoice' ? Colors.customerPrimary : Colors.textMuted} />}
-            selected={paymentMethod === 'invoice'}
-            onSelect={() => setPaymentMethod('invoice')}
-          />
-        )}
+        <PaymentMethodOption
+          id="paypal"
+          title="PayPal (Coming Soon)"
+          description="PayPal payments will be available soon"
+          icon={<Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/174/174861.png' }} style={{ width: 24, height: 24 }} />}
+          selected={paymentMethod === 'paypal'}
+          disabled={true}
+          onSelect={() => {}}
+        />
       </View>
 
       <View style={styles.securityNote}>
@@ -412,11 +370,16 @@ export default function CheckoutScreen() {
   );
 }
 
-function PaymentMethodOption({ id, title, description, icon, selected, onSelect }: any) {
+function PaymentMethodOption({ id, title, description, icon, selected, onSelect, disabled }: any) {
   return (
     <TouchableOpacity 
-      style={[styles.methodItem, selected && styles.methodItemSelected]} 
+      style={[
+        styles.methodItem, 
+        selected && styles.methodItemSelected,
+        disabled && { opacity: 0.5 }
+      ]} 
       onPress={onSelect}
+      disabled={disabled}
       activeOpacity={0.7}
     >
       <View style={styles.methodIconBox}>
@@ -426,8 +389,8 @@ function PaymentMethodOption({ id, title, description, icon, selected, onSelect 
         <Text style={styles.methodTitle}>{title}</Text>
         <Text style={styles.methodDescription}>{description}</Text>
       </View>
-      <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-        {selected && <CheckCircle2 size={16} color={Colors.customerPrimary} />}
+      <View style={[styles.checkbox, selected && styles.checkboxSelected, disabled && { borderColor: Colors.border + '50' }]}>
+        {selected && !disabled && <CheckCircle2 size={16} color={Colors.customerPrimary} />}
       </View>
     </TouchableOpacity>
   );
