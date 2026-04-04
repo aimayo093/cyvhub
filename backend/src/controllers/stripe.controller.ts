@@ -323,59 +323,92 @@ export class StripeController {
         try {
             console.log(`[Stripe Fulfill] Processing fulfillment for Job: ${jobId}`);
             
-            // 1. Mark Job as Paid and move to PENDING_DISPATCH
-            const updatedJob = await prisma.job.update({
-                where: { id: jobId },
-                data: { 
-                    paymentStatus: 'COMPLETED',
-                    status: 'PENDING_DISPATCH',
-                    paymentIntentId: stripePaymentId
-                },
-                include: { customer: true }
+            // 1. Atomically update Job, PaymentTransaction and create Ledger Entry
+            const result = await prisma.$transaction(async (tx) => {
+                // Mark Job as Paid and move to PENDING_DISPATCH
+                const updatedJob = await tx.job.update({
+                    where: { id: jobId },
+                    data: { 
+                        paymentStatus: 'COMPLETED',
+                        status: 'PENDING_DISPATCH',
+                        paymentIntentId: stripePaymentId,
+                        completedAt: new Date()
+                    },
+                    include: { customer: true, parcels: true }
+                });
+
+                // Find and update the associated PaymentTransaction
+                const existingTxn = await tx.paymentTransaction.findFirst({
+                    where: { deliveryId: jobId, status: 'PENDING' }
+                });
+
+                if (existingTxn) {
+                    await tx.paymentTransaction.update({
+                        where: { id: existingTxn.id },
+                        data: {
+                            status: 'COMPLETED',
+                            stripePaymentId: stripePaymentId,
+                            completedAt: new Date()
+                        }
+                    });
+
+                    // Write to accounting ledger
+                    await tx.accountingEntry.create({
+                        data: {
+                            type: 'credit',
+                            category: 'delivery_payment',
+                            amount: existingTxn.amount,
+                            description: `Stripe Webhook Confirmed — Job ${updatedJob.jobNumber}`,
+                            reference: existingTxn.id,
+                            deliveryId: jobId
+                        }
+                    });
+                } else {
+                    // Create transaction if missing (fallback)
+                    await tx.paymentTransaction.create({
+                        data: {
+                            type: 'charge',
+                            status: 'COMPLETED',
+                            amount: updatedJob.calculatedPrice * 1.2,
+                            currency: 'GBP',
+                            method: 'stripe',
+                            description: `Direct fulfillment for Job ${updatedJob.jobNumber}`,
+                            deliveryId: jobId,
+                            stripePaymentId: stripePaymentId,
+                            completedAt: new Date()
+                        }
+                    });
+                }
+
+                return updatedJob;
             });
             
+            console.log(`[Stripe Fulfill] Step 1 Complete: Job ${result.jobNumber} updated.`);
+
             // 2. Trigger Automated Dispatch Engine
-            const { DispatchService } = require('../services/dispatch.service');
-            await DispatchService.dispatchJob(jobId);
+            try {
+                const { DispatchService } = require('../services/dispatch.service');
+                await DispatchService.dispatchJob(jobId);
+                console.log(`[Stripe Fulfill] Step 2 Complete: Dispatch triggered.`);
+            } catch (dispatchErr) {
+                console.error(`[Stripe Fulfill] WARNING: Dispatch failed but payment was completed.`, dispatchErr);
+            }
 
             // 3. Trigger Branded Confirmation Email
-            const { NotificationService } = require('../utils/notification.service');
-            let targetEmail = updatedJob.customer?.email;
-            let targetName = updatedJob.customer?.firstName || updatedJob.pickupContactName;
+            try {
+                const { NotificationService } = require('../utils/notification.service');
+                let targetEmail = result.customer?.email;
+                let targetName = result.customer?.firstName || result.pickupContactName;
 
-            if (targetEmail) {
-                await NotificationService.sendBookingConfirmation(targetEmail, targetName, updatedJob);
-            }
-
-            // 4. Mark PaymentTransaction as Completed (if exists) or create one
-            const existingTxn = await prisma.paymentTransaction.findFirst({
-                where: { deliveryId: jobId, status: 'PENDING' }
-            });
-
-            if (existingTxn) {
-                await prisma.paymentTransaction.update({
-                    where: { id: existingTxn.id },
-                    data: {
-                        status: 'COMPLETED',
-                        stripePaymentId: stripePaymentId,
-                        completedAt: new Date()
-                    }
-                });
-
-                // Write to ledger
-                await prisma.accountingEntry.create({
-                    data: {
-                        type: 'credit',
-                        category: 'delivery_payment',
-                        amount: existingTxn.amount,
-                        description: `Stripe Webhook Payment Confirmed — ${existingTxn.description}`,
-                        reference: existingTxn.id,
-                        deliveryId: jobId
-                    }
-                });
+                if (targetEmail) {
+                    await NotificationService.sendBookingConfirmation(targetEmail, targetName, result);
+                    console.log(`[Stripe Fulfill] Step 3 Complete: Email sent to ${targetEmail}.`);
+                }
+            } catch (notifErr) {
+                console.error(`[Stripe Fulfill] WARNING: Notification failed after successful payment.`, notifErr);
             }
         } catch (error) {
-            console.error(`[Stripe Fulfill] Error fulfilling jobId ${jobId}:`, error);
+            console.error(`[Stripe Fulfill] CRITICAL ERROR fulfilling jobId ${jobId}:`, error);
         }
     }
 }

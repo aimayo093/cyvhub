@@ -50,9 +50,22 @@ export const getPlatformAnalytics = async (req: Request, res: Response) => {
             take: 10,
         });
 
+        // --- System Statistics ---
+        const [totalDrivers, activeDrivers, totalCustomers, totalBusinesses] = await Promise.all([
+            prisma.user.count({ where: { role: 'driver' } }),
+            prisma.user.count({ where: { role: 'driver', status: 'ACTIVE' } }),
+            prisma.user.count({ where: { role: 'customer' } }),
+            prisma.user.count({ where: { role: 'business' } }),
+        ]);
+
         const stats = {
+            totalDrivers,
+            activeDrivers,
+            totalCustomers,
+            totalBusinesses,
             slaComplianceRate: parseFloat(avgSla.toFixed(1)),
             totalRevenue: revenueAgg._sum.amount || 0,
+            monthlyRevenue: jobVolume[jobVolume.length - 1]?.count || 0, // Simplified for now
         };
 
         const analytics = {

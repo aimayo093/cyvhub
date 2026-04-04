@@ -58,14 +58,16 @@ export default function CheckoutScreen() {
       } else {
         // Stripe or other provider - show success
         setIsSuccess(true);
+        const destination = customer ? '/(tabs)/history' : `/track-delivery?jobId=${jobId}`;
+        console.log(`[Checkout] Successful payment. Redirecting to ${destination}`);
         setTimeout(() => {
-          router.replace('/(tabs)/history' as any);
+          router.replace(destination as any);
         }, 3000);
       }
     } else if (paymentStatus === 'canceled' || paymentStatus === 'cancel') {
       Alert.alert('Payment Cancelled', 'You have cancelled the payment process. You can try again or choose another method.');
     }
-  }, [paymentStatus, jobId, params.orderId]);
+  }, [paymentStatus, jobId, params.orderId, customer]);
 
   const handlePaypalCapture = async (orderId: string, id: string) => {
     setIsSubmitting(true);
@@ -74,8 +76,9 @@ export default function CheckoutScreen() {
       const response = await capturePaypalOrder(orderId, id);
       if (response.success) {
         setIsSuccess(true);
+        const destination = customer ? '/(tabs)/history' : `/track-delivery?jobId=${id}`;
         setTimeout(() => {
-          router.replace('/(tabs)/history' as any);
+          router.replace(destination as any);
         }, 3000);
       }
     } catch (error: any) {
@@ -146,7 +149,7 @@ export default function CheckoutScreen() {
   }, [fetchJobDetails]);
 
   const isBusinessUser = userRole === 'customer' && customer?.businessAccountId != null;
-  const displayAmount = job?.calculatedPrice || parseFloat(params.amount as string || '0');
+  const displayAmount = Number(job?.calculatedPrice || params.amount || 0);
   const totalAmount = displayAmount * 1.2; // Including VAT
 
   const getButtonLabel = () => {
@@ -156,7 +159,7 @@ export default function CheckoutScreen() {
       if (paymentMethod === 'stripe') return 'Opening Stripe Checkout...';
       return 'Processing...';
     }
-    const amountStr = totalAmount.toFixed(2);
+    const amountStr = totalAmount > 0 ? totalAmount.toFixed(2) : '0.00';
     if (paymentMethod === 'invoice') return 'Confirm Booking';
     if (paymentMethod === 'paypal') return 'PayPal Coming Soon';
     if (paymentMethod === 'stripe') return `Pay £${amountStr} Securely`;

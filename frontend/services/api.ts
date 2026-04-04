@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 export const API_URL = process.env.EXPO_PUBLIC_API_URL
     ?? (Platform.OS === 'web'
         ? '/api'
-        : 'http://10.0.2.2:3000/api'); // Android emulator maps to host machine's localhost
+        : 'http://localhost:3000/api'); // Default for development locally
 
 export const TOKEN_KEY = 'cyvhub_session_token';
 

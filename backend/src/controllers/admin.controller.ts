@@ -125,6 +125,27 @@ export const adminAssignJob = async (req: AuthenticatedRequest, res: Response) =
     }
 };
 
+export const adminListJobs = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        
+        const jobs = await prisma.job.findMany({
+            include: {
+                customer: { select: { firstName: true, lastName: true, email: true } },
+                assignedDriver: { select: { firstName: true, lastName: true } },
+                assignedCarrier: { select: { carrierProfile: { select: { tradingName: true } } } },
+                parcels: true,
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(jobs);
+    } catch (error) {
+        console.error('Admin Jobs List Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 export const getUsersList = async (req: AuthenticatedRequest, res: Response) => {
     try {
         if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });

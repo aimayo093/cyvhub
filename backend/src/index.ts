@@ -40,15 +40,20 @@ dotenv.config();
 // SEC-3: Refuse to start if critical environment variables are missing.
 const REQUIRED_ENV_VARS = [
     'DATABASE_URL',
+    'DIRECT_URL', // Required for prisma migrate deploy
     'JWT_SECRET',
-    'NODE_ENV'
+    'NODE_ENV',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'RESEND_API_KEY'
 ];
 
 REQUIRED_ENV_VARS.forEach(key => {
     if (!process.env[key]) {
         console.error(`❌ FATAL: Missing required environment variable: ${key}`);
-        // During Vercel build, we don't want to kill the process, but we warn loudly.
-        if (process.env.VERCEL !== '1') {
+        // During Vercel build, we don't want to kill the process if it's just typechecking,
+        // but it will fail at runtime if not fixed.
+        if (process.env.VERCEL !== '1' && process.env.NODE_ENV === 'production') {
             process.exit(1);
         }
     }
