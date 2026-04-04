@@ -18,9 +18,9 @@ const NEXT_STATUS_MAP: Partial<Record<JobStatus, JobStatus>> = {
 
 interface PODData {
   receiverName: string;
-  signatureCaptured: boolean;
-  photoCount: number;
-  notes: string;
+  podUrl?: string;
+  signatureUrl?: string;
+  notes?: string;
 }
 
 export const [JobsProvider, useJobs] = createContextHook(() => {
@@ -95,9 +95,32 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
   }, [updateJobStatus]);
 
   const submitPOD = useCallback(async (jobId: string, podData: PODData) => {
-    // In actual implementation, we'd hit a '/jobs/:id/pod' endpoint here
-    await updateJobStatus(jobId, 'DELIVERED');
-  }, [updateJobStatus]);
+    try {
+      await apiClient(`/jobs/${jobId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ 
+          status: 'DELIVERED',
+          ...podData
+        }),
+      });
+
+      setJobs(prev => prev.map(job =>
+        job.id === jobId
+          ? {
+            ...job,
+            status: 'DELIVERED',
+            receiverName: podData.receiverName,
+            podUrl: podData.podUrl,
+            signatureUrl: podData.signatureUrl,
+            completedAt: new Date().toISOString(),
+          }
+          : job
+      ));
+    } catch (error) {
+      console.error('Failed to submit POD:', error);
+      alert('Failed to submit Proof of Delivery');
+    }
+  }, []);
 
   const getJob = useCallback(
     (jobId: string): Job | undefined => jobs.find(j => j.id === jobId),

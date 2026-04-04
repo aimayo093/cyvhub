@@ -67,12 +67,13 @@ export class AuthService {
             await SecureStore.deleteItemAsync('cyvhub_auth_attempts');
             await SecureStore.deleteItemAsync('cyvhub_auth_lock_time');
 
-            // SEC-AUDIT-6: On web, the browser manages the HTTP-only cookie automatically.
-            // Only store the token in SecureStore on native mobile platforms.
+            // SEC-AUDIT-6: Use unified setToken for hybrid auth
+            await setToken(response.token);
+            
+            // Legacy cleanup (if needed) — optional
             if (Platform.OS !== 'web') {
                 await SecureStore.setItemAsync(AUTH_KEY, 'true');
                 await SecureStore.setItemAsync(ROLE_KEY, response.user.role);
-                await SecureStore.setItemAsync(TOKEN_KEY, response.token);
             }
 
             return { success: true, token: response.token, user: response.user };
@@ -87,35 +88,22 @@ export class AuthService {
      */
     static async verifySession(): Promise<{ role: UserRole | null; isAuthenticated: boolean; user?: any }> {
         try {
-            if (Platform.OS === 'web') {
-                // SEC-AUDIT-6: Web auth uses HTTP-only cookies — just call the API and let
-                // the browser attach the cookie automatically. No SecureStore check needed.
-                try {
-                    const user = await apiClient('/profile', { method: 'GET' });
-                    if (user && user.role) {
-                        return { role: user.role as UserRole, isAuthenticated: true, user };
-                    }
-                } catch (e) {
-                    // Cookie absent, expired, or invalid
-                }
-            } else {
-                // Mobile: check SecureStore first to avoid a network call when not logged in
-                const auth = await SecureStore.getItemAsync(AUTH_KEY);
-                const token = await SecureStore.getItemAsync(TOKEN_KEY);
+            // SEC-AUDIT-6: Unified auth check for all platforms
+            const token = await getToken();
+            if (!token) return { role: null, isAuthenticated: false };
 
-                if (auth === 'true' && token) {
-                    try {
-                        // Call backend to verify token and get fresh profile
-                        const user = await apiClient('/profile', { method: 'GET' });
+            try {
+                // Call backend to verify token and get fresh profile
+                // The Bearer token is automatically attached by apiClient
+                const user = await apiClient('/profile', { method: 'GET' });
 
-                        if (user && user.role) {
-                            return { role: user.role as UserRole, isAuthenticated: true, user };
-                        }
-                    } catch (e) {
-                        // Token tampered, expired, or server rejected it
-                        await this.clearSession();
-                    }
+                if (user && user.role) {
+                    return { role: user.role as UserRole, isAuthenticated: true, user };
                 }
+            } catch (e) {
+                // Token tampered, expired, or server rejected it
+                console.warn('Session verification failed, clearing session.');
+                await this.clearSession();
             }
         } catch (e) {
             console.error('Session verification failed:', e);
@@ -126,21 +114,21 @@ export class AuthService {
 
     /**
      * Clears the stored session.
-     * On web: calls the backend /logout endpoint to clear the server-side HTTP-only cookie.
-     * On mobile: deletes the token from SecureStore.
      */
     static async clearSession(): Promise<void> {
-        if (Platform.OS === 'web') {
-            // SEC-AUDIT-6: Tell the server to expire the HTTP-only cookie
-            try {
+        // SEC-AUDIT-6: Hybrid logout
+        // Tell server to clear cookie, and clear local bearer token
+        try {
+            if (Platform.OS === 'web') {
                 await apiClient('/auth/logout', { method: 'POST' });
-            } catch (e) {
-                // Ignore errors — session is best-effort cleared
             }
-        } else {
+        } catch (e) { /* ignore */ }
+        
+        await clearToken();
+        
+        if (Platform.OS !== 'web') {
             await SecureStore.deleteItemAsync(AUTH_KEY);
             await SecureStore.deleteItemAsync(ROLE_KEY);
-            await SecureStore.deleteItemAsync(TOKEN_KEY);
         }
     }
 

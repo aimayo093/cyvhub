@@ -173,7 +173,13 @@ model Job {
   paymentIntentId     String?
   
   parcels      Parcel[]
+
+  // Proof of Delivery (POD)
+  podUrl        String?    // URL to delivery photo
+  signatureUrl  String?    // URL to signature image
+  receiverName  String?    // Name of person who accepted delivery
 }
+ Regina: (Existing Parcel model remains below)
 
 model Parcel {
   id             String   @id @default(uuid())

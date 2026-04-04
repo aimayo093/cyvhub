@@ -73,7 +73,7 @@ export class StripeController {
                 description,
                 metadata: {
                     userId: userId || 'guest',
-                    deliveryId: jobId,
+                    jobId: jobId,
                     jobNumber: job.jobNumber || '',
                     trackingNumber: job.trackingNumber || '',
                 },
@@ -150,7 +150,7 @@ export class StripeController {
                 description: description || 'CYVhub Service Payment',
                 metadata: {
                     userId: userId || 'guest',
-                    deliveryId: deliveryId || 'none'
+                    jobId: deliveryId || 'none'
                 },
                 automatic_payment_methods: {
                     enabled: true,
@@ -158,20 +158,20 @@ export class StripeController {
             });
 
             // Create a PENDING transaction record in the DB so the webhook can fulfill it
-            if (deliveryId && deliveryId !== 'none') {
-                 await prisma.paymentTransaction.create({
-                     data: {
-                         type: 'charge',
-                         status: 'PENDING',
-                         amount: amount,
-                         currency: currency.toUpperCase(),
-                         method: 'stripe',
-                         description: description || `Stripe Payment for Delivery ${deliveryId}`,
-                         deliveryId: deliveryId,
-                         stripePaymentId: paymentIntent.id
-                     }
-                 });
-            }
+             if (deliveryId && deliveryId !== 'none') {
+                  await prisma.paymentTransaction.create({
+                      data: {
+                          type: 'charge',
+                          status: 'PENDING',
+                          amount: amount,
+                          currency: currency.toUpperCase(),
+                          method: 'stripe',
+                          description: description || `Stripe Payment for Delivery ${deliveryId}`,
+                          deliveryId: deliveryId,
+                          stripePaymentId: paymentIntent.id
+                      }
+                  });
+             }
 
             res.status(200).json({
                 clientSecret: paymentIntent.client_secret,
@@ -211,73 +211,20 @@ export class StripeController {
         try {
             // Handle the event
             switch (event.type) {
+                case 'checkout.session.completed':
+                    const session = event.data.object as Stripe.Checkout.Session;
+                    const jobIdFromSession = session.metadata?.jobId;
+                    console.log(`💰 Checkout Session fulfilled for jobId: ${jobIdFromSession}`);
+                    if (jobIdFromSession) {
+                        await StripeController._fulfillOrder(jobIdFromSession, session.payment_intent as string);
+                    }
+                    break;
                 case 'payment_intent.succeeded':
                     const paymentIntent = event.data.object as Stripe.PaymentIntent;
                     console.log(`💰 PaymentIntent for ${paymentIntent.amount} was successful!`);
-
-                    const deliveryId = paymentIntent.metadata?.deliveryId;
-
-                    if (deliveryId && deliveryId !== 'none') {
-                        // 1. Mark Job as Paid and move to PENDING_DISPATCH
-                        // State enforcement: Job only becomes active for dispatch after payment
-                        const updatedJob = await prisma.job.update({
-                            where: { id: deliveryId },
-                            data: { 
-                                paymentStatus: 'COMPLETED',
-                                status: 'PENDING_DISPATCH',
-                                paymentIntentId: paymentIntent.id
-                            },
-                            include: { customer: true }
-                        });
-                        
-                        // 1b. Trigger Automated Dispatch Engine
-                        const { DispatchService } = require('../services/dispatch.service');
-                        await DispatchService.dispatchJob(deliveryId);
-
-                        // 1c. Trigger Branded Confirmation Email
-                        const { NotificationService } = require('../utils/notification.service');
-                        let targetEmail = updatedJob.customer?.email;
-                        let targetName = updatedJob.customer?.firstName || updatedJob.pickupContactName;
-
-                        // If guest booking (no customer relation), we might have stored email in metadata or another field
-                        // For now, if no customer, we'll try to find if there's an email in the job's contact fields (fallback)
-                        if (!targetEmail) {
-                            // In a real scenario, we'd capture this during the 'Review' stage for guests
-                            // and store it on the Job record or metadata.
-                            console.log(`[Stripe Webhook] No customer email found for jobId ${deliveryId}. Attempting fallback...`);
-                        }
-
-                        if (targetEmail) {
-                            await NotificationService.sendBookingConfirmation(targetEmail, targetName, updatedJob);
-                        }
-
-                        // 2. Mark PaymentTransaction as Completed (if exists) or create one
-                        const existingTxn = await prisma.paymentTransaction.findFirst({
-                            where: { deliveryId, status: 'PENDING' }
-                        });
-
-                        if (existingTxn) {
-                            await prisma.paymentTransaction.update({
-                                where: { id: existingTxn.id },
-                                data: {
-                                    status: 'COMPLETED',
-                                    stripePaymentId: paymentIntent.id,
-                                    completedAt: new Date()
-                                }
-                            });
-
-                            // Write to ledger
-                            await prisma.accountingEntry.create({
-                                data: {
-                                    type: 'credit',
-                                    category: 'delivery_payment',
-                                    amount: existingTxn.amount,
-                                    description: `Stripe Webhook Payment Confirmed — ${existingTxn.description}`,
-                                    reference: existingTxn.id,
-                                    deliveryId: deliveryId
-                                }
-                            });
-                        }
+                    const jobIdFromPI = paymentIntent.metadata?.jobId;
+                    if (jobIdFromPI && jobIdFromPI !== 'none') {
+                        await StripeController._fulfillOrder(jobIdFromPI, paymentIntent.id);
                     }
                     break;
                 case 'payment_intent.payment_failed':
@@ -365,6 +312,70 @@ export class StripeController {
         } catch (error: any) {
             console.error('[StripeController] Checkout session error:', error);
             res.status(500).json({ error: error.message || 'Failed to create checkout session.' });
+        }
+    }
+
+    /**
+     * Internal helper to finalize a job after successful payment.
+     * Transitions status to PENDING_DISPATCH and triggers notifications.
+     */
+    private static async _fulfillOrder(jobId: string, stripePaymentId: string): Promise<void> {
+        try {
+            console.log(`[Stripe Fulfill] Processing fulfillment for Job: ${jobId}`);
+            
+            // 1. Mark Job as Paid and move to PENDING_DISPATCH
+            const updatedJob = await prisma.job.update({
+                where: { id: jobId },
+                data: { 
+                    paymentStatus: 'COMPLETED',
+                    status: 'PENDING_DISPATCH',
+                    paymentIntentId: stripePaymentId
+                },
+                include: { customer: true }
+            });
+            
+            // 2. Trigger Automated Dispatch Engine
+            const { DispatchService } = require('../services/dispatch.service');
+            await DispatchService.dispatchJob(jobId);
+
+            // 3. Trigger Branded Confirmation Email
+            const { NotificationService } = require('../utils/notification.service');
+            let targetEmail = updatedJob.customer?.email;
+            let targetName = updatedJob.customer?.firstName || updatedJob.pickupContactName;
+
+            if (targetEmail) {
+                await NotificationService.sendBookingConfirmation(targetEmail, targetName, updatedJob);
+            }
+
+            // 4. Mark PaymentTransaction as Completed (if exists) or create one
+            const existingTxn = await prisma.paymentTransaction.findFirst({
+                where: { deliveryId: jobId, status: 'PENDING' }
+            });
+
+            if (existingTxn) {
+                await prisma.paymentTransaction.update({
+                    where: { id: existingTxn.id },
+                    data: {
+                        status: 'COMPLETED',
+                        stripePaymentId: stripePaymentId,
+                        completedAt: new Date()
+                    }
+                });
+
+                // Write to ledger
+                await prisma.accountingEntry.create({
+                    data: {
+                        type: 'credit',
+                        category: 'delivery_payment',
+                        amount: existingTxn.amount,
+                        description: `Stripe Webhook Payment Confirmed — ${existingTxn.description}`,
+                        reference: existingTxn.id,
+                        deliveryId: jobId
+                    }
+                });
+            }
+        } catch (error) {
+            console.error(`[Stripe Fulfill] Error fulfilling jobId ${jobId}:`, error);
         }
     }
 }

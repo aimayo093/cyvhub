@@ -10,8 +10,33 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL
 
 export const TOKEN_KEY = 'cyvhub_session_token';
 
+/**
+ * SEC-AUDIT-6: Hybrid Auth approach.
+ * We store and send the token as a Bearer header on ALL platforms for maximum reliability.
+ * On Web, we also set the httpOnly cookie for server-side benefits, but the API client
+ * will explicitly send the header to handle cross-origin dev environments.
+ */
 export const getToken = async () => {
+    if (Platform.OS === 'web') {
+        return localStorage.getItem(TOKEN_KEY);
+    }
     return await SecureStore.getItemAsync(TOKEN_KEY);
+};
+
+export const setToken = async (token: string) => {
+    if (Platform.OS === 'web') {
+        localStorage.setItem(TOKEN_KEY, token);
+    } else {
+        await SecureStore.setItemAsync(TOKEN_KEY, token);
+    }
+};
+
+export const clearToken = async () => {
+    if (Platform.OS === 'web') {
+        localStorage.removeItem(TOKEN_KEY);
+    } else {
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+    }
 };
 
 export const apiClient = async (endpoint: string, options: RequestInit = {}) => {
@@ -22,14 +47,10 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
         headers.set('Content-Type', 'application/json');
     }
 
-    // SEC-AUDIT-6: Web uses HTTP-only cookies — token is sent automatically by the browser.
-    // Mobile uses Bearer token from SecureStore in the Authorization header.
-    const isWeb = Platform.OS === 'web';
-    if (!isWeb) {
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
-        if (token) {
-            headers.set('Authorization', `Bearer ${token}`);
-        }
+    // Always attempt to attach the Bearer token if it exists
+    const token = await getToken();
+    if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {

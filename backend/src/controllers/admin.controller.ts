@@ -64,6 +64,67 @@ export const getHRList = async (req: AuthenticatedRequest, res: Response) => {
     }
 };
 
+export const adminUpdateUserStatus = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        const id = req.params.id as string;
+        const { status } = req.body;
+
+        if (!['ACTIVE', 'SUSPENDED', 'DELETED'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status' });
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id },
+            data: { status }
+        });
+
+        res.json({ message: `User status updated to ${status}`, user: updatedUser });
+    } catch (error) {
+        console.error('Admin Update User Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const adminAssignJob = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        const jobId = req.params.jobId as string;
+        const { assigneeId, assigneeType } = req.body;
+
+        if (!['driver', 'carrier'].includes(assigneeType)) {
+            return res.status(400).json({ error: 'Invalid assigneeType. Must be driver or carrier.' });
+        }
+
+        const data: any = {
+            status: 'ASSIGNED',
+            assignedDriverId: assigneeType === 'driver' ? assigneeId : null,
+            assignedCarrierId: assigneeType === 'carrier' ? assigneeId : null
+        };
+
+        const job = await prisma.job.update({
+            where: { id: jobId },
+            data,
+            include: { 
+                assignedDriver: true, 
+                assignedCarrier: true 
+            }
+        });
+
+        // Notify assignee
+        const { NotificationService } = require('../utils/notification.service');
+        const assignee = (job as any).assignedDriver || (job as any).assignedCarrier;
+        if (assignee?.email) {
+            await NotificationService.sendEmail(assignee.email, 'Job Force Assigned', `<p>An administrator has assigned job <b>${job.jobNumber}</b> to you.</p>`);
+        }
+
+        res.json({ message: 'Job successfully assigned', job });
+    } catch (error) {
+        console.error('Admin Assign Job Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 export const getUsersList = async (req: AuthenticatedRequest, res: Response) => {
     try {
         if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });

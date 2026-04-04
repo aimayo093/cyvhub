@@ -59,7 +59,7 @@ export const getJobs = async (req: AuthenticatedRequest, res: Response) => {
 export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const jobId = req.params.id as string;
-        const { status } = req.body;
+        const { status, podUrl, signatureUrl, receiverName } = req.body;
         const userId = req.user?.userId;
         const role = req.user?.role;
 
@@ -87,7 +87,10 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
 
         const dataToUpdate: any = {
             status,
-            completedAt: status === 'COMPLETED' ? new Date() : undefined
+            completedAt: (status === 'DELIVERED' || status === 'COMPLETED') ? new Date() : undefined,
+            podUrl: podUrl || job.podUrl,
+            signatureUrl: signatureUrl || job.signatureUrl,
+            receiverName: receiverName || job.receiverName
         };
 
         // If a driver or carrier just accepted it, assign ownership
@@ -123,16 +126,16 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
         // ==========================================
         // AUTOMATED SETTLEMENT BATCH LOGIC
         // ==========================================
-        if (status === 'COMPLETED') {
+        if (status === 'DELIVERED' || status === 'COMPLETED') {
             const recipient = updatedJob.assignedDriver || updatedJob.assignedCarrier;
 
             if (recipient) {
                 const recipientType = updatedJob.assignedDriver ? 'driver' : 'carrier';
                 const recipientName = updatedJob.assignedDriver
                     ? `${recipient.firstName} ${recipient.lastName}`
-                    : recipient.firstName;
+                    : (recipient as any).companyName || recipient.firstName;
 
-                // Calculate driver/carrier cut using the precise Commercial Payout Engine computation (Epic 8)
+                // Calculate driver/carrier cut using the precise Commercial Payout Engine computation
                 const payoutAmount = updatedJob.quoteRequest ? updatedJob.quoteRequest.driverPayoutTotal : (updatedJob.calculatedPrice * 0.8);
 
                 // Find an existing pending batch for this recipient
@@ -151,18 +154,20 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
                     } catch (e) {
                         updatedJobIds = [];
                     }
-                    updatedJobIds.push(jobId);
+                    if (!updatedJobIds.includes(jobId)) {
+                        updatedJobIds.push(jobId);
 
-                    // Update existing batch
-                    await prisma.settlementBatch.update({
-                        where: { id: existingBatch.id },
-                        data: {
-                            jobsCount: existingBatch.jobsCount + 1,
-                            jobIds: JSON.stringify(updatedJobIds),
-                            grossAmount: existingBatch.grossAmount + payoutAmount,
-                            netAmount: existingBatch.netAmount + payoutAmount,
-                        }
-                    });
+                        // Update existing batch
+                        await prisma.settlementBatch.update({
+                            where: { id: existingBatch.id },
+                            data: {
+                                jobsCount: existingBatch.jobsCount + 1,
+                                jobIds: JSON.stringify(updatedJobIds),
+                                grossAmount: existingBatch.grossAmount + payoutAmount,
+                                netAmount: existingBatch.netAmount + payoutAmount,
+                            }
+                        });
+                    }
                 } else {
                     // Create new batch for the week
                     const now = new Date();
@@ -183,7 +188,7 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
                             periodStart,
                             periodEnd,
                             jobIds: JSON.stringify([jobId]),
-                            reference: `STL-${Date.now()}`,
+                            reference: `STL-${Date.now()}-${jobId.substring(0, 4)}`,
                             jobsCount: 1,
                             grossAmount: payoutAmount,
                             totalDeductions: 0,
