@@ -24,7 +24,9 @@ export class CommercialService {
 
         let suitableVehicle;
         if (payload.vehicleType) {
-            suitableVehicle = vehicles.find((v: any) => v.name === payload.vehicleType);
+            // Normalize: "Medium Van" -> "MEDIUM_VAN", "MEDIUM VAN" -> "MEDIUM_VAN"
+            const normalizedType = payload.vehicleType.trim().toUpperCase().replace(/\s+/g, '_');
+            suitableVehicle = vehicles.find((v: any) => v.name === normalizedType || v.name === payload.vehicleType);
             
             // Validate if the chosen vehicle actually fits the load
             if (suitableVehicle) {
