@@ -11,16 +11,21 @@ export class PricingService {
         let totalVolumetricWeight = 0;
 
         for (const item of items) {
-            const qty = item.quantity || 1;
-            totalActualWeight += (item.weightKg * qty);
-            const volWeight = ((item.lengthCm * item.widthCm * item.heightCm) / 5000) * qty;
+            const qty = Number(item.quantity) || 1;
+            const w = Number(item.weightKg) || 0;
+            const l = Number(item.lengthCm) || 0;
+            const wd = Number(item.widthCm) || 0;
+            const h = Number(item.heightCm) || 0;
+
+            totalActualWeight += (w * qty);
+            const volWeight = ((l * wd * h) / 5000) * qty;
             totalVolumetricWeight += volWeight;
         }
 
         return {
-            actualWeightKg: totalActualWeight,
+            actualWeightKg: Number(totalActualWeight.toFixed(2)),
             volumetricWeightKg: Number(totalVolumetricWeight.toFixed(2)),
-            chargeableWeightKg: Math.max(totalActualWeight, totalVolumetricWeight)
+            chargeableWeightKg: Number(Math.max(totalActualWeight, totalVolumetricWeight).toFixed(2))
         };
     }
 
@@ -45,18 +50,19 @@ export class PricingService {
 
         // --- PHASE 1: STANDARD OVERHEAD CALCULATION (SINGLE PARCEL PRICING) ---
 
-        // 1. Base Fee Search
+        // 1. Base Fee Search (Safe fallback if missing from DB)
         const baseRule = vehicle.pricingRules.find((r: any) => r.type === 'BASE_FEE');
-        const baseFee = baseRule ? baseRule.amount : vehicle.baseFee;
+        const baseFee = baseRule ? baseRule.amount : (vehicle.baseFee ?? 25.00); 
         customerTotal += baseFee;
         lineItems.push({ target: 'CUSTOMER', type: 'BASE_FEE', amount: baseFee, description: 'Base Pickup Fee' });
 
-        // 2. Mileage Fee Execution
+        // 2. Mileage Fee Execution (Safe fallback if missing from DB)
         const mileRule = vehicle.pricingRules.find((r: any) => r.type === 'MILEAGE');
-        const mileageRate = mileRule ? mileRule.amount : vehicle.mileageRate;
-        const mileageTotal = distanceMiles * mileageRate;
+        const mileageRate = mileRule ? mileRule.amount : (vehicle.mileageRate ?? 1.50);
+        const distanceVal = Number(distanceMiles) || 0;
+        const mileageTotal = distanceVal * mileageRate;
         customerTotal += mileageTotal;
-        lineItems.push({ target: 'CUSTOMER', type: 'MILEAGE', amount: Number(mileageTotal.toFixed(2)), description: `Mileage (${distanceMiles.toFixed(1)} miles @ £${mileageRate.toFixed(2)}/m)` });
+        lineItems.push({ target: 'CUSTOMER', type: 'MILEAGE', amount: Number(mileageTotal.toFixed(2)), description: `Mileage (${distanceVal.toFixed(1)} miles @ £${mileageRate.toFixed(2)}/m)` });
 
         // 3. Dynamically evaluate Weight Surcharge Bands mapped from DB (Based on 1 parcel weight logic initially)
         const weightRules = vehicle.pricingRules.filter((r: any) => r.type === 'WEIGHT_SURCHARGE');

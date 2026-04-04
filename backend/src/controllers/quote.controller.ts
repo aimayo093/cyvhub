@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../index';
 import { calculateMiles } from '../utils/distance';
 import { PricingService } from '../services/pricing.service';
+import { SuitabilityService } from '../services/suitability.service';
 
 export class QuoteController {
     // GET /api/quotes
@@ -34,7 +35,6 @@ export class QuoteController {
             const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(items);
 
             // 3. Find Suitable Vehicles using the centralized SuitabilityService
-            const { SuitabilityService } = require('../services/suitability.service');
             const { available, rejected } = await SuitabilityService.findSuitableVehicles(items, actualWeightKg, volumetricWeightKg);
 
             // 4. Generate quotes for each available vehicle
@@ -72,7 +72,11 @@ export class QuoteController {
             });
         } catch (error) {
             console.error('[QuoteController] Calculation Error:', error);
-            res.status(500).json({ error: 'Internal server error during quote calculation.' });
+            res.status(500).json({ 
+                error: 'Internal server error during quote calculation.',
+                details: (error as Error).message,
+                stack: process.env.NODE_ENV === 'development' ? (error as Error).stack : undefined
+            });
         }
     }
 

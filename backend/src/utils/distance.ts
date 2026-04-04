@@ -13,10 +13,14 @@ interface PostcodeData {
  */
 export async function calculateMiles(postcodeA: string, postcodeB: string): Promise<number> {
     try {
-        // 1. Get Coordinates
+        // 1. Sanitize input (strip extra spaces and uppercase for postcodes.io compatibility)
+        const cleanA = postcodeA.replace(/\s/g, '').toUpperCase();
+        const cleanB = postcodeB.replace(/\s/g, '').toUpperCase();
+
+        // 2. Get Coordinates
         const [resA, resB] = await Promise.all([
-            axios.get<PostcodeData>(`https://api.postcodes.io/postcodes/${postcodeA}`),
-            axios.get<PostcodeData>(`https://api.postcodes.io/postcodes/${postcodeB}`)
+            axios.get<PostcodeData>(`https://api.postcodes.io/postcodes/${cleanA}`),
+            axios.get<PostcodeData>(`https://api.postcodes.io/postcodes/${cleanB}`)
         ]);
 
         const lat1 = resA.data.result.latitude;
