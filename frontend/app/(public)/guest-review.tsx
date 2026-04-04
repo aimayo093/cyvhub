@@ -89,13 +89,14 @@ export default function GuestReviewPage() {
                 pathname: '/checkout' as any,
                 params: {
                     jobId: delivery.id,
-                    jobNumber: delivery.jobNumber,
-                    amount: price.toString(),
-                    pickup: delivery.pickupCity,
-                    dropoff: delivery.dropoffCity,
+                    jobNumber: delivery.jobNumber || delivery.trackingNumber,
+                    amount: delivery.calculatedPrice?.toString() || price.toString(),
+                    pickup: delivery.pickupCity !== 'Unknown' ? delivery.pickupCity : (delivery.pickupPostcode || params.collection),
+                    dropoff: delivery.dropoffCity !== 'Unknown' ? delivery.dropoffCity : (delivery.dropoffPostcode || params.delivery),
+                    vehicleType: delivery.vehicleType || params.vehicleType,
+                    serviceType: delivery.jobType || params.serviceType,
                 }
             });
-
         } catch (error: any) {
             console.error('Booking failed:', error);
             const msg = error?.message || 'We could not create your booking. Please try again.';

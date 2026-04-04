@@ -30,6 +30,7 @@ import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 import { Delivery } from '@/types';
 
 type PaymentMethodType = 'card' | 'paypal' | 'stripe' | 'invoice';
+type CheckoutStatus = 'loading' | 'ready' | 'booking_not_found' | 'error';
 
 export default function CheckoutScreen() {
   const router = useRouter();
@@ -37,10 +38,11 @@ export default function CheckoutScreen() {
   const { initiateStripeCheckout, initiatePaypalCheckout } = usePayments();
   const { customer, userRole } = useAuth();
 
+  const [status, setStatus] = useState<CheckoutStatus>('loading');
   const [job, setJob] = useState<Delivery | null>(null);
-  const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('card');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   const jobId = params.jobId as string;
 
@@ -48,11 +50,11 @@ export default function CheckoutScreen() {
   const fetchJobDetails = useCallback(async () => {
     if (!jobId) {
       console.error('[Checkout] No jobId found in params.');
-      setLoading(false);
+      setStatus('booking_not_found');
       return;
     }
     
-    setLoading(true);
+    setStatus('loading');
     try {
       console.log(`[Checkout] Fetching job details for: ${jobId}`);
       const response = await apiClient(`/deliveries/${jobId}`);
@@ -60,26 +62,44 @@ export default function CheckoutScreen() {
       if (response && response.data) {
         console.log('[Checkout] Job data retrieved successfully:', response.data.jobNumber);
         setJob(response.data);
+        setStatus('ready');
       } else {
         console.error('[Checkout] Job data empty or invalid format:', response);
+        // If we have jobId but couldn't get data, try fallback to URL params
+        if (params.jobNumber) {
+          useFallbackData();
+        } else {
+          setStatus('booking_not_found');
+        }
       }
     } catch (error: any) {
       console.error('[Checkout] API call failed:', error?.message || error);
-      // Fallback: build a minimal job object from URL params so checkout can still render
-      console.warn('[Checkout] Using URL params as fallback for job data.');
-      setJob({
-        id: jobId,
-        jobNumber: (params.jobNumber as string) || 'N/A',
-        status: 'PENDING_PAYMENT',
-        calculatedPrice: parseFloat(params.amount as string || '0'),
-        pickupCity: (params.pickup as string) || 'Collection',
-        dropoffCity: (params.dropoff as string) || 'Delivery',
-        vehicleType: (params.vehicleType as string) || 'Van',
-      } as any);
-    } finally {
-      setLoading(false);
+      
+      // For guest users, the /api/deliveries/:id call might fail with 401/403
+      // We fall back to the URL parameters so the user can still pay.
+      if (params.jobNumber) {
+        console.warn('[Checkout] Using URL params as fallback for job data.');
+        useFallbackData();
+      } else {
+        setErrorDetails(error?.message || 'Connection failed');
+        setStatus('error');
+      }
     }
-  }, [jobId]); // Only depend on jobId — not `params` (which changes every render)
+  }, [jobId]);
+
+  const useFallbackData = () => {
+    setJob({
+      id: jobId,
+      jobNumber: (params.jobNumber as string) || 'N/A',
+      status: 'PENDING_PAYMENT',
+      calculatedPrice: parseFloat(params.amount as string || '0'),
+      pickupCity: (params.pickup as string) || 'Collection',
+      dropoffCity: (params.dropoff as string) || 'Delivery',
+      vehicleType: (params.vehicleType as string) || 'Van',
+      jobType: (params.serviceType as string) || 'Standard',
+    } as any);
+    setStatus('ready');
+  };
 
   useEffect(() => {
     fetchJobDetails();
@@ -97,12 +117,9 @@ export default function CheckoutScreen() {
       } else if (paymentMethod === 'paypal') {
         const { approvalUrl } = await initiatePaypalCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId);
         if (approvalUrl) {
-          Alert.alert('Redirecting', 'Opening PayPal secure payment gate...', [
-            { text: 'OK', onPress: () => console.log('Opening PayPal...') }
-          ]);
+          Alert.alert('Redirecting', 'Opening PayPal secure payment gate...');
         }
       } else if (paymentMethod === 'stripe') {
-        // Direct Stripe Hosted Checkout
         await initiateStripeCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId);
       } else if (paymentMethod === 'invoice') {
         const response = await apiClient('/checkout/invoice', {
@@ -120,29 +137,52 @@ export default function CheckoutScreen() {
     }
   };
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Colors.customerPrimary} />
+        <Text style={{ marginTop: 12, color: Colors.textMuted }}>Initializing secure checkout...</Text>
       </View>
     );
   }
 
-  if (!job) {
+  if (status === 'booking_not_found' || !job) {
     return (
       <ResponsiveContainer>
+        <Stack.Screen options={{ title: 'Secure Checkout' }} />
         <View style={styles.errorContainer}>
           <Package size={48} color={Colors.danger} />
           <Text style={styles.errorTitle}>Booking Not Found</Text>
-          <Text style={styles.errorDesc}>We couldn't retrieve your booking details. This might be due to a temporary connection issue or an expired session.</Text>
+          <Text style={styles.errorDesc}>We couldn't retrieve your booking details. This might be due to an expired session or an invalid link.</Text>
           
           <View style={styles.errorActions}>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchJobDetails}>
-              <Text style={styles.retryButtonText}>Retry Loading</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <Text style={styles.backButtonText}>Go Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchJobDetails}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <ResponsiveContainer>
+        <Stack.Screen options={{ title: 'Secure Checkout' }} />
+        <View style={styles.errorContainer}>
+          <Info size={48} color={Colors.danger} />
+          <Text style={styles.errorTitle}>Checkout Error</Text>
+          <Text style={styles.errorDesc}>{errorDetails || 'Something went wrong while loading checkout. Please try again.'}</Text>
+          
+          <View style={styles.errorActions}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Text style={styles.backButtonText}>Go Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchJobDetails}>
+              <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
         </View>
