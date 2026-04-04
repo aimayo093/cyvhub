@@ -47,7 +47,7 @@ export default function CheckoutScreen() {
   // Hydrate full job data to fix "Unknown" fields
   const fetchJobDetails = useCallback(async () => {
     if (!jobId) {
-      console.error('[Checkout] No jobId found in params:', params);
+      console.error('[Checkout] No jobId found in params.');
       setLoading(false);
       return;
     }
@@ -65,14 +65,21 @@ export default function CheckoutScreen() {
       }
     } catch (error: any) {
       console.error('[Checkout] API call failed:', error?.message || error);
-      // Log more context for debugging
-      if (error?.status === 401 || error?.status === 403) {
-        console.warn('[Checkout] Permission denied. This usually means Guest access is blocked or session expired.');
-      }
+      // Fallback: build a minimal job object from URL params so checkout can still render
+      console.warn('[Checkout] Using URL params as fallback for job data.');
+      setJob({
+        id: jobId,
+        jobNumber: (params.jobNumber as string) || 'N/A',
+        status: 'PENDING_PAYMENT',
+        calculatedPrice: parseFloat(params.amount as string || '0'),
+        pickupCity: (params.pickup as string) || 'Collection',
+        dropoffCity: (params.dropoff as string) || 'Delivery',
+        vehicleType: (params.vehicleType as string) || 'Van',
+      } as any);
     } finally {
       setLoading(false);
     }
-  }, [jobId, params]);
+  }, [jobId]); // Only depend on jobId — not `params` (which changes every render)
 
   useEffect(() => {
     fetchJobDetails();
