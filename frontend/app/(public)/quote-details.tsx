@@ -80,10 +80,10 @@ export default function QuoteDetailsPage() {
 
         const totalWeight = parcels.reduce((sum, p) => sum + (parseFloat(p.weight) * parseInt(p.quantity, 10)), 0);
 
-        if (totalWeight > 1300) {
+        if (totalWeight > 1200) {
             Alert.alert(
-                'Special Quote Required',
-                'For shipments over 1,300kg, please contact our support team for a dedicated heavy-load quote.',
+                'High Capacity Load',
+                'Your shipment exceeds 1,200kg, which is the limit for our standard vehicles. Please contact support for a specialized heavy-haulage quote.',
                 [{ text: 'OK' }]
             );
             return;

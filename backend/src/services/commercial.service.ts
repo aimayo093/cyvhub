@@ -16,43 +16,27 @@ export class CommercialService {
         const maxW = payload.items.reduce((max, i) => Math.max(max, i.widthCm || 0), 0);
         const maxH = payload.items.reduce((max, i) => Math.max(max, i.heightCm || 0), 0);
 
-        // 2. Select Suitable Vehicle (Suitability Engine Layer)
-        const vehicles = await (prisma as any).vehicleClass.findMany({
-            where: { isActive: true },
-            orderBy: { maxWeightKg: 'asc' }
-        });
+        // 2. Select Suitable Vehicle (Centralized Suitability Engine)
+        const { SuitabilityService } = require('./suitability.service');
+        const { available, rejected } = await SuitabilityService.findSuitableVehicles(payload.items, actualWeightKg, volumetricWeightKg);
 
         let suitableVehicle;
         if (payload.vehicleType) {
-            // Normalize: "Medium Van" -> "MEDIUM_VAN", "MEDIUM VAN" -> "MEDIUM_VAN"
             const normalizedType = payload.vehicleType.trim().toUpperCase().replace(/\s+/g, '_');
-            suitableVehicle = vehicles.find((v: any) => v.name === normalizedType || v.name === payload.vehicleType);
+            suitableVehicle = available.find((v: any) => v.name === normalizedType || v.name === payload.vehicleType);
             
-            // Validate if the chosen vehicle actually fits the load
-            if (suitableVehicle) {
-                const fits = maxL <= suitableVehicle.maxLengthCm && 
-                            maxW <= suitableVehicle.maxWidthCm && 
-                            maxH <= suitableVehicle.maxHeightCm && 
-                            chargeableWeightKg <= suitableVehicle.maxWeightKg;
-                
-                if (!fits) {
-                    return {
-                        approved: false,
-                        reason: 'VEHICLE_TOO_SMALL',
-                        message: `The selected ${payload.vehicleType} is too small for this load. Please select a larger vehicle.`
-                    };
-                }
+            if (!suitableVehicle) {
+                // If the specific requested vehicle is not in 'available', find WHY in 'rejected'
+                const rejection = rejected.find((r: any) => r.name === normalizedType || r.name === payload.vehicleType);
+                return {
+                    approved: false,
+                    reason: rejection?.reason || 'VEHICLE_UNAVAILABLE',
+                    message: rejection?.message || `The selected ${payload.vehicleType} is not suitable for this load.`
+                };
             }
-        }
-
-        // If no vehicle selected or not found, find the smallest one that fits
-        if (!suitableVehicle) {
-            suitableVehicle = vehicles.find((v: any) => 
-                maxL <= v.maxLengthCm && 
-                maxW <= v.maxWidthCm && 
-                maxH <= v.maxHeightCm && 
-                chargeableWeightKg <= v.maxWeightKg
-            );
+        } else {
+            // Find the smallest one that fits
+            suitableVehicle = available[0];
         }
 
         if (!suitableVehicle) {

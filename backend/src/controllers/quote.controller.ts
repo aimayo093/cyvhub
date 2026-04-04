@@ -33,49 +33,42 @@ export class QuoteController {
             // 2. Calculate Chargeable Weight
             const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(items);
 
-            // 3. Get all active Vehicle Classes
-            const vehicleClasses = await (prisma as any).vehicleClass.findMany({
-                where: { isActive: true },
-                include: { pricingRules: true }
-            });
+            // 3. Find Suitable Vehicles using the centralized SuitabilityService
+            const { SuitabilityService } = require('../services/suitability.service');
+            const { available, rejected } = await SuitabilityService.findSuitableVehicles(items, actualWeightKg, volumetricWeightKg);
 
-            // 4. Generate quotes for each vehicle (incorporating identical parcel scaling)
+            // 4. Generate quotes for each available vehicle
             const totalQuantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
             const quotes = [];
-            for (const vc of vehicleClasses) {
-                // Check if items fit (LxWxH)
-                const maxL = items.reduce((max, i) => Math.max(max, i.lengthCm), 0);
-                const maxW = items.reduce((max, i) => Math.max(max, i.widthCm), 0);
-                const maxH = items.reduce((max, i) => Math.max(max, i.heightCm), 0);
-
-                const fits = maxL <= vc.maxLengthCm && maxW <= vc.maxWidthCm && maxH <= vc.maxHeightCm && actualWeightKg <= vc.maxWeightKg;
-
-                if (fits) {
-                    const pricing = await PricingService.generateCustomerQuote(vc.id, miles, chargeableWeightKg, req.body.flags || {}, totalQuantity);
-                    quotes.push({
-                        vehicleId: vc.id,
-                        vehicleName: vc.name,
-                        distanceMiles: miles,
-                        chargeableWeightKg,
-                        quantity: totalQuantity,
-                        originalPerParcelExVat: pricing.originalPerParcelExVat,
-                        discountApplied: pricing.discountApplied,
-                        totalExVat: pricing.customerTotal,
-                        totalIncVat: Number((pricing.customerTotal * 1.20).toFixed(2)),
-                        lineItems: pricing.lineItems,
-                        requiresReview: pricing.requiresReview,
-                        dimensions: `${vc.maxLengthCm / 100} x ${vc.maxWidthCm / 100} x ${vc.maxHeightCm / 100}m`,
-                        maxWeight: `${vc.maxWeightKg}kg`
-                    });
-                }
+            
+            for (const vc of available) {
+                const pricing = await PricingService.generateCustomerQuote(vc.id, miles, chargeableWeightKg, req.body.flags || {}, totalQuantity);
+                quotes.push({
+                    vehicleId: vc.id,
+                    vehicleName: vc.name,
+                    distanceMiles: miles,
+                    chargeableWeightKg,
+                    quantity: totalQuantity,
+                    originalPerParcelExVat: pricing.originalPerParcelExVat,
+                    discountApplied: pricing.discountApplied,
+                    totalExVat: pricing.customerTotal,
+                    totalIncVat: Number((pricing.customerTotal * 1.20).toFixed(2)),
+                    lineItems: pricing.lineItems,
+                    requiresReview: pricing.requiresReview,
+                    dimensions: `${vc.maxLengthCm / 100} x ${vc.maxWidthCm / 100} x ${vc.maxHeightCm / 100}m`,
+                    maxWeight: `${vc.maxWeightKg}kg`
+                });
             }
 
             res.json({
                 pickupPostcode,
                 dropoffPostcode,
                 distanceMiles: miles,
+                actualWeightKg,
+                volumetricWeightKg,
                 chargeableWeightKg,
-                quotes
+                quotes,
+                rejectedVehicles: rejected
             });
         } catch (error) {
             console.error('[QuoteController] Calculation Error:', error);

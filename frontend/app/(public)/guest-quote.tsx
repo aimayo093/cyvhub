@@ -80,6 +80,7 @@ export default function GuestQuotePage() {
     const router = useRouter();
     const [config, setConfig] = useState<GuestQuoteConfig>(initialGuestQuote);
     const [dynamicQuotes, setDynamicQuotes] = useState<any[]>([]);
+    const [rejectedVehicles, setRejectedVehicles] = useState<any[]>([]);
     const [distance, setDistance] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
     const [retrievedParams, setRetrievedParams] = useState<any>(null);
@@ -140,9 +141,10 @@ export default function GuestQuotePage() {
                     })
                 });
 
-                if (response && response.quotes) {
-                    setDynamicQuotes(response.quotes);
-                    setDistance(response.distanceMiles);
+                if (response) {
+                    setDynamicQuotes(response.quotes || []);
+                    setRejectedVehicles(response.rejectedVehicles || []);
+                    setDistance(response.distanceMiles || 0);
                 }
             } catch (error) {
                 console.error('Failed to fetch dynamic quotes:', error);
@@ -233,33 +235,55 @@ export default function GuestQuotePage() {
                     </TouchableOpacity>
                 </View>
 
-                {dynamicQuotes.length === 0 ? (
+                {dynamicQuotes.length === 0 && rejectedVehicles.length === 0 ? (
                     <View style={styles.noVehicles}>
                         <Text style={styles.tierTitle}>No suitable vehicles found</Text>
                         <Text style={styles.tierDesc}>Your items are too large or heavy for our standard same-day fleet. Please contact our special loads team for a manual quote.</Text>
                     </View>
                 ) : (
-                    <View style={styles.tierSection}>
-                        <Text style={styles.tierTitle}>Available Vehicles</Text>
-                        <Text style={styles.tierDesc}>The following vehicles can safely accommodate your load based on the dimensions provided.</Text>
+                    <>
+                        {dynamicQuotes.length > 0 && (
+                            <View style={styles.tierSection}>
+                                <Text style={styles.tierTitle}>Available Vehicles</Text>
+                                <Text style={styles.tierDesc}>The following vehicles can safely accommodate your load based on the dimensions provided.</Text>
 
-                        <View style={styles.cardGrid}>
-                            {dynamicQuotes.map(q => (
-                                <VehicleCard
-                                    key={q.vehicleId}
-                                    title={q.vehicleName.replace(/_/g, ' ')}
-                                    dimensions={q.dimensions}
-                                    weight={q.maxWeight}
-                                    priceEx={q.totalExVat}
-                                    priceInc={q.totalIncVat}
-                                    originalPerParcelExVat={q.originalPerParcelExVat}
-                                    discountApplied={q.discountApplied}
-                                    quantity={q.quantity}
-                                    onBook={() => handleBook("SAME DAY", q.vehicleName, q.totalExVat)}
-                                />
-                            ))}
-                        </View>
-                    </View>
+                                <View style={styles.cardGrid}>
+                                    {dynamicQuotes.map(q => (
+                                        <VehicleCard
+                                            key={q.vehicleId}
+                                            title={q.vehicleName.replace(/_/g, ' ')}
+                                            dimensions={q.dimensions}
+                                            weight={q.maxWeight}
+                                            priceEx={q.totalExVat}
+                                            priceInc={q.totalIncVat}
+                                            originalPerParcelExVat={q.originalPerParcelExVat}
+                                            discountApplied={q.discountApplied}
+                                            quantity={q.quantity}
+                                            onBook={() => handleBook("SAME DAY", q.vehicleName, q.totalExVat)}
+                                        />
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+
+                        {rejectedVehicles.length > 0 && (
+                            <View style={[styles.tierSection, { borderBottomWidth: 0 }]}>
+                                <Text style={[styles.tierTitle, { color: '#ef4444' }]}>Restricted Vehicles</Text>
+                                <Text style={styles.tierDesc}>These vehicles cannot carry your load for the following reasons:</Text>
+                                
+                                <View style={styles.rejectedList}>
+                                    {rejectedVehicles.map(rv => (
+                                        <View key={rv.vehicleId} style={styles.rejectedItem}>
+                                            <View style={styles.rejectedBadge}>
+                                                <Text style={styles.rejectedBadgeText}>{rv.name.replace(/_/g, ' ')}</Text>
+                                            </View>
+                                            <Text style={styles.rejectedReason}>{rv.message}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+                    </>
                 )}
 
                 <View style={styles.bottomActions}>
@@ -524,5 +548,37 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#e2e8f0',
+    },
+    rejectedList: {
+        gap: 12,
+    },
+    rejectedItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fef2f2',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#fee2e2',
+        gap: 12,
+    },
+    rejectedBadge: {
+        backgroundColor: '#ef4444',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        minWidth: 100,
+        alignItems: 'center',
+    },
+    rejectedBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '800',
+    },
+    rejectedReason: {
+        flex: 1,
+        fontSize: 14,
+        color: '#ef4444',
+        fontWeight: '500',
     }
 });
