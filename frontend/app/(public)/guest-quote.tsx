@@ -146,9 +146,18 @@ export default function GuestQuotePage() {
                     setRejectedVehicles(response.rejectedVehicles || []);
                     setDistance(response.distanceMiles || 0);
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Failed to fetch dynamic quotes:', error);
-                Alert.alert('Calculation Error', 'We couldn\'t calculate a price for this route. Please contact support.');
+                
+                let errorMsg = 'We couldn\'t calculate a price for this route. Please contact support.';
+                if (error.details) {
+                    errorMsg += `\n\nTechnical Details: ${error.details}`;
+                }
+                if (error.error_code === 'CALCULATION_FATAL') {
+                    errorMsg = `Pricing Engine Error: ${error.details || 'Internal mismatch'}. Our team has been notified.`;
+                }
+
+                Alert.alert('Calculation Error', errorMsg);
             } finally {
                 setIsLoading(false);
             }

@@ -15,58 +15,59 @@ export class SuitabilityService {
      * @param volumetricWeightKg Total volumetric weight (calculation proxy for space).
      */
     static async evaluateSuitability(vehicleClassId: string, items: any[], actualWeightKg: number, volumetricWeightKg: number): Promise<SuitabilityResult> {
+        // SEC-AUDIT: Using standard camelCase for Prisma models. 
+        // We use (prisma as any) only if the generated types are lagging, but we'll try named first.
         const vehicle = await (prisma as any).vehicleClass.findUnique({
             where: { id: vehicleClassId }
         });
 
-        if (!vehicle) return { suitable: false, reason: 'INVALID_VEHICLE', message: 'Vehicle class not found.' };
+        if (!vehicle) {
+            console.warn(`[SUITABILITY_DEBUG] Vehicle class ${vehicleClassId} not found.`);
+            return { suitable: false, reason: 'INVALID_VEHICLE', message: 'Vehicle class not found.' };
+        }
+
+        console.log(`[SUITABILITY_DEBUG] Evaluating ${vehicle.name} for ${actualWeightKg}kg (Vol: ${volumetricWeightKg}kg)`);
 
         // 1. Physical Weight Check
         if (actualWeightKg > vehicle.maxWeightKg) {
-            return { 
-                suitable: false, 
-                reason: 'TOO_HEAVY', 
-                message: `Combined weight (${actualWeightKg}kg) exceeds the ${vehicle.name} limit of ${vehicle.maxWeightKg}kg.` 
-            };
+            const msg = `Combined weight (${actualWeightKg}kg) exceeds the ${vehicle.name} limit of ${vehicle.maxWeightKg}kg.`;
+            console.log(`[SUITABILITY_REJECT] ${vehicle.name}: TOO_HEAVY - ${msg}`);
+            return { suitable: false, reason: 'TOO_HEAVY', message: msg };
         }
 
         // 2. Individual Item Dimension Check (Each item must fit)
-        for (const item of items) {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             if (item.lengthCm > vehicle.maxLengthCm) {
-                return { 
-                    suitable: false, 
-                    reason: 'TOO_LONG', 
-                    message: `Item length (${item.lengthCm}cm) exceeds the ${vehicle.name} limit of ${vehicle.maxLengthCm}cm.` 
-                };
+                const msg = `Item ${i+1} length (${item.lengthCm}cm) exceeds the ${vehicle.name} limit of ${vehicle.maxLengthCm}cm.`;
+                console.log(`[SUITABILITY_REJECT] ${vehicle.name}: TOO_LONG - ${msg}`);
+                return { suitable: false, reason: 'TOO_LONG', message: msg };
             }
             if (item.widthCm > vehicle.maxWidthCm) {
-                return { 
-                    suitable: false, 
-                    reason: 'TOO_WIDE', 
-                    message: `Item width (${item.widthCm}cm) exceeds the ${vehicle.name} limit of ${vehicle.maxWidthCm}cm.` 
-                };
+                const msg = `Item ${i+1} width (${item.widthCm}cm) exceeds the ${vehicle.name} limit of ${vehicle.maxWidthCm}cm.`;
+                console.log(`[SUITABILITY_REJECT] ${vehicle.name}: TOO_WIDE - ${msg}`);
+                return { suitable: false, reason: 'TOO_WIDE', message: msg };
             }
             if (item.heightCm > vehicle.maxHeightCm) {
-                return { 
-                    suitable: false, 
-                    reason: 'TOO_HIGH', 
-                    message: `Item height (${item.heightCm}cm) exceeds the ${vehicle.name} limit of ${vehicle.maxHeightCm}cm.` 
-                };
+                const msg = `Item ${i+1} height (${item.heightCm}cm) exceeds the ${vehicle.name} limit of ${vehicle.maxHeightCm}cm.`;
+                console.log(`[SUITABILITY_REJECT] ${vehicle.name}: TOO_HIGH - ${msg}`);
+                return { suitable: false, reason: 'TOO_HIGH', message: msg };
             }
         }
 
         // 3. Volumetric Capacity Proxy
-        // If volumetric weight is significantly higher than physical capacity, it likely won't fit floor space.
-        // We use a 1.2 buffer over maxWeightKg as a volumetric limit for van floor space.
         const volumetricLimit = vehicle.maxWeightKg * 1.2;
         if (volumetricWeightKg > volumetricLimit) {
+            const msg = `The total volume (${volumetricWeightKg}kg proxy) exceeds the available space (${volumetricLimit.toFixed(1)}kg proxy) in a ${vehicle.name}.`;
+            console.log(`[SUITABILITY_REJECT] ${vehicle.name}: TOO_VOLUMETRIC - ${msg}`);
             return {
                 suitable: false,
                 reason: 'TOO_VOLUMETRIC',
-                message: `The total volume of these items exceeds the available space in a ${vehicle.name}.`
+                message: msg
             };
         }
 
+        console.log(`[SUITABILITY_PASS] ${vehicle.name} is suitable.`);
         return { suitable: true };
     }
 
@@ -74,10 +75,18 @@ export class SuitabilityService {
      * Finds all suitable vehicles for a given load.
      */
     static async findSuitableVehicles(items: any[], actualWeightKg: number, volumetricWeightKg: number) {
+        console.log(`[SUITABILITY_START] Finding vehicles for ${items.length} items...`);
+        
         const vehicles = await (prisma as any).vehicleClass.findMany({
             where: { isActive: true },
             orderBy: { maxWeightKg: 'asc' }
         });
+
+        if (vehicles.length === 0) {
+            console.error('[SUITABILITY_ERROR] No active vehicle classes found in database!');
+        } else {
+            console.log(`[SUITABILITY_DEBUG] Checking ${vehicles.length} active vehicle classes.`);
+        }
 
         const available = [];
         const rejected = [];
@@ -96,6 +105,7 @@ export class SuitabilityService {
             }
         }
 
+        console.log(`[SUITABILITY_COMPLETE] Available: ${available.length}, Rejected: ${rejected.length}`);
         return { available, rejected };
     }
 }
