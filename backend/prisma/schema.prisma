@@ -213,6 +213,7 @@ model PaymentTransaction {
   customerName    String?
   customerEmail   String?
   stripePaymentId String?
+  paypalOrderId   String?
 
   createdAt   DateTime  @default(now())
   completedAt DateTime?

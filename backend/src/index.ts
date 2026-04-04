@@ -33,6 +33,7 @@ import accountingRoutes from './routes/accounting.routes';
 import commercialRoutes from './routes/commercial.routes';
 import adminCommercialRoutes from './routes/admin.commercial.routes';
 import complianceRoutes from './routes/compliance.routes';
+import paypalRoutes from './routes/paypal.routes';
 
 dotenv.config();
 
@@ -209,6 +210,7 @@ app.use('/api/admin/commercial', adminCommercialRoutes);
 
 // External Integrations
 app.use('/api/accounting', accountingRoutes);
+app.use('/api/paypal', paypalRoutes);
 
 // Commercial Pricing & Rules Engine
 app.use('/api/commercial', commercialRoutes);

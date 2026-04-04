@@ -192,20 +192,22 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
     deliveryId?: string,
   ): Promise<{ approvalUrl: string; transaction: PaymentTransaction }> => {
     try {
-      // B2-FE-3: Call backend to create PayPal order
+      console.log(`[PayPal Checkout] Initiating order for jobId: ${deliveryId}`);
+
       const response = await apiClient('/paypal/create-order', {
         method: 'POST',
-        body: JSON.stringify({ amount, description, deliveryId })
+        body: JSON.stringify({ jobId: deliveryId })
       });
 
       const approvalUrl = response.approvalUrl || response.data?.approvalUrl;
       const orderId = response.orderId || response.data?.orderId;
+      const serverAmount = response.amount || amount;
 
       const transaction: PaymentTransaction = {
         id: `txn-pp-${Date.now()}`,
         type: 'charge',
         status: 'PENDING',
-        amount,
+        amount: serverAmount,
         currency: 'GBP',
         method: 'paypal',
         description,
@@ -218,7 +220,7 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
 
       return { approvalUrl, transaction };
     } catch (e) {
-      console.error('Failed to create PayPal order:', e);
+      console.error('[PayPal Checkout] Initialization failed:', e);
       throw e;
     }
   }, []);
