@@ -38,7 +38,7 @@ export class PaypalController {
             
             // In Sandbox/Production, this URL would be returned by PayPal API
             // redirecting to https://www.paypal.com/checkoutnow?token=...
-            const approvalUrl = `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}&jobId=${jobId}&return_url=${origin}/checkout/success&cancel_url=${origin}/checkout/cancel`;
+            const approvalUrl = `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}&jobId=${jobId}&return_url=${origin}/checkout?status=success&orderId=${orderId}&jobId=${jobId}&cancel_url=${origin}/checkout?status=cancel`;
 
             // Record a PENDING transaction
             await prisma.paymentTransaction.create({

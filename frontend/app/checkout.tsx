@@ -36,16 +36,55 @@ type CheckoutStatus = 'loading' | 'ready' | 'booking_not_found' | 'error';
 export default function CheckoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { initiateStripeCheckout, initiatePaypalCheckout } = usePayments();
+  const { initiateStripeCheckout, initiatePaypalCheckout, capturePaypalOrder } = usePayments();
   const { customer, userRole } = useAuth();
 
   const [status, setStatus] = useState<CheckoutStatus>('loading');
   const [job, setJob] = useState<Delivery | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('card');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   const jobId = params.jobId as string;
+  const paymentStatus = params.status as string;
+
+  // Handle successful payment redirection
+  useEffect(() => {
+    if (paymentStatus === 'success' && jobId) {
+      if (params.orderId) {
+        // PayPal redirect - capture order on backend
+        handlePaypalCapture(params.orderId as string, jobId);
+      } else {
+        // Stripe or other provider - show success
+        setIsSuccess(true);
+        setTimeout(() => {
+          router.replace('/(tabs)/history' as any);
+        }, 3000);
+      }
+    } else if (paymentStatus === 'canceled' || paymentStatus === 'cancel') {
+      Alert.alert('Payment Cancelled', 'You have cancelled the payment process. You can try again or choose another method.');
+    }
+  }, [paymentStatus, jobId, params.orderId]);
+
+  const handlePaypalCapture = async (orderId: string, id: string) => {
+    setIsSubmitting(true);
+    try {
+      console.log(`[Checkout] Capturing PayPal order ${orderId} for job ${id}`);
+      const response = await capturePaypalOrder(orderId, id);
+      if (response.success) {
+        setIsSuccess(true);
+        setTimeout(() => {
+          router.replace('/(tabs)/history' as any);
+        }, 3000);
+      }
+    } catch (error: any) {
+      console.error('[Checkout] PayPal capture failed:', error);
+      Alert.alert('Payment Error', 'Your payment was approved by PayPal but we could not finalize the booking on our end. Please contact support.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Hydrate full job data to fix "Unknown" fields
   const fetchJobDetails = useCallback(async () => {
@@ -169,6 +208,29 @@ export default function CheckoutScreen() {
       }
     }
   };
+
+  if (isSuccess) {
+    return (
+      <ResponsiveContainer>
+        <Stack.Screen options={{ title: 'Payment Successful' }} />
+        <View style={styles.successContainer}>
+          <View style={styles.successIconWrapper}>
+            <CheckCircle2 size={64} color="#fff" />
+          </View>
+          <Text style={styles.successTitle}>Payment Received!</Text>
+          <Text style={styles.successSubtitle}>Thank you for your booking.</Text>
+          <Text style={styles.successDesc}>
+            Your delivery for <Text style={{ fontWeight: '700' }}>#{job?.jobNumber || 'N/A'}</Text> has been confirmed.
+            Our team is now assigning a professional driver to your request.
+          </Text>
+          <View style={styles.successDetails}>
+            <ActivityIndicator size="small" color={Colors.customerPrimary} />
+            <Text style={styles.redirectText}>Redirecting to your dashboard...</Text>
+          </View>
+        </View>
+      </ResponsiveContainer>
+    );
+  }
 
   if (status === 'loading') {
     return (
@@ -636,5 +698,65 @@ const styles = StyleSheet.create({
   errorActions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  successContainer: {
+    alignItems: 'center',
+    padding: 40,
+    marginTop: 40,
+    backgroundColor: Colors.surface,
+    borderRadius: 24,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  successIconWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.customerPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    shadowColor: Colors.customerPrimary,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  successTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: Colors.navy,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successSubtitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.customerPrimary,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  successDesc: {
+    fontSize: 16,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+    paddingHorizontal: 10,
+  },
+  successDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  redirectText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '600',
   },
 });

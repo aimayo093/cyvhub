@@ -225,6 +225,29 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
     }
   }, []);
 
+  const capturePaypalOrder = useCallback(async (
+    orderId: string,
+    jobId: string,
+  ): Promise<{ success: boolean; job: any }> => {
+    try {
+      console.log(`[PayPal Checkout] Capturing order: ${orderId} for jobId: ${jobId}`);
+      const response = await apiClient('/paypal/capture-order', {
+        method: 'POST',
+        body: JSON.stringify({ orderId, jobId })
+      });
+      
+      if (response && response.success) {
+        console.log('[PayPal Checkout] Order captured successfully.');
+        loadPaymentData();
+        return { success: true, job: response.job };
+      }
+      throw new Error('PayPal capture failed on the server.');
+    } catch (e) {
+      console.error('[PayPal Checkout] Capture failed:', e);
+      throw e;
+    }
+  }, [loadPaymentData]);
+
   // ──────────────────────────────────────────────
   // STANDARD PAYMENT PROCESSING (existing)
   // ──────────────────────────────────────────────
@@ -428,6 +451,7 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
     getPaymentStatus,
     // PayPal Checkout
     initiatePaypalCheckout,
+    capturePaypalOrder,
     // Standard payments
     processPayment,
     processRefund,

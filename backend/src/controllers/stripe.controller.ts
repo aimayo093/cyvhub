@@ -353,8 +353,8 @@ export class StripeController {
                     }
                 ],
                 mode: 'payment',
-                success_url: `${origin}/checkout?success=true&jobId=${jobId}`,
-                cancel_url: `${origin}/checkout?canceled=true&jobId=${jobId}`,
+                success_url: `${origin}/checkout?status=success&jobId=${jobId}`,
+                cancel_url: `${origin}/checkout?status=canceled&jobId=${jobId}`,
                 metadata: {
                     jobId: jobId,
                     jobNumber: job.jobNumber,
