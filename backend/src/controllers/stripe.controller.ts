@@ -295,4 +295,76 @@ export class StripeController {
             res.status(500).send('Webhook handler failed');
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // POST /api/stripe/create-checkout-session
+    // Creates a Stripe-hosted payment page URL. Reliable for redirections.
+    // ─────────────────────────────────────────────────────────────────────
+    static async createCheckoutSession(req: Request, res: Response): Promise<void> {
+        try {
+            const { jobId } = req.body;
+            const origin = req.headers.origin || 'https://cyvhub.com';
+
+            if (!jobId) {
+                res.status(400).json({ error: 'jobId is required for checkout.' });
+                return;
+            }
+
+            const job = await prisma.job.findUnique({ where: { id: jobId } });
+            if (!job) {
+                res.status(404).json({ error: 'Booking not found.' });
+                return;
+            }
+
+            if (!stripe) {
+                res.status(500).json({ error: 'Stripe is not configured on this server.' });
+                return;
+            }
+
+            // Derive amounts from the server-side record
+            const calculatedPrice = job.calculatedPrice;
+            const totalWithVat = calculatedPrice * 1.2;
+            const unitAmount = Math.round(calculatedPrice * 100);
+            const vatAmount = Math.round(calculatedPrice * 0.2 * 100);
+
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                line_items: [
+                    {
+                        price_data: {
+                            currency: 'gbp',
+                            product_data: {
+                                name: `Delivery ${job.jobNumber}`,
+                                description: `Courier service: ${job.vehicleType}`,
+                            },
+                            unit_amount: unitAmount,
+                        },
+                        quantity: 1,
+                    },
+                    {
+                        price_data: {
+                            currency: 'gbp',
+                            product_data: {
+                                name: 'VAT (20%)',
+                            },
+                            unit_amount: vatAmount,
+                        },
+                        quantity: 1,
+                    }
+                ],
+                mode: 'payment',
+                success_url: `${origin}/checkout?success=true&jobId=${jobId}`,
+                cancel_url: `${origin}/checkout?canceled=true&jobId=${jobId}`,
+                metadata: {
+                    jobId: jobId,
+                    jobNumber: job.jobNumber,
+                },
+            });
+
+            res.status(200).json({ url: session.url, sessionId: session.id, amount: totalWithVat });
+        } catch (error: any) {
+            console.error('[StripeController] Checkout session error:', error);
+            res.status(500).json({ error: error.message || 'Failed to create checkout session.' });
+        }
+    }
 }

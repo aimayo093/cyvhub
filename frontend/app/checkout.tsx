@@ -10,6 +10,7 @@ import {
   Image,
   Modal,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
@@ -109,18 +110,43 @@ export default function CheckoutScreen() {
   const displayAmount = job?.calculatedPrice || parseFloat(params.amount as string || '0');
   const totalAmount = displayAmount * 1.2; // Including VAT
 
+  const getButtonLabel = () => {
+    if (isSubmitting) {
+      if (paymentMethod === 'card') return 'Processing Card...';
+      if (paymentMethod === 'paypal') return 'Redirecting to PayPal...';
+      if (paymentMethod === 'stripe') return 'Opening Stripe Checkout...';
+      return 'Processing...';
+    }
+    const amountStr = totalAmount.toFixed(2);
+    if (paymentMethod === 'invoice') return 'Confirm Booking';
+    if (paymentMethod === 'paypal') return `Pay £${amountStr} with PayPal`;
+    if (paymentMethod === 'stripe') return `Pay £${amountStr} with Stripe`;
+    return `Pay £${amountStr} Now`;
+  };
+
   const handlePayment = async () => {
     setIsSubmitting(true);
     try {
+      console.log(`[Checkout] Processing payment via: ${paymentMethod}`);
+      
       if (paymentMethod === 'card') {
-        await initiateStripeCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId);
+        // useHostedSession = false for inline card flow (Future: Stripe Elements)
+        await initiateStripeCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId, false);
       } else if (paymentMethod === 'paypal') {
         const { approvalUrl } = await initiatePaypalCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId);
         if (approvalUrl) {
-          Alert.alert('Redirecting', 'Opening PayPal secure payment gate...');
+          console.log(`[Checkout] Success: Redirecting to PayPal: ${approvalUrl}`);
+          if (Platform.OS === 'web') {
+            window.location.href = approvalUrl;
+          } else {
+            await Linking.openURL(approvalUrl);
+          }
+        } else {
+          throw new Error('Could not initialize PayPal checkout. Please try another method.');
         }
       } else if (paymentMethod === 'stripe') {
-        await initiateStripeCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId);
+        // useHostedSession = true for Stripe-hosted payment page
+        await initiateStripeCheckout(displayAmount, `Delivery ${job?.jobNumber || 'Booking'}`, jobId, true);
       } else if (paymentMethod === 'invoice') {
         const response = await apiClient('/checkout/invoice', {
           method: 'POST',
@@ -131,9 +157,16 @@ export default function CheckoutScreen() {
         }
       }
     } catch (error: any) {
-      Alert.alert('Checkout Error', error.message || 'Payment could not be initialized.');
+      console.error('[Checkout] Payment failed:', error);
+      Alert.alert('Checkout Error', error.message || 'Payment could not be initialized. Please check your connection and try again.');
+      setIsSubmitting(false); // Reset immediately on error
     } finally {
-      setIsSubmitting(false);
+      // NOTE: For redirections (PayPal/Stripe Checkout), we don't reset isSubmitting
+      // because we want the spinner to stay until the page actually redirects/unmounts.
+      // If it fails before redirect, the catch block handles it.
+      if (paymentMethod === 'card' || paymentMethod === 'invoice') {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -307,7 +340,7 @@ export default function CheckoutScreen() {
         ) : (
           <>
             <Text style={styles.payButtonText}>
-              {paymentMethod === 'invoice' ? 'Confirm Booking' : `Pay £${totalAmount.toFixed(2)} Now`}
+              {getButtonLabel()}
             </Text>
             <ChevronRight size={20} color="#fff" />
           </>

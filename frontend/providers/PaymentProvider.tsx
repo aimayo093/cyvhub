@@ -81,35 +81,30 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
 
   /**
    * Initiates a Stripe Checkout session.
-   * In demo mode, simulates the checkout flow with a mock session.
-   * In production, would call your backend to create a Stripe Checkout Session
-   * and open the returned URL via expo-web-browser or Linking.
+   * Supports both Stripe-hosted sessions (redirects) and inline PaymentIntents.
    */
   const initiateStripeCheckout = useCallback(async (
     amount: number,
     description: string,
     deliveryId?: string,
-    trackingNumber?: string,
-  ): Promise<{ sessionId: string; transaction: PaymentTransaction }> => {
+    useHostedSession: boolean = false,
+  ): Promise<{ sessionId?: string; url?: string; transaction: PaymentTransaction }> => {
     try {
       let response;
+      const endpoint = useHostedSession 
+        ? '/stripe/create-checkout-session' 
+        : '/stripe/create-payment-for-job';
 
-      if (deliveryId) {
-        // PREFERRED: Server-side source of truth — backend derives amount from the Job record
-        response = await apiClient('/stripe/create-payment-for-job', {
-          method: 'POST',
-          body: JSON.stringify({ jobId: deliveryId })
-        });
-      } else {
-        // FALLBACK: Legacy flow — client provides amount (used when no job record exists)
-        response = await apiClient('/stripe/create-payment-intent', {
-          method: 'POST',
-          body: JSON.stringify({ amount, description, deliveryId, trackingNumber })
-        });
-      }
+      console.log(`[Stripe Checkout] Initiating via ${endpoint} for jobId: ${deliveryId}`);
+
+      response = await apiClient(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({ jobId: deliveryId })
+      });
 
       const clientSecret = response.clientSecret || response.data?.clientSecret;
-      const paymentIntentId = response.paymentIntentId || response.data?.paymentIntentId;
+      const checkoutUrl = response.url || response.data?.url;
+      const paymentIntentId = response.paymentIntentId || response.data?.paymentIntentId || response.sessionId;
       const serverAmount = response.amount || amount;
 
       // Create a pending transaction locally for the UI optimistic update
@@ -122,26 +117,27 @@ export const [PaymentProvider, usePayments] = createContextHook(() => {
         method: 'stripe',
         description,
         deliveryId,
-        trackingNumber,
-        // B2-FE-2: Customer name resolved server-side — not stored client-side
         stripePaymentId: paymentIntentId || `pi_mock_${Date.now()}`,
         createdAt: new Date().toISOString(),
       };
 
       setTransactions(prev => [transaction, ...prev]);
-      setCheckoutSessionId(clientSecret);
 
-      // In a production Expo app, you would use @stripe/stripe-react-native's initPaymentSheet 
-      // here with the clientSecret. For this demo, we simulate opening the secure sheet:
-      if (Platform.OS === 'web') {
-        console.log(`Redirecting to Stripe with Client Secret: ${clientSecret}`);
-      } else {
-        console.log(`Opening Stripe Payment Sheet with Client Secret: ${clientSecret}`);
+      if (checkoutUrl) {
+        console.log(`[Stripe Checkout] Redirecting to: ${checkoutUrl}`);
+        if (Platform.OS === 'web') {
+          window.location.href = checkoutUrl;
+        } else {
+          await Linking.openURL(checkoutUrl);
+        }
+      } else if (clientSecret) {
+        setCheckoutSessionId(clientSecret);
+        console.log(`[Stripe Checkout] Received Client Secret for inline pay: ${clientSecret}`);
       }
 
-      return { sessionId: clientSecret, transaction };
+      return { sessionId: clientSecret || response.sessionId, url: checkoutUrl, transaction };
     } catch (e) {
-      console.error('Failed to create PaymentIntent:', e);
+      console.error('[Stripe Checkout] Initialization failed:', e);
       throw e;
     }
   }, []);
