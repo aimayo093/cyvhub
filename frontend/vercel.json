@@ -1,21 +1,9 @@
 {
-  "builds": [
-    {
-      "src": "backend/src/index.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
+  "framework": "create-react-app",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "backend/src/index.ts"
+      "destination": "https://cyvhub-backend-eta.vercel.app/api/$1"
     },
     {
       "source": "/((?!api/).*)",
