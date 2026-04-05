@@ -32,6 +32,7 @@ const ALL_ROLES: { key: UserRole; label: string; icon: React.ComponentType<{ siz
   { key: 'customer', label: 'Business', icon: ShoppingBag, color: Colors.customerPrimary, desc: 'Book & track deliveries' },
   { key: 'carrier', label: 'Carrier', icon: Container, color: Colors.carrierPrimary, desc: 'Manage fleet & jobs' },
   { key: 'driver', label: 'Driver', icon: Truck, color: Colors.primary, desc: 'Accept jobs & earn' },
+  { key: 'admin', label: 'Admin', icon: User, color: '#6366F1', desc: 'System management' },
 ];
 
 export default function LoginScreen() {

@@ -3,6 +3,7 @@ import { prisma } from '../index';
 import { calculateMiles } from '../utils/distance';
 import { PricingService } from '../services/pricing.service';
 import { SuitabilityService } from '../services/suitability.service';
+import { normalizeVehicleType } from '../utils/vehicleMapping';
 
 export class QuoteController {
     // GET /api/quotes
@@ -80,9 +81,18 @@ export class QuoteController {
                 }
             }
 
-            // If no vehicles found and no rejected vehicles, it's likely a database seeding issue
-            if (available.length === 0 && rejected.length === 0) {
-                console.warn('[QUOTE_CONTROLLER] No vehicles at all (active or inactive) matched this request profile.');
+            // 5. Build response
+            let finalErrorCode = null;
+            let finalErrorMessage = null;
+
+            if (quotes.length === 0) {
+                if (rejected.length > 0) {
+                    finalErrorCode = 'NO_SUITABLE_VEHICLE';
+                    finalErrorMessage = `We couldn't find a vehicle that fits your items. Common reasons: ${rejected[0].message}`;
+                } else if (!available || available.length === 0) {
+                    finalErrorCode = 'SYSTEM_CONFIGURATION_ERROR';
+                    finalErrorMessage = 'Our pricing engine is currently undergoing maintenance for this vehicle type.';
+                }
             }
 
             res.json({
@@ -93,7 +103,9 @@ export class QuoteController {
                 volumetricWeightKg,
                 chargeableWeightKg,
                 quotes,
-                rejectedVehicles: rejected
+                rejectedVehicles: rejected,
+                error: finalErrorMessage,
+                error_code: finalErrorCode
             });
         } catch (error) {
             console.error('[QUOTE_CONTROLLER] Fatal Calculation Error:', error);
@@ -131,6 +143,8 @@ export class QuoteController {
                 return;
             }
 
+            const normalizedVehicleType = normalizeVehicleType(vehicleType);
+
             const quote = await prisma.quote.create({
                 data: {
                     quoteNumber,
@@ -138,7 +152,7 @@ export class QuoteController {
                     businessId: businessId || undefined,
                     pickupPostcode,
                     dropoffPostcode,
-                    vehicleType,
+                    vehicleType: normalizedVehicleType,
                     distanceKm: parseFloat(distanceKm),
                     estimatedCost: parseFloat(estimatedCost),
                     quantity: quantity ? parseInt(quantity, 10) : 1,

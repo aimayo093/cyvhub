@@ -1,4 +1,5 @@
 import { prisma } from '../index';
+import { normalizeVehicleType } from '../utils/vehicleMapping';
 
 export interface SuitabilityResult {
     suitable: boolean;
@@ -16,10 +17,24 @@ export class SuitabilityService {
      */
     static async evaluateSuitability(vehicleClassId: string, items: any[], actualWeightKg: number, volumetricWeightKg: number): Promise<SuitabilityResult> {
         // SEC-AUDIT: Using standard camelCase for Prisma models. 
-        // We use (prisma as any) only if the generated types are lagging, but we'll try named first.
-        const vehicle = await (prisma as any).vehicleClass.findUnique({
-            where: { id: vehicleClassId }
-        });
+        // We first try a direct ID lookup. If that fails (e.g., if a name was passed), we try name-based normalization.
+        let vehicle;
+        
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(vehicleClassId);
+        
+        if (isUuid) {
+            vehicle = await (prisma as any).vehicleClass.findUnique({
+                where: { id: vehicleClassId }
+            });
+        }
+
+        if (!vehicle) {
+            const normalizedName = normalizeVehicleType(vehicleClassId);
+            console.log(`[SUITABILITY_DEBUG] ID lookup failed for ${vehicleClassId}. Attempting name lookup with: ${normalizedName}`);
+            vehicle = await (prisma as any).vehicleClass.findUnique({
+                where: { name: normalizedName }
+            });
+        }
 
         if (!vehicle) {
             console.warn(`[SUITABILITY_DEBUG] Vehicle class ${vehicleClassId} not found.`);

@@ -18,38 +18,44 @@ const ALLOWED_ROLES = ['customer', 'driver', 'carrier'];
 export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
+        console.log(`[AUTH_DEBUG] Attempting login for: ${email}`);
 
         if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password are required' });
+            return res.status(400).json({ error: 'Email and password are required', code: 'MISSING_FIELDS' });
         }
 
-        // SEC-10: Validate email format even at login to reject malformed inputs early
-        if (!EMAIL_REGEX.test(email)) {
-            return res.status(400).json({ error: 'Invalid email format' });
-        }
-
-        const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+        
         if (!user) {
-            // Use a generic error to prevent user enumeration
-            return res.status(401).json({ error: 'Invalid credentials' });
+            console.warn(`[AUTH_DEBUG] User not found: ${normalizedEmail}`);
+            return res.status(401).json({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' });
         }
 
-        // Block unverified users before checking password (avoids bcrypt cost for unverified users)
+        console.log(`[AUTH_DEBUG] User record found: id=${user.id}, role=${user.role}, verified=${user.emailVerified}, status=${user.status}`);
+
+        // Block unverified users before checking password
         if (!user.emailVerified) {
+            console.warn(`[AUTH_DEBUG] Login blocked: Email not verified for ${normalizedEmail}`);
             return res.status(403).json({
-                error: 'Please verify your email address before logging in. Check your inbox for the verification link.',
+                error: 'Please verify your email address before logging in.',
                 code: 'EMAIL_NOT_VERIFIED',
             });
         }
 
-        // Check account is active before comparing password (avoids bcrypt cost for suspended users)
+        // Check account is active
         if (user.status === 'SUSPENDED' || user.status === 'INACTIVE') {
-            return res.status(403).json({ error: 'Your account has been suspended. Please contact support.' });
+            console.warn(`[AUTH_DEBUG] Login blocked: Account status ${user.status} for ${normalizedEmail}`);
+            return res.status(403).json({ 
+                error: `Your account is ${user.status.toLowerCase()}. Please contact support.`,
+                code: 'ACCOUNT_DISCONTINUED'
+            });
         }
 
         const isValid = await bcrypt.compare(password, user.passwordHash);
         if (!isValid) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            console.warn(`[AUTH_DEBUG] Password mismatch for ${normalizedEmail}`);
+            return res.status(401).json({ error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' });
         }
 
         const token = generateToken({ userId: user.id, role: user.role });
@@ -59,8 +65,10 @@ export const login = async (req: Request, res: Response) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 24 * 60 * 60 * 1000, // 24 hours, matching JWT expiry
+            maxAge: 24 * 60 * 60 * 1000, 
         });
+
+        console.log(`[AUTH_DEBUG] Login success: ${normalizedEmail} (Role: ${user.role})`);
 
         res.json({
             message: 'Login successful',

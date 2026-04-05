@@ -84,10 +84,12 @@ export class PricingService {
             const min = Number(rule.conditionMin) || 0;
             const max = Number(rule.conditionMax) || 999999;
             if (perParcelWeight >= min && perParcelWeight <= max) {
-                const amt = Number(rule.amount);
-                customerTotal += amt;
-                lineItems.push({ target: 'CUSTOMER', type: 'WEIGHT_SURCHARGE', amount: amt, description: `Weight Surcharge (${rule.name})` });
-                console.log(`[PRICING_DEBUG] Weight Surcharge Applied: ${rule.name} (£${amt})`);
+                const amt = Number(rule.amount) || 0;
+                if (amt > 0) {
+                    customerTotal += amt;
+                    lineItems.push({ target: 'CUSTOMER', type: 'WEIGHT_SURCHARGE', amount: amt, description: `Weight Surcharge (${rule.name || 'Heavy Item'})` });
+                    console.log(`[PRICING_DEBUG] Weight Surcharge Applied: ${rule.name} (£${amt})`);
+                }
                 break;
             }
         }
