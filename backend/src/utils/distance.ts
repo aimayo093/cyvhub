@@ -45,9 +45,11 @@ export async function calculateMiles(postcodeA: string, postcodeB: string): Prom
         const roadDistance = airDistance * 1.25;
 
         return Number(roadDistance.toFixed(2));
-    } catch (error) {
-        console.error('Distance calculation failed:', error);
-        // Fallback for demo/dev (approx 50 miles if API fails)
-        return 50; 
+    } catch (error: any) {
+        console.error('Distance calculation failed:', error.message);
+        if (error.response?.status === 404) {
+            throw new Error('One or both postcodes could not be found. Please check your entry.');
+        }
+        throw new Error('Distance service is temporarily unavailable.');
     }
 }

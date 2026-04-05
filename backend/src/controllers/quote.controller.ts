@@ -107,13 +107,22 @@ export class QuoteController {
                 error: finalErrorMessage,
                 error_code: finalErrorCode
             });
-        } catch (error) {
-            console.error('[QUOTE_CONTROLLER] Fatal Calculation Error:', error);
+        } catch (error: any) {
+            console.error('[QUOTE_CONTROLLER] Calculation Error:', error.message);
+            
+            // Handle known distance service errors as 400
+            if (error.message.includes('postcodes could not be found')) {
+                res.status(400).json({
+                    error: error.message,
+                    error_code: 'INVALID_POSTCODE'
+                });
+                return;
+            }
+
             res.status(500).json({ 
                 error: 'We encountered an error while calculating your quote.',
                 error_code: 'CALCULATION_FATAL',
-                details: (error as Error).message,
-                stack: process.env.NODE_ENV === 'development' ? (error as Error).stack : undefined
+                details: error.message
             });
         }
     }

@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter, Link } from 'expo-router';
 import { CheckCircle, ArrowLeft } from 'lucide-react-native';
 import { Alert, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { apiClient } from '@/services/api';
+import { apiClient, setToken } from '@/services/api';
 import Colors from '@/constants/colors';
 import { usePayments } from '@/providers/PaymentProvider';
 

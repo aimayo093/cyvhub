@@ -75,13 +75,20 @@ export default function BookDeliveryScreen() {
   const [showSavedLocations, setShowSavedLocations] = useState<LocationTarget | null>(null);
   const [isReadyNow, setIsReadyNow] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [calculationError, setCalculationError] = useState<string>('');
 
   const fetchPrice = useCallback(async () => {
-    if (!pickupPostcode || !dropoffPostcode || parcels.length === 0) return;
+    if (!pickupPostcode || !dropoffPostcode || parcels.length === 0) {
+      setCalculationError('');
+      setEstimatedPrice(0);
+      return;
+    }
 
+    setCalculationError('');
     try {
       const response = await apiClient('/quotes/calculate', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pickupPostcode,
           dropoffPostcode,
@@ -100,10 +107,20 @@ export default function BookDeliveryScreen() {
         const quote = response.quotes.find((q: any) => q.vehicleName === selectedVehicle);
         if (quote) {
             setEstimatedPrice(quote.totalExVat);
+            setCalculationError('');
+        } else if (response.error) {
+            // This happens when no vehicles are suitable
+            setCalculationError(response.error);
+            setEstimatedPrice(0);
+        } else {
+            setCalculationError(`No pricing found for ${selectedVehicle}.`);
+            setEstimatedPrice(0);
         }
       }
-    } catch (e) {
-      console.error('Price calculation failed', e);
+    } catch (e: any) {
+      console.error('Price calculation failed', e.message);
+      setCalculationError(e.message || 'We couldn\'t calculate a price for this route.');
+      setEstimatedPrice(0);
     }
   }, [pickupPostcode, dropoffPostcode, parcels, selectedVehicle]);
 
@@ -189,7 +206,7 @@ export default function BookDeliveryScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Delivery created successfully. Redirect to branded checkout.
       router.push({
-        pathname: '/checkout',
+        pathname: '/checkout' as any,
         params: {
             jobId: delivery.id,
             jobNumber: delivery.jobNumber,
@@ -643,14 +660,21 @@ export default function BookDeliveryScreen() {
             )}
           </View>
 
-          <View style={styles.estimateCard}>
-            <View>
-              <Text style={styles.estimateLabel}>Estimated Price</Text>
-              <Text style={styles.estimateSubLabel}>{selectedJobType} · {selectedVehicle}</Text>
+          <View style={[styles.estimateCard, calculationError && styles.estimateCardError]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.estimateLabel}>
+                {calculationError ? 'Calculation Issue' : 'Estimated Price'}
+              </Text>
+              <Text style={styles.estimateSubLabel}>
+                {calculationError ? calculationError : `${selectedJobType} · ${selectedVehicle}`}
+              </Text>
             </View>
-            <Text style={styles.estimatePrice}>
-              £{pickupPostcode && dropoffPostcode && estimatedPrice > 0 ? estimatedPrice.toFixed(2) : '--'}
-            </Text>
+            {!calculationError && (
+              <Text style={styles.estimatePrice}>
+                £{pickupPostcode && dropoffPostcode && estimatedPrice > 0 ? estimatedPrice.toFixed(2) : '--'}
+              </Text>
+            )}
+            {calculationError && <AlertCircle size={20} color={Colors.danger} />}
           </View>
 
           <TouchableOpacity
@@ -990,5 +1014,9 @@ const styles = StyleSheet.create({
   },
   formRow: {
     width: '100%',
+  },
+  estimateCardError: {
+    borderColor: Colors.danger + '40',
+    backgroundColor: '#FEF2F2',
   },
 });

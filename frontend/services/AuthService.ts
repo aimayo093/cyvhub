@@ -1,7 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { UserRole } from '@/types';
-import { apiClient, TOKEN_KEY } from './api';
+import { apiClient } from './api';
+import { setToken, getToken, clearToken, TOKEN_KEY } from './session';
 
 const AUTH_KEY = 'cyvhub_auth_v2';
 const ROLE_KEY = 'cyvhub_role_v2';
