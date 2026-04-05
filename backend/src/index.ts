@@ -228,21 +228,22 @@ console.log('✅ All routes registered.');
 // ─────────────────────────────────────────────────────────────────────────────
 // Health / Root
 // ─────────────────────────────────────────────────────────────────────────────
-app.get('/', (req: Request, res: Response) => {
+// Root landing at /api
+app.get('/api', (req: Request, res: Response) => {
     res.send(`
         <html>
             <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: white;">
                 <h1 style="color: #3b82f6;">🚀 CYVhub API is Live</h1>
                 <p>The backend services are running correctly.</p>
                 <div style="background: #1e293b; padding: 20px; border-radius: 8px; margin-top: 20px;">
-                    <code style="color: #60a5fa;">Health Check: <a href="/health" style="color: #fbbf24;">/health</a></code>
+                    <code style="color: #60a5fa;">Health Check: <a href="/api/health" style="color: #fbbf24;">/api/health</a></code>
                 </div>
             </body>
         </html>
     `);
 });
 
-app.get('/health', (req: Request, res: Response) => {
+app.get('/api/health', (req: Request, res: Response) => {
     res.json({ status: 'OK', message: 'CYVhub API is running on Vercel + Supabase.' });
 });
 
