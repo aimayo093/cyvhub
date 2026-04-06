@@ -22,13 +22,13 @@ export class TrackingService {
         if (!job) throw new Error('Job not found');
 
         const statusHierarchy = [
-            { status: 'PENDING_PAYMENT', label: 'Booking Received', desc: 'We have received your booking request.' },
-            { status: 'PENDING_DISPATCH', label: 'Payment Confirmed', desc: 'Payment received. Waiting for driver assignment.' },
-            { status: 'ASSIGNED', label: 'Driver Assigned', desc: 'A professional driver has been assigned to your job.' },
-            { status: 'PICKED_UP', label: 'Items Collected', desc: 'Driver has collected the items from the pickup location.' },
-            { status: 'IN_TRANSIT', label: 'In Transit', desc: 'Your delivery is on the way to the destination.' },
-            { status: 'DELIVERED', label: 'Delivered', desc: 'Items have been successfully delivered.' },
-            { status: 'COMPLETED', label: 'Job Completed', desc: 'The delivery process is fully completed.' }
+            { status: 'PENDING_PAYMENT', label: 'Booking Received', description: 'We have received your booking request.' },
+            { status: 'PENDING_DISPATCH', label: 'Payment Confirmed', description: 'Payment received. Waiting for driver assignment.' },
+            { status: 'ASSIGNED', label: 'Driver Assigned', description: 'A professional driver has been assigned to your job.' },
+            { status: 'PICKED_UP', label: 'Items Collected', description: 'Driver has collected the items from the pickup location.' },
+            { status: 'IN_TRANSIT', label: 'In Transit', description: 'Your delivery is on the way to the destination.' },
+            { status: 'DELIVERED', label: 'Delivered', description: 'Items have been successfully delivered.' },
+            { status: 'COMPLETED', label: 'Job Completed', description: 'The delivery process is fully completed.' }
         ];
 
         const currentStatusIndex = statusHierarchy.findIndex(s => s.status === job.status);
