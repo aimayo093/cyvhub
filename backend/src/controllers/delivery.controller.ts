@@ -40,6 +40,12 @@ export class DeliveryController {
             const userId = (req as any).user?.userId;
             const payload = req.body;
 
+            let businessAccountId = null;
+            if (userId) {
+                const user = await prisma.user.findUnique({ where: { id: userId }, select: { businessAccountId: true } });
+                businessAccountId = user?.businessAccountId;
+            }
+
             // SEC-5: Mass Assignment Protection
             const {
                 pickupContactName, pickupContactPhone, pickupAddressLine1, pickupCity, pickupPostcode, pickupLatitude, pickupLongitude, pickupWindowStart, pickupWindowEnd,
@@ -86,6 +92,7 @@ export class DeliveryController {
                 distanceMiles,
                 items: itemsToQuote,
                 vehicleType, // Pass the selected vehicle type
+                businessId: businessAccountId || undefined,
                 flags: {
                     stairs: specialInstructions?.toLowerCase().includes('stairs'),
                     isReturnTrip: isReturnTrip === true || isReturnTrip === 'true',
@@ -128,6 +135,7 @@ export class DeliveryController {
             const newDelivery = await prisma.job.create({
                 data: {
                     customerId: userId || null,
+                    businessAccountId: businessAccountId || null,
                     jobNumber: jobNumber,
                     trackingNumber: trackingNumber,
                     status: 'PENDING_PAYMENT', 

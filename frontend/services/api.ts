@@ -33,13 +33,22 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
 
     if (!response.ok) {
         let errorMessage = 'An error occurred';
+        let errorCode = 'UNKNOWN_ERROR';
         try {
             const errorData = await response.json();
             errorMessage = errorData.error || errorMessage;
+            errorCode = errorData.code || errorCode;
+            
+            // Console log the detailed error for debugging in the browser/emulator
+            console.error(`[API Error] ${errorCode}: ${errorMessage}`, errorData);
         } catch (e) {
             // Ignored — response body may not be JSON
         }
-        throw new Error(errorMessage);
+        
+        const error: any = new Error(errorMessage);
+        error.code = errorCode;
+        error.response = response;
+        throw error;
     }
 
     return response.json();

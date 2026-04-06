@@ -36,7 +36,6 @@ export const getComplianceList = async (req: AuthenticatedRequest, res: Response
     try {
         if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
 
-        // Get detailed list of all vehicles to track MOT/Insurance from Admin dashboard
         const vehicles = await prisma.fleetVehicle.findMany({
             include: { carrier: true },
             orderBy: { insuranceExpiry: 'asc' }
@@ -60,6 +59,42 @@ export const getHRList = async (req: AuthenticatedRequest, res: Response) => {
         res.json(records);
     } catch (error) {
         console.error('Admin HR Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const adminUpdateCompliance = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        const id = req.params.id as string;
+        const { status, adminNote } = req.body;
+
+        const updated = await prisma.fleetVehicle.update({
+            where: { id },
+            data: { status, insuranceExpiry: req.body.insuranceExpiry } // Simple update for now
+        });
+
+        res.json({ message: 'Compliance record updated', record: updated });
+    } catch (error) {
+        console.error('Admin Update Compliance Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const adminUpdateHR = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        const id = req.params.id as string;
+        const data = req.body;
+
+        const updated = await (prisma as any).hRRecord.update({
+            where: { id },
+            data
+        });
+
+        res.json({ message: 'HR Record updated', record: updated });
+    } catch (error) {
+        console.error('Admin Update HR Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -111,7 +146,6 @@ export const adminAssignJob = async (req: AuthenticatedRequest, res: Response) =
             }
         });
 
-        // Notify assignee
         const { NotificationService } = require('../utils/notification.service');
         const assignee = (job as any).assignedDriver || (job as any).assignedCarrier;
         if (assignee?.email) {
@@ -131,7 +165,14 @@ export const adminListJobs = async (req: AuthenticatedRequest, res: Response) =>
         
         const jobs = await prisma.job.findMany({
             include: {
-                customer: { select: { firstName: true, lastName: true, email: true } },
+                customer: { 
+                    select: { 
+                        firstName: true, 
+                        lastName: true, 
+                        email: true,
+                        businessAccount: { select: { tradingName: true, companyName: true } }
+                    } 
+                },
                 assignedDriver: { select: { firstName: true, lastName: true } },
                 assignedCarrier: { select: { carrierProfile: { select: { tradingName: true } } } },
                 parcels: true,
@@ -168,6 +209,79 @@ export const getUsersList = async (req: AuthenticatedRequest, res: Response) => 
         res.json(users);
     } catch (error) {
         console.error('Admin Users List Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const getBusinessesList = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+
+        const businesses = await prisma.businessAccount.findMany({
+            include: {
+                users: { select: { firstName: true, lastName: true, email: true } },
+                contract: true
+            },
+            orderBy: { companyName: 'asc' }
+        });
+
+        res.json(businesses);
+    } catch (error) {
+        console.error('Admin Businesses List Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const adminCreateJob = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        const payload = req.body;
+        const { businessId, ...rest } = payload;
+
+        const { CommercialService } = require('../services/commercial.service');
+        const distanceMiles = (rest.distanceKm ? parseFloat(rest.distanceKm) : 10.0) / 1.60934;
+        
+        const quoteResult = await CommercialService.requestQuote({
+            ...rest,
+            items: rest.items || [{ quantity: 1, weightKg: 10, lengthCm: 30, widthCm: 30, heightCm: 30 }],
+            distanceMiles,
+            businessId,
+            flags: { 
+                isReturnTrip: rest.isReturnTrip,
+                extraStops: rest.extraStops
+            }
+        });
+
+        if (!quoteResult.approved) {
+            return res.status(422).json({ error: quoteResult.message });
+        }
+
+        const { jobNumber, trackingNumber } = await prisma.$transaction(async (tx) => {
+            const counter = await tx.jobCounter.upsert({
+                where: { id: 1 },
+                update: { current: { increment: 1 } },
+                create: { id: 1, current: 1 }
+            });
+            const num = `CYV-ADM-${String(counter.current).padStart(6, '0')}`;
+            return { jobNumber: num, trackingNumber: num.replace('CYV-ADM-', 'CYV-TRK-A-') };
+        });
+
+        const newJob = await prisma.job.create({
+            data: {
+                ...rest,
+                businessAccountId: businessId,
+                jobNumber,
+                trackingNumber,
+                status: 'ASSIGNED',
+                paymentStatus: 'CONTRACT_INVOICE',
+                calculatedPrice: quoteResult.quote.customerTotal,
+                quoteRequestId: quoteResult.quote.id
+            }
+        });
+
+        res.status(201).json(newJob);
+    } catch (error) {
+        console.error('Admin Create Job Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

@@ -33,9 +33,9 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
     setIsLoading(true);
     try {
       const data = await apiClient('/jobs');
-      if (data && data.jobs) {
-        setJobs(data.jobs);
-      }
+      // Fix: Support both { jobs: [] } and { data: [] } response formats
+      const jobsList = data.data || data.jobs || [];
+      setJobs(jobsList);
     } catch (e) {
       console.error('Failed to load jobs', e);
     } finally {
@@ -135,8 +135,73 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
     [jobs]
   );
 
+  const assignJob = useCallback(async (jobId: string, assignee: { driverId?: string; carrierId?: string }) => {
+    try {
+      await apiClient(`/jobs/${jobId}/assign`, {
+        method: 'POST',
+        body: JSON.stringify(assignee),
+      });
+      await loadJobs();
+    } catch (error) {
+      console.error('Failed to assign job:', error);
+      throw error;
+    }
+  }, [loadJobs]);
+
+  const cancelJob = useCallback(async (jobId: string, reason: string) => {
+    try {
+      await apiClient(`/jobs/${jobId}/cancel`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      });
+      await loadJobs();
+    } catch (error) {
+      console.error('Failed to cancel job:', error);
+      throw error;
+    }
+  }, [loadJobs]);
+
+  const addJobNote = useCallback(async (jobId: string, text: string) => {
+    try {
+       await apiClient(`/jobs/${jobId}/notes`, {
+         method: 'POST',
+         body: JSON.stringify({ text }),
+       });
+       setJobs(prev => prev.map(j => j.id === jobId ? { ...j, notes: [...(j.notes || []), { text, timestamp: new Date().toISOString() }] } : j));
+    } catch (error) {
+      console.error('Failed to add note:', error);
+    }
+  }, []);
+
+  const adminUpdateJob = useCallback(async (jobId: string, updates: Partial<Job>) => {
+    try {
+      await apiClient(`/jobs/${jobId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+      await loadJobs();
+    } catch (error) {
+      console.error('Failed to update job:', error);
+      throw error;
+    }
+  }, [loadJobs]);
+
+  const adminCreateJob = useCallback(async (jobData: any) => {
+    try {
+      const res = await apiClient('/jobs', {
+        method: 'POST',
+        body: JSON.stringify(jobData),
+      });
+      await loadJobs();
+      return res.data || res;
+    } catch (error) {
+      console.error('Failed to create job:', error);
+      throw error;
+    }
+  }, [loadJobs]);
+
   const availableJobs = useMemo(
-    () => jobs.filter(j => j.status === 'ASSIGNED'),
+    () => jobs.filter(j => j.status === 'ASSIGNED' || j.status === 'PENDING_DISPATCH'),
     [jobs]
   );
 
@@ -153,7 +218,7 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
   );
 
   const completedJobs = useMemo(
-    () => jobs.filter(j => j.status === 'DELIVERED'),
+    () => jobs.filter(j => j.status === 'DELIVERED' || j.status === 'COMPLETED'),
     [jobs]
   );
 
@@ -182,6 +247,11 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
     advanceJobStatus,
     declineJob,
     failJob,
+    assignJob,
+    cancelJob,
+    addJobNote,
+    adminUpdateJob,
+    adminCreateJob,
     submitPOD,
   };
 });

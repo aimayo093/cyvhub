@@ -1,11 +1,12 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { Job, JobStatus, FleetVehicle, CarrierRateCard } from '@/types';
 import { useAuth } from './AuthProvider';
 import { apiClient } from '@/services/api';
 
 const NEXT_STATUS_MAP: Partial<Record<JobStatus, JobStatus>> = {
-  ASSIGNED: 'EN_ROUTE_TO_PICKUP',
+  ASSIGNED: 'DRIVER_ACCEPTED',
+  DRIVER_ACCEPTED: 'EN_ROUTE_TO_PICKUP',
   EN_ROUTE_TO_PICKUP: 'ARRIVED_PICKUP',
   ARRIVED_PICKUP: 'PICKED_UP',
   PICKED_UP: 'EN_ROUTE_TO_DROPOFF',
@@ -36,18 +37,20 @@ export const [CarrierProvider, useCarrier] = createContextHook(() => {
   const [rateCards, setRateCards] = useState<CarrierRateCard[]>([]);
   const [drivers, setDrivers] = useState<CarrierDriver[]>([]);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [coverageRegions, setCoverageRegions] = useState<string[]>([
     'Swansea', 'Cardiff', 'Newport', 'Neath', 'Llanelli', 'Carmarthen', 'Pembrokeshire',
   ]);
 
   const loadCarrierData = useCallback(async () => {
     if (!isAuthenticated || (userRole !== 'carrier' && userRole !== 'admin')) return;
+    setIsLoading(true);
     try {
-      // Assuming api wrapper returns { data: ... } 
       const [fleetRes, driversRes, jobsRes, ratesRes] = await Promise.all([
         apiClient('/carriers/my/fleet').catch(() => ({ data: [] })),
         apiClient('/carriers/my/drivers').catch(() => ({ data: [] })),
-        apiClient('/jobs').catch(() => ({ jobs: [] })),
+        apiClient('/jobs').catch(() => ({ data: [], jobs: [] })),
         apiClient('/carriers/my/rates').catch(() => ({ data: [] }))
       ]);
       
@@ -55,78 +58,78 @@ export const [CarrierProvider, useCarrier] = createContextHook(() => {
       setDrivers(driversRes.data || []);
       setRateCards(ratesRes.data || []);
       
-      if (jobsRes.jobs) {
-         setCarrierJobs(jobsRes.jobs.filter((j: Job) => j.status !== 'PENDING_DISPATCH'));
-         setAvailableJobs(jobsRes.jobs.filter((j: Job) => j.status === 'PENDING_DISPATCH'));
-      }
+      const jobsList = jobsRes.data || jobsRes.jobs || [];
+      setCarrierJobs(jobsList.filter((j: Job) => j.status !== 'PENDING_DISPATCH'));
+      setAvailableJobs(jobsList.filter((j: Job) => j.status === 'PENDING_DISPATCH'));
     } catch (e) {
       console.error('Failed to load carrier data', e);
+    } finally {
+      setIsLoading(false);
     }
   }, [isAuthenticated, userRole]);
 
-  React.useEffect(() => {
-     loadCarrierData();
-  }, [loadCarrierData]);
+  useEffect(() => {
+     if (isAuthenticated) loadCarrierData();
+  }, [isAuthenticated, loadCarrierData]);
 
   const assignedJobs = useMemo(
-    () => carrierJobs.filter(j => !['DELIVERED', 'FAILED', 'CANCELLED'].includes(j.status)),
+    () => carrierJobs.filter(j => !['DELIVERED', 'FAILED', 'CANCELLED', 'COMPLETED'].includes(j.status)),
     [carrierJobs]
   );
 
   const activeJobs = useMemo(
     () => carrierJobs.filter(j =>
-      ['EN_ROUTE_TO_PICKUP', 'ARRIVED_PICKUP', 'PICKED_UP', 'EN_ROUTE_TO_DROPOFF', 'ARRIVED_DROPOFF'].includes(j.status)
+      ['DRIVER_ACCEPTED', 'EN_ROUTE_TO_PICKUP', 'ARRIVED_PICKUP', 'PICKED_UP', 'EN_ROUTE_TO_DROPOFF', 'ARRIVED_DROPOFF'].includes(j.status)
     ),
     [carrierJobs]
   );
 
   const completedJobs = useMemo(
-    () => carrierJobs.filter(j => j.status === 'DELIVERED'),
+    () => carrierJobs.filter(j => j.status === 'DELIVERED' || j.status === 'COMPLETED'),
     [carrierJobs]
   );
 
-  const activeFleet = useMemo(
-    () => fleet.filter(v => v.status === 'ACTIVE'),
-    [fleet]
-  );
-
-  const activeRateCards = useMemo(
-    () => rateCards.filter(r => r.status === 'ACTIVE'),
-    [rateCards]
-  );
-
-  const availableDrivers = useMemo(
-    () => drivers.filter(d => d.status === 'AVAILABLE'),
-    [drivers]
-  );
-
-  const acceptJob = useCallback((jobId: string) => {
-    const job = availableJobs.find(j => j.id === jobId);
-    if (job) {
-      const accepted: Job = { ...job, status: 'ASSIGNED', assignedCarrier: 'SwiftHaul Logistics' };
-      setCarrierJobs(prev => [accepted, ...prev]);
-      setAvailableJobs(prev => prev.filter(j => j.id !== jobId));
+  const acceptJob = useCallback(async (jobId: string) => {
+    try {
+        await apiClient(`/jobs/${jobId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'ASSIGNED' })
+        });
+        await loadCarrierData();
+    } catch (e) {
+        console.error('Failed to accept job:', e);
+        throw e;
     }
-  }, [availableJobs]);
+  }, [loadCarrierData]);
 
-  const rejectJob = useCallback((jobId: string) => {
-    setAvailableJobs(prev => prev.filter(j => j.id !== jobId));
-  }, []);
+  const rejectJob = useCallback(async (jobId: string) => {
+    try {
+        await apiClient(`/jobs/${jobId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'PENDING_DISPATCH' })
+        });
+        await loadCarrierData();
+    } catch (e) {
+        console.error('Failed to reject job:', e);
+    }
+  }, [loadCarrierData]);
 
-  const advanceJobStatus = useCallback((jobId: string) => {
-    setCarrierJobs(prev =>
-      prev.map(job => {
-        if (job.id !== jobId) return job;
-        const next = NEXT_STATUS_MAP[job.status];
-        if (!next) return job;
-        return {
-          ...job,
-          status: next,
-          completedAt: next === 'DELIVERED' ? new Date().toISOString() : job.completedAt,
-        };
-      })
-    );
-  }, []);
+  const advanceJobStatus = useCallback(async (jobId: string) => {
+    const job = carrierJobs.find(j => j.id === jobId);
+    if (!job) return;
+    const next = NEXT_STATUS_MAP[job.status];
+    if (!next) return;
+    
+    try {
+        await apiClient(`/jobs/${jobId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: next })
+        });
+        await loadCarrierData();
+    } catch (e) {
+        console.error('Failed to advance job status:', e);
+    }
+  }, [carrierJobs, loadCarrierData]);
 
   const getJob = useCallback(
     (jobId: string): Job | undefined =>
@@ -188,26 +191,53 @@ export const [CarrierProvider, useCarrier] = createContextHook(() => {
     }
   }, []);
 
-  const assignDriverToJob = useCallback((jobId: string, driverId: string) => {
-    const driver = drivers.find(d => d.id === driverId);
-    if (!driver) return;
-    setDrivers(prev => prev.map(d => d.id === driverId ? { ...d, status: 'ON_JOB' as const } : d));
-  }, [drivers]);
+  const assignDriverToJob = useCallback(async (jobId: string, driverId: string) => {
+    try {
+        // Need assignment endpoint for carrier drivers
+        await apiClient(`/jobs/${jobId}/assign`, {
+            method: 'POST',
+            body: JSON.stringify({ driverId })
+        });
+        await loadCarrierData();
+    } catch (e) {
+        console.error('Failed to assign driver', e);
+    }
+  }, [loadCarrierData]);
 
-  const updateJobNotes = useCallback((jobId: string, notes: string) => {
-    setCarrierJobs(prev =>
-      prev.map(job => job.id === jobId ? { ...job, specialInstructions: notes } : job)
-    );
+  const updateJobNotes = useCallback(async (jobId: string, notes: string) => {
+    try {
+        await apiClient(`/jobs/${jobId}/notes`, {
+            method: 'POST',
+            body: JSON.stringify({ text: notes })
+        });
+        await loadCarrierData();
+    } catch (e) {
+        console.error('Failed to update job notes', e);
+    }
+  }, [loadCarrierData]);
+
+  const updateCoverageRegions = useCallback(async (regions: string[]) => {
+    try {
+        await apiClient('/carriers/my/profile', {
+            method: 'PATCH',
+            body: JSON.stringify({ coverageRegions: JSON.stringify(regions) })
+        });
+        setCoverageRegions(regions);
+    } catch (e) {
+        console.error('Failed to update regions', e);
+    }
   }, []);
 
-  const updateCoverageRegions = useCallback((regions: string[]) => {
-    // Logic for updating regions
-    setCoverageRegions(regions);
-  }, []);
-
-  const updateAvailability = useCallback((updated: AvailabilitySlot[]) => {
-    // Logic for updating availability
-    setAvailability(updated);
+  const updateAvailability = useCallback(async (updated: AvailabilitySlot[]) => {
+    try {
+        await apiClient('/carriers/my/availability', {
+            method: 'PATCH',
+            body: JSON.stringify({ slots: updated })
+        });
+        setAvailability(updated);
+    } catch (e) {
+        console.error('Failed to update availability', e);
+    }
   }, []);
 
   return {
@@ -217,13 +247,12 @@ export const [CarrierProvider, useCarrier] = createContextHook(() => {
     activeJobs,
     completedJobs,
     fleet,
-    activeFleet,
     rateCards,
-    activeRateCards,
     drivers,
-    availableDrivers,
     availability,
     coverageRegions,
+    isLoading,
+    refreshCarrierData: loadCarrierData,
     acceptJob,
     rejectJob,
     advanceJobStatus,

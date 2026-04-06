@@ -7,7 +7,7 @@ export class CommercialService {
      * The master orchestrator for Phase E Quote Generation.
      * Evaluates vehicle suitability, pricing, payouts, and margins.
      */
-    static async requestQuote(payload: { pickupPostcode: string, dropoffPostcode: string, distanceMiles: number, items: any[], flags: any, vehicleType?: string }) {
+    static async requestQuote(payload: { pickupPostcode: string, dropoffPostcode: string, distanceMiles: number, items: any[], flags: any, vehicleType?: string, businessId?: string }) {
         // 1. Calculate the Chargeable Weight & Max Dimensions
         const totalQuantity = payload.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
         const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(payload.items);
@@ -53,7 +53,7 @@ export class CommercialService {
         }
 
         // 3. Generate Pricing & Payout
-        const pricing = await PricingService.generateCustomerQuote(suitableVehicle.id, adjustedDistanceMiles, chargeableWeightKg, payload.flags, totalQuantity);
+        const pricing = await PricingService.generateCustomerQuote(suitableVehicle.id, adjustedDistanceMiles, chargeableWeightKg, payload.flags, totalQuantity, payload.businessId);
         const payout = await PayoutService.generateDriverPayout(suitableVehicle.id, adjustedDistanceMiles, chargeableWeightKg, payload.flags);
 
         // 4. Margin Control Gate

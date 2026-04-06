@@ -41,7 +41,7 @@ function DriverJobsScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('active');
   const [refreshing, setRefreshing] = useState(false);
   const filteredJobs = useFilteredJobs(activeFilter);
-  const { activeJobs, availableJobs, upcomingJobs, completedJobs } = useJobs();
+  const { activeJobs, availableJobs, upcomingJobs, completedJobs, refreshJobs } = useJobs();
 
   const counts = useMemo(() => ({
     active: activeJobs.length,
@@ -56,10 +56,11 @@ function DriverJobsScreen() {
     router.push({ pathname: '/job-detail' as any, params: { id: jobId } });
   }, [router]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    await refreshJobs();
+    setRefreshing(false);
+  }, [refreshJobs]);
 
   const renderJob = useCallback(({ item }: { item: Job }) => (
     <JobCard job={item} onPress={() => handleJobPress(item.id)} />
@@ -135,7 +136,15 @@ function CarrierJobsScreen() {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<CarrierFilterTab>('assigned');
   const [refreshing, setRefreshing] = useState(false);
-  const { assignedJobs, availableJobs, completedJobs, carrierJobs, acceptJob, rejectJob } = useCarrier();
+  const { 
+    assignedJobs, 
+    availableJobs, 
+    completedJobs, 
+    carrierJobs, 
+    acceptJob, 
+    rejectJob, 
+    refreshCarrierData 
+  } = useCarrier();
 
   const getFilteredJobs = useMemo(() => {
     switch (activeFilter) {
@@ -168,10 +177,11 @@ function CarrierJobsScreen() {
     rejectJob(jobId);
   }, [rejectJob]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    await refreshCarrierData();
+    setRefreshing(false);
+  }, [refreshCarrierData]);
 
   const renderCarrierJob = useCallback(({ item }: { item: Job }) => {
     const isOffer = item.status === 'PENDING_DISPATCH';

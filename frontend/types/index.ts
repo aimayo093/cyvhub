@@ -11,6 +11,7 @@ export type JobStatus =
   | 'EN_ROUTE_TO_DROPOFF'
   | 'ARRIVED_DROPOFF'
   | 'DELIVERED'
+  | 'COMPLETED'
   | 'FAILED'
   | 'CANCELLED';
 
@@ -79,6 +80,7 @@ export interface Job {
   podNotes?: string;
   assignedCarrier?: string;
   parcels?: Parcel[];
+  notes?: any[];
 }
 
 export interface DriverProfile {
@@ -278,6 +280,8 @@ export interface DispatchJob {
   assignedType?: 'driver' | 'carrier';
   distanceKm: number;
   createdAt: string;
+  notes?: any[];
+  trackingNumber?: string;
 }
 
 export interface AnalyticsData {

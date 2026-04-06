@@ -34,8 +34,8 @@ export class PricingService {
      * Instead of raw "distance * price", this evaluates weight bans, volumetric
      * surcharges, access penalties (stairs), and creates atomic line items.
      */
-    static async generateCustomerQuote(vehicleClassId: string, distanceMiles: number, chargeableWeightKg: number, flags: any = {}, quantity: number = 1) {
-        console.log(`[PRICING_DEBUG] Starting quote for vehicle ${vehicleClassId}, dist ${distanceMiles}m, weight ${chargeableWeightKg}kg`);
+    static async generateCustomerQuote(vehicleClassId: string, distanceMiles: number, chargeableWeightKg: number, flags: any = {}, quantity: number = 1, businessId?: string) {
+        console.log(`[PRICING_DEBUG] Starting quote for vehicle ${vehicleClassId}, dist ${distanceMiles}m, weight ${chargeableWeightKg}kg, businessId: ${businessId}`);
         
         const vehicle = await (prisma as any).vehicleClass.findUnique({
             where: { id: vehicleClassId },
@@ -47,6 +47,24 @@ export class PricingService {
             throw new Error("Invalid Vehicle Class");
         }
 
+        // --- CONTRACT OVERRIDE LAYER ---
+        let contractRateRules: any[] = [];
+        let contractDiscounts = { baseRate: 1.0, mileageRate: 1.0 };
+
+        if (businessId) {
+            const business = await prisma.businessAccount.findUnique({
+                where: { id: businessId },
+                include: { contract: { include: { rateRules: true } } }
+            });
+
+            if (business?.contract && business.contract.status === 'ACTIVE') {
+                 contractRateRules = business.contract.rateRules;
+                 contractDiscounts.baseRate = 1 - (business.contract.baseRateDiscount / 100);
+                 contractDiscounts.mileageRate = business.contract.mileageRateFactor;
+                 console.log(`[PRICING_DEBUG] Active Contract Found: ${business.contract.contractRef}. Base Discount: ${business.contract.baseRateDiscount}%. Mileage Factor: ${business.contract.mileageRateFactor}`);
+            }
+        }
+
         let customerTotal = 0;
         const lineItems = [];
         let requiresReview = false;
@@ -55,16 +73,34 @@ export class PricingService {
 
         // --- PHASE 1: STANDARD OVERHEAD CALCULATION (SINGLE PARCEL PRICING) ---
 
-        // 1. Base Fee Search (Safe fallback if missing from DB)
+        // 1. Base Fee Search
+        const contractBaseRule = contractRateRules.find(r => r.vehicleType === vehicle.name && r.baseRate > 0);
         const baseRule = vehicle.pricingRules?.find((r: any) => r.type === 'BASE_FEE');
-        const baseFee = baseRule ? Number(baseRule.amount) : (Number(vehicle.baseFee) || 25.00); 
+        
+        let baseFee = contractBaseRule ? Number(contractBaseRule.baseRate) : 
+                     (baseRule ? Number(baseRule.amount) : (Number(vehicle.baseFee) || 25.00));
+        
+        // Apply global contract discount if no specific rule
+        if (!contractBaseRule && contractDiscounts.baseRate < 1.0) {
+            baseFee *= contractDiscounts.baseRate;
+        }
+
         customerTotal += baseFee;
-        lineItems.push({ target: 'CUSTOMER', type: 'BASE_FEE', amount: baseFee, description: 'Base Pickup Fee' });
+        lineItems.push({ target: 'CUSTOMER', type: 'BASE_FEE', amount: Number(baseFee.toFixed(2)), description: 'Base Pickup Fee (Contracted)' });
         console.log(`[PRICING_DEBUG] Base Fee: £${baseFee}`);
 
-        // 2. Mileage Fee Execution (Safe fallback if missing from DB)
+        // 2. Mileage Fee Execution
+        const contractMileRule = contractRateRules.find(r => r.vehicleType === vehicle.name && r.perMileRate > 0);
         const mileRule = vehicle.pricingRules?.find((r: any) => r.type === 'MILEAGE');
-        const mileageRate = mileRule ? Number(mileRule.amount) : (Number(vehicle.mileageRate) || 1.50);
+        
+        let mileageRate = contractMileRule ? Number(contractMileRule.perMileRate) : 
+                         (mileRule ? Number(mileRule.amount) : (Number(vehicle.mileageRate) || 1.50));
+        
+        // Apply global contract factor
+        if (!contractMileRule) {
+            mileageRate *= contractDiscounts.mileageRate;
+        }
+
         const distanceVal = Math.max(0, Number(distanceMiles) || 0);
         const mileageTotal = distanceVal * mileageRate;
         customerTotal += mileageTotal;
@@ -72,7 +108,7 @@ export class PricingService {
             target: 'CUSTOMER', 
             type: 'MILEAGE', 
             amount: Number(mileageTotal.toFixed(2)), 
-            description: `Mileage (${distanceVal.toFixed(1)} miles @ £${mileageRate.toFixed(2)}/m)` 
+            description: `Mileage (${distanceVal.toFixed(1)} miles @ £${mileageRate.toFixed(2)}/m)${businessId ? ' [Contracted]' : ''}` 
         });
         console.log(`[PRICING_DEBUG] Mileage: ${distanceVal}m @ £${mileageRate} = £${mileageTotal.toFixed(2)}`);
 

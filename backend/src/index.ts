@@ -248,6 +248,13 @@ app.get('/api/health', (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Error Handling
+// SEC-AUDIT-7: Catch all unhandled errors and return standardized JSON
+// ─────────────────────────────────────────────────────────────────────────────
+import { errorHandler } from './middleware/error.middleware';
+app.use(errorHandler);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Server Bootstrap
 // Vercel invokes the function by importing the `app` export.
 // When running locally with ts-node-dev the listen() call starts a normal server.

@@ -178,6 +178,12 @@ model Job {
   podUrl        String?    // URL to delivery photo
   signatureUrl  String?    // URL to signature image
   receiverName  String?    // Name of person who accepted delivery
+
+  // Internal Notes (JSON array of { text: string, timestamp: Date, author: string })
+  notes         Json?
+
+  // Relations
+  activityLogs  ActivityLog[]
 }
 model Parcel {
   id             String   @id @default(uuid())
@@ -523,6 +529,7 @@ model ActivityLog {
   // Potential context
   userId     String?
   jobId      String?
+  job        Job?    @relation(fields: [jobId], references: [id])
   deliveryId String?
   amount     Float?
 
