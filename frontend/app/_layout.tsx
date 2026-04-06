@@ -33,7 +33,6 @@ function RootLayoutNav() {
     const isPublicRoute = 
       seg === '(public)' || 
       seg === 'login' || 
-      seg === 'admin' ||
       seg === 'verify-email-sent' ||
       seg === 'verify-email' ||
       seg === 'forgot-password' ||
@@ -45,6 +44,8 @@ function RootLayoutNav() {
       seg === 'track' ||
       seg === 'book-delivery';
 
+    const isAdminRoute = seg === 'admin' || seg?.startsWith('admin-');
+
     if (!isAuthenticated) {
       if (Platform.OS !== 'web') {
         // Mobile platform: unauthenticated users go to login, except verification, legal, or password reset screens
@@ -55,12 +56,16 @@ function RootLayoutNav() {
            router.replace('/login' as any);
         }
       } else {
-        // Web platform: unauthenticated users can browse public marketing routes
+        // Web platform: 
+        // 1. If on an admin route, stay there (it might be the admin login)
+        if (isAdminRoute) return;
+
+        // 2. Unauthenticated users on private routes go to public landing
         if (!isPublicRoute) {
           router.replace('/(public)' as any);
         }
       }
-    } else if (isAuthenticated && isPublicRoute) {
+    } else if (isAuthenticated && (isPublicRoute || seg === 'admin')) {
       // Don't redirect away from legal pages if authenticated
       if (seg !== 'terms' && seg !== 'privacy') {
         router.replace('/(tabs)' as any);

@@ -1,0 +1,126 @@
+--- VEHICLE CLASSES ---
+[
+  {
+    "id": "461e8f5d-432a-4181-a1ba-2df39711259a",
+    "name": "SMALL_VAN",
+    "isActive": true,
+    "maxWeightKg": 400,
+    "maxLengthCm": 100,
+    "maxWidthCm": 120,
+    "maxHeightCm": 100,
+    "baseFee": 35,
+    "mileageRate": 1.25,
+    "driverPickupFee": 0,
+    "driverMileageRate": 0,
+    "createdAt": "2026-03-28T06:06:35.445Z",
+    "updatedAt": "2026-03-28T06:06:35.445Z",
+    "pricingRules": [
+      {
+        "id": "4526ccd2-3986-48ca-b374-5fc8cbe6b841",
+        "name": "Base Pickup Fee",
+        "vehicleClassId": "461e8f5d-432a-4181-a1ba-2df39711259a",
+        "type": "BASE_FEE",
+        "conditionKey": null,
+        "conditionMin": null,
+        "conditionMax": null,
+        "amount": 35,
+        "isPercentage": false,
+        "createdAt": "2026-03-28T06:06:35.445Z"
+      },
+      {
+        "id": "f50ec58e-8e9a-416c-b868-ec0bd5a7267d",
+        "name": "Standard Mileage Rate",
+        "vehicleClassId": "461e8f5d-432a-4181-a1ba-2df39711259a",
+        "type": "MILEAGE",
+        "conditionKey": null,
+        "conditionMin": null,
+        "conditionMax": null,
+        "amount": 1.25,
+        "isPercentage": false,
+        "createdAt": "2026-03-28T06:06:35.445Z"
+      }
+    ]
+  },
+  {
+    "id": "c07302fa-c4c5-40f8-b888-9ffc816549a2",
+    "name": "MEDIUM_VAN",
+    "isActive": true,
+    "maxWeightKg": 800,
+    "maxLengthCm": 200,
+    "maxWidthCm": 120,
+    "maxHeightCm": 100,
+    "baseFee": 45,
+    "mileageRate": 1.45,
+    "driverPickupFee": 0,
+    "driverMileageRate": 0,
+    "createdAt": "2026-03-28T06:06:35.705Z",
+    "updatedAt": "2026-03-28T06:06:35.705Z",
+    "pricingRules": [
+      {
+        "id": "44c734b7-10b9-4ee6-8d65-7247b7549837",
+        "name": "Base Pickup Fee",
+        "vehicleClassId": "c07302fa-c4c5-40f8-b888-9ffc816549a2",
+        "type": "BASE_FEE",
+        "conditionKey": null,
+        "conditionMin": null,
+        "conditionMax": null,
+        "amount": 45,
+        "isPercentage": false,
+        "createdAt": "2026-03-28T06:06:35.705Z"
+      },
+      {
+        "id": "7a71b6f7-dee3-4985-a847-231c07c1696d",
+        "name": "Standard Mileage Rate",
+        "vehicleClassId": "c07302fa-c4c5-40f8-b888-9ffc816549a2",
+        "type": "MILEAGE",
+        "conditionKey": null,
+        "conditionMin": null,
+        "conditionMax": null,
+        "amount": 1.45,
+        "isPercentage": false,
+        "createdAt": "2026-03-28T06:06:35.705Z"
+      }
+    ]
+  },
+  {
+    "id": "4ee33fe5-3c64-4324-8717-8b5be790a288",
+    "name": "LARGE_VAN",
+    "isActive": true,
+    "maxWeightKg": 1100,
+    "maxLengthCm": 300,
+    "maxWidthCm": 120,
+    "maxHeightCm": 170,
+    "baseFee": 65,
+    "mileageRate": 1.75,
+    "driverPickupFee": 0,
+    "driverMileageRate": 0,
+    "createdAt": "2026-03-28T06:06:36.061Z",
+    "updatedAt": "2026-03-28T06:06:36.061Z",
+    "pricingRules": [
+      {
+        "id": "d08c4cbc-a9f1-4198-92b7-f1eccef77d71",
+        "name": "Base Pickup Fee",
+        "vehicleClassId": "4ee33fe5-3c64-4324-8717-8b5be790a288",
+        "type": "BASE_FEE",
+        "conditionKey": null,
+        "conditionMin": null,
+        "conditionMax": null,
+        "amount": 65,
+        "isPercentage": false,
+        "createdAt": "2026-03-28T06:06:36.061Z"
+      },
+      {
+        "id": "6bcbe929-62d8-4877-bb76-9e81b7acc187",
+        "name": "Standard Mileage Rate",
+        "vehicleClassId": "4ee33fe5-3c64-4324-8717-8b5be790a288",
+        "type": "MILEAGE",
+        "conditionKey": null,
+        "conditionMin": null,
+        "conditionMax": null,
+        "amount": 1.75,
+        "isPercentage": false,
+        "createdAt": "2026-03-28T06:06:36.061Z"
+      }
+    ]
+  }
+]

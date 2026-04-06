@@ -437,6 +437,8 @@ function AdminDashboard() {
     totalRevenue: 0
   });
 
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  
   const [revenueChart, setRevenueChart] = useState<any[]>([]);
   const [platformHealthStats, setPlatformHealthStats] = useState({
     avgDeliveryTime: '0h 0m',
@@ -473,6 +475,8 @@ function AdminDashboard() {
       if (activityRes) setLiveActivity(activityRes);
       if (anomaliesRes) setAnomalyAlerts(anomaliesRes.anomalies || []);
       if (risksRes) setSlaRiskPredictions(risksRes.risks || []);
+      
+      setLastUpdated(new Date());
 
     } catch (e) {
       console.error('Failed to load admin dashboard data', e);
@@ -532,6 +536,9 @@ function AdminDashboard() {
           <View>
             <Text style={styles.greeting}>{getGreeting()},</Text>
             <Text style={styles.userName}>{admin?.firstName ?? 'Admin'}</Text>
+            <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+              Live Stats: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </Text>
           </View>
           <TouchableOpacity 
             style={styles.aiButton}

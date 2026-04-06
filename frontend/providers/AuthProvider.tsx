@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import { useRouter } from 'expo-router';
 import { AuthService } from '@/services/AuthService';
-import { apiClient } from '@/services/api';
+import { apiClient, setToken as apiSetToken } from '@/services/api';
 import { DriverProfile, CustomerProfile, AdminProfile, CarrierProfile, UserRole } from '@/types';
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
@@ -21,6 +21,27 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     else if (role === 'admin') setAdmin(userObj);
     else if (role === 'carrier') setCarrier(userObj);
   }, []);
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const { role, isAuthenticated: verified, user } = await AuthService.verifySession();
+      if (verified && role && user) {
+        setUserRole(role);
+        loadProfileForRole(role, user);
+        setIsAuthenticated(true);
+        return { success: true, role };
+      }
+    } catch (e) {
+      console.error('Session refresh failed:', e);
+    }
+    return { success: false };
+  }, [loadProfileForRole]);
+
+  const setToken = useCallback(async (token: string) => {
+    await apiSetToken(token);
+    // After setting token, we should immediately attempt to refresh the session state
+    return await refreshSession();
+  }, [refreshSession]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -125,6 +146,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     login,
     signup,
     logout,
+    setToken,
+    refreshSession,
     updateDriverStatus,
     updateProfile,
   };

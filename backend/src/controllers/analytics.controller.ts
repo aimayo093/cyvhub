@@ -58,6 +58,15 @@ export const getPlatformAnalytics = async (req: Request, res: Response) => {
             prisma.user.count({ where: { role: 'business' } }),
         ]);
 
+        // --- Monthly Revenue from ledger ---
+        const monthlyRevenueAgg = await prisma.accountingEntry.aggregate({
+            where: { 
+                type: 'credit',
+                date: { gte: months[months.length - 1].start, lte: months[months.length - 1].end }
+            },
+            _sum: { amount: true },
+        });
+
         const stats = {
             totalDrivers,
             activeDrivers,
@@ -65,7 +74,7 @@ export const getPlatformAnalytics = async (req: Request, res: Response) => {
             totalBusinesses,
             slaComplianceRate: parseFloat(avgSla.toFixed(1)),
             totalRevenue: revenueAgg._sum.amount || 0,
-            monthlyRevenue: jobVolume[jobVolume.length - 1]?.count || 0, // Simplified for now
+            monthlyRevenue: monthlyRevenueAgg._sum.amount || 0,
         };
 
         const analytics = {

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../index';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { NotificationService } from '../utils/notification.service';
+import { PricingService } from '../services/pricing.service';
+import { SuitabilityService } from '../services/suitability.service';
 
 export const getJobs = async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -146,7 +148,15 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
                     : (recipient as any).companyName || recipient.firstName;
 
                 // Calculate driver/carrier cut using the precise Commercial Payout Engine computation
-                const payoutAmount = updatedJob.quoteRequest ? updatedJob.quoteRequest.driverPayoutTotal : (updatedJob.calculatedPrice * 0.8);
+                // PRIORITY: Use driverPayoutTotal from the linked QuoteRequest if it exists
+                let payoutAmount = 0;
+                if (updatedJob.quoteRequest?.driverPayoutTotal) {
+                    payoutAmount = updatedJob.quoteRequest.driverPayoutTotal;
+                    console.log(`[SETTLEMENT_DEBUG] Using quote-based payout: £${payoutAmount}`);
+                } else {
+                    payoutAmount = updatedJob.calculatedPrice * 0.8;
+                    console.warn(`[SETTLEMENT_WARN] No quote found for Job ${updatedJob.jobNumber}. Falling back to 80% of £${updatedJob.calculatedPrice} = £${payoutAmount}`);
+                }
 
                 // Find an existing pending batch for this recipient
                 const existingBatch = await prisma.settlementBatch.findFirst({
@@ -263,46 +273,141 @@ export const createJob = async (req: AuthenticatedRequest, res: Response) => {
             dropoffAddressLine1, dropoffCity, dropoffPostcode,
             pickupContactName, pickupContactPhone,
             dropoffContactName, dropoffContactPhone,
-            vehicleType, priority, calculatedPrice,
+            vehicleType, priority, 
             pickupLatitude, pickupLongitude,
             dropoffLatitude, dropoffLongitude,
             pickupWindowStart, pickupWindowEnd,
             dropoffWindowStart, dropoffWindowEnd,
-            jobType, pickupWindow, deliveryWindow
+            jobType, pickupWindow, deliveryWindow,
+            businessId, items, distanceMilesOverride
         } = req.body;
 
-        const jobNumber = `JOB-${Date.now().toString().slice(-6)}`;
+        console.log(`[ADMIN_JOB_CREATE] Starting job for ${businessId || 'Guest'}. Vehicle: ${vehicleType}`);
+
+        // 1. DATA NORMALIZATION (Items & Distance)
+        const jobItems = (items && items.length > 0) ? items : [{
+            weightKg: 10, lengthCm: 30, widthCm: 30, heightCm: 30, quantity: 1, description: 'Standard Parcel'
+        }];
         
-        const job = await prisma.job.create({
-            data: {
-                jobNumber,
-                status: 'PENDING_DISPATCH',
-                priority: priority || 'NORMAL',
-                pickupAddressLine1, pickupCity, pickupPostcode,
-                pickupLatitude: parseFloat(pickupLatitude || 0),
-                pickupLongitude: parseFloat(pickupLongitude || 0),
-                pickupContactName, pickupContactPhone,
-                pickupWindowStart: pickupWindowStart || '09:00',
-                pickupWindowEnd: pickupWindowEnd || '17:00',
-                dropoffAddressLine1, dropoffCity, dropoffPostcode,
-                dropoffLatitude: parseFloat(dropoffLatitude || 0),
-                dropoffLongitude: parseFloat(dropoffLongitude || 0),
-                dropoffContactName, dropoffContactPhone,
-                dropoffWindowStart: dropoffWindowStart || '09:00',
-                dropoffWindowEnd: dropoffWindowEnd || '17:00',
-                vehicleType,
-                calculatedPrice: parseFloat(calculatedPrice || 0),
-                jobType: jobType || 'SAME_DAY',
-                pickupWindow,
-                deliveryWindow,
-                paymentStatus: 'AWAITING_PAYMENT'
-            }
+        // 2. DISTANCE VALIDATION
+        const miles = parseFloat(distanceMilesOverride || 0);
+        if (isNaN(miles) || miles <= 0) {
+            return res.status(400).json({ error: 'Manual distance must be a positive number of miles.' });
+        }
+        
+        // 2. PRICING ENGINE EXECUTION
+        const weights = PricingService.calculateChargeableWeight(jobItems);
+        
+        // Resolve vehicle class by name
+        const vehicleClass = await (prisma as any).vehicleClass.findFirst({
+            where: { name: vehicleType, isActive: true }
+        });
+
+        if (!vehicleClass) {
+            return res.status(400).json({ error: `Vehicle type '${vehicleType}' not found or inactive.` });
+        }
+
+        // Check Suitability
+        const suitability = await SuitabilityService.evaluateSuitability(
+            vehicleClass.id, 
+            jobItems, 
+            weights.actualWeightKg, 
+            weights.volumetricWeightKg
+        );
+
+        if (!suitability.suitable) {
+            return res.status(400).json({ error: `Unsuitability Error: ${suitability.message}` });
+        }
+
+        // Generate Quote
+        const quoteData = await PricingService.generateCustomerQuote(
+            vehicleClass.id,
+            miles,
+            weights.chargeableWeightKg,
+            { priority: priority || 'NORMAL' },
+            jobItems.reduce((acc: number, cur: any) => acc + (cur.quantity || 1), 0),
+            businessId
+        );
+
+        const jobNumber = `JOB-${Date.now().toString().slice(-6)}`;
+        const trackingNumber = `CYV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+        // 3. ATOMIC DB UPSERT
+        const job = await prisma.$transaction(async (tx) => {
+            // Create Quote Request
+            const quoteRequest = await tx.quoteRequest.create({
+                data: {
+                    pickupPostcode,
+                    dropoffPostcode,
+                    distanceMiles: miles,
+                    actualWeightKg: weights.actualWeightKg,
+                    volumetricWeightKg: weights.volumetricWeightKg,
+                    chargeableWeightKg: weights.chargeableWeightKg,
+                    recommendedVehicleId: vehicleClass.id,
+                    customerTotal: quoteData.customerTotal,
+                    driverPayoutTotal: quoteData.customerTotal * 0.7, // 70% Base Payout
+                    marginPercentage: 30,
+                    status: 'AUTO_APPROVED',
+                    lineItems: {
+                        create: quoteData.lineItems.map(li => ({
+                           target: li.target,
+                           type: li.type,
+                           amount: li.amount,
+                           description: li.description
+                        }))
+                    }
+                }
+            });
+
+            // Create Job
+            return tx.job.create({
+                data: {
+                    jobNumber,
+                    trackingNumber,
+                    status: 'PENDING_DISPATCH',
+                    priority: priority || 'NORMAL',
+                    pickupAddressLine1, pickupCity, pickupPostcode,
+                    pickupLatitude: parseFloat(pickupLatitude || 0),
+                    pickupLongitude: parseFloat(pickupLongitude || 0),
+                    pickupContactName, pickupContactPhone,
+                    pickupWindowStart: pickupWindowStart || '09:00',
+                    pickupWindowEnd: pickupWindowEnd || '17:00',
+                    dropoffAddressLine1, dropoffCity, dropoffPostcode,
+                    dropoffLatitude: parseFloat(dropoffLatitude || 0),
+                    dropoffLongitude: parseFloat(dropoffLongitude || 0),
+                    dropoffContactName, dropoffContactPhone,
+                    dropoffWindowStart: dropoffWindowStart || '09:00',
+                    dropoffWindowEnd: dropoffWindowEnd || '17:00',
+                    vehicleType,
+                    calculatedPrice: quoteData.customerTotal,
+                    jobType: jobType || 'SAME_DAY',
+                    pickupWindow,
+                    deliveryWindow,
+                    paymentStatus: businessId ? 'ACCOUNT_BILLING' : 'AWAITING_PAYMENT',
+                    businessAccountId: businessId || null,
+                    quoteRequestId: quoteRequest.id,
+                    parcels: {
+                        create: jobItems.map((item: any) => ({
+                            weightKg: parseFloat(item.weightKg || 0),
+                            lengthCm: parseFloat(item.lengthCm || 0),
+                            widthCm: parseFloat(item.widthCm || 0),
+                            heightCm: parseFloat(item.heightCm || 0),
+                            quantity: parseInt(item.quantity || 1),
+                            description: item.description || 'Parcel'
+                        }))
+                    }
+                },
+                include: {
+                    quoteRequest: { include: { lineItems: true } },
+                    parcels: true
+                }
+            });
         });
 
         res.status(201).json({ message: 'Job created successfully', job });
     } catch (error) {
         console.error('Create Job Error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error', details: (error as Error).message });
     }
 };
 

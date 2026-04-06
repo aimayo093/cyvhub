@@ -63,7 +63,8 @@ export const upsertPage = async (req: AuthenticatedRequest, res: Response) => {
                 metaDescription,
                 bodyContent,
                 published: published !== undefined ? published : true,
-                updatedBy: req.user.userId
+                updatedBy: req.user.userId,
+                updatedAt: new Date()
             }
         });
 

@@ -49,9 +49,15 @@ export default function AdminCreateJobScreen() {
     dropoffAddress: '',
     dropoffCity: '',
     dropoffPostcode: '',
-    vehicleType: 'Small Van',
+    vehicleType: 'SMALL_VAN',
     goodsDescription: '',
     priority: 'NORMAL' as 'NORMAL' | 'URGENT',
+    // New parcel data for pricing engine
+    weightKg: '10',
+    lengthCm: '30',
+    widthCm: '30',
+    heightCm: '30',
+    distanceMiles: '10',
   });
 
   useEffect(() => {
@@ -73,9 +79,8 @@ export default function AdminCreateJobScreen() {
   );
 
   const handleNext = () => {
-    if (step === 1 && !selectedBusiness) {
-       Alert.alert('Selection Required', 'Please select a business account or continue as Guest.');
-       return;
+    if (step === 1 && !selectedBusiness && searchQuery === '') {
+       // Allow continuing as guest
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setStep(prev => prev + 1);
@@ -90,24 +95,63 @@ export default function AdminCreateJobScreen() {
   };
 
   const handleSubmit = async () => {
+    // 1. FRONTEND VALIDATION
+    const dist = parseFloat(formData.distanceMiles || '0');
+    const weight = parseFloat(formData.weightKg || '0');
+    if (dist <= 0) {
+      return Alert.alert('Validation Error', 'Please enter a valid distance (> 0 miles)');
+    }
+    if (weight <= 0) {
+      return Alert.alert('Validation Error', 'Weight must be greater than 0kg');
+    }
+
     setLoading(true);
     try {
+      // Map frontend fields to backend refined schema
       const payload = {
         businessId: selectedBusiness?.id,
-        ...formData,
+        pickupContactName: formData.pickupName,
+        pickupContactPhone: formData.pickupPhone,
+        pickupAddressLine1: formData.pickupAddress,
+        pickupCity: formData.pickupCity,
+        pickupPostcode: formData.pickupPostcode,
+        dropoffContactName: formData.dropoffName,
+        dropoffContactPhone: formData.dropoffPhone,
+        dropoffAddressLine1: formData.dropoffAddress,
+        dropoffCity: formData.dropoffCity,
+        dropoffPostcode: formData.dropoffPostcode,
+        vehicleType: formData.vehicleType,
+        goodsDescription: formData.goodsDescription,
+        priority: formData.priority,
+        // Integrate with the new Pricing Engine via Items array
+        items: [
+          {
+            weightKg: weight,
+            lengthCm: parseFloat(formData.lengthCm || '0'),
+            widthCm: parseFloat(formData.widthCm || '0'),
+            heightCm: parseFloat(formData.heightCm || '0'),
+            quantity: 1,
+            description: formData.goodsDescription || 'Standard Parcel'
+          }
+        ],
         pickupWindowStart: new Date().toISOString(),
         pickupWindowEnd: new Date(Date.now() + 4 * 3600000).toISOString(),
         dropoffWindowStart: new Date(Date.now() + 2 * 3600000).toISOString(),
         dropoffWindowEnd: new Date(Date.now() + 8 * 3600000).toISOString(),
+        jobType: 'SAME_DAY',
+        distanceMilesOverride: dist, 
       };
 
+      console.log('[DEBUG] Submitting Job Payload:', payload);
       await adminCreateJob(payload);
+      
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Job created successfully', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)/dispatch') }
+      Alert.alert('Success', 'Job & Quote created successfully', [
+        { text: 'OK', onPress: () => router.replace('/admin-dashboard') }
       ]);
-    } catch (error) {
-       Alert.alert('Error', 'Failed to create job. Check all fields.');
+    } catch (error: any) {
+        console.error('Submit Error:', error);
+        Alert.alert('System Error', error.message || 'Failed to create job. Pricing or Suitability mismatch.');
     } finally {
       setLoading(false);
     }
@@ -254,16 +298,77 @@ export default function AdminCreateJobScreen() {
         {step === 3 && (
           <View style={styles.stepContainer}>
              <Text style={styles.sectionTitle}>Job Requirements</Text>
+
+             <Text style={styles.label}>Parcel Dimensions</Text>
+             <View style={styles.row}>
+               <View style={{ flex: 1 }}>
+                 <Text style={styles.miniLabel}>Weight (kg)</Text>
+                 <TextInput
+                   style={styles.input}
+                   keyboardType="numeric"
+                   value={formData.weightKg}
+                   onChangeText={val => setFormData({ ...formData, weightKg: val })}
+                 />
+               </View>
+               <View style={{ flex: 1 }}>
+                 <Text style={styles.miniLabel}>Length (cm)</Text>
+                 <TextInput
+                   style={styles.input}
+                   keyboardType="numeric"
+                   value={formData.lengthCm}
+                   onChangeText={val => setFormData({ ...formData, lengthCm: val })}
+                 />
+               </View>
+             </View>
+             <View style={styles.row}>
+               <View style={{ flex: 1 }}>
+                 <Text style={styles.miniLabel}>Width (cm)</Text>
+                 <TextInput
+                   style={styles.input}
+                   keyboardType="numeric"
+                   value={formData.widthCm}
+                   onChangeText={val => setFormData({ ...formData, widthCm: val })}
+                 />
+               </View>
+               <View style={{ flex: 1 }}>
+                 <Text style={styles.miniLabel}>Height (cm)</Text>
+                 <TextInput
+                   style={styles.input}
+                   keyboardType="numeric"
+                   value={formData.heightCm}
+                   onChangeText={val => setFormData({ ...formData, heightCm: val })}
+                 />
+               </View>
+             </View>
+
+             <View style={styles.row}>
+               <View style={{ flex: 1 }}>
+                 <Text style={styles.miniLabel}>Distance (miles)</Text>
+                 <TextInput
+                   style={styles.input}
+                   keyboardType="numeric"
+                   value={formData.distanceMiles}
+                   onChangeText={val => setFormData({ ...formData, distanceMiles: val })}
+                 />
+               </View>
+               <View style={{ flex: 1 }} />
+             </View>
+
              <Text style={styles.label}>Vehicle Type</Text>
              <View style={styles.vehicleGrid}>
-               {['Small Van', 'Medium Van', 'Large Van', 'Luton Box'].map(v => (
+               {[
+                 { id: 'SMALL_VAN', label: 'Small Van' },
+                 { id: 'MEDIUM_VAN', label: 'Medium Van' },
+                 { id: 'LARGE_VAN', label: 'Large Van' },
+                 { id: 'LUTON_BOX', label: 'Luton Box' }
+               ].map(v => (
                  <TouchableOpacity 
-                   key={v} 
-                   style={[styles.vehicleBtn, formData.vehicleType === v && styles.vehicleBtnActive]}
-                   onPress={() => setFormData({ ...formData, vehicleType: v })}
+                   key={v.id} 
+                   style={[styles.vehicleBtn, formData.vehicleType === v.id && styles.vehicleBtnActive]}
+                   onPress={() => setFormData({ ...formData, vehicleType: v.id })}
                  >
-                   <Truck size={20} color={formData.vehicleType === v ? '#FFF' : Colors.textMuted} />
-                   <Text style={[styles.vehicleBtnText, formData.vehicleType === v && styles.vehicleBtnTextActive]}>{v}</Text>
+                   <Truck size={20} color={formData.vehicleType === v.id ? '#FFF' : Colors.textMuted} />
+                   <Text style={[styles.vehicleBtnText, formData.vehicleType === v.id && styles.vehicleBtnTextActive]}>{v.label}</Text>
                  </TouchableOpacity>
                ))}
              </View>
@@ -361,7 +466,8 @@ const styles = StyleSheet.create({
   businessName: { fontSize: 15, fontWeight: '700' as const, color: Colors.text },
   businessSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   input: { backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 16, height: 50, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0', fontSize: 15 },
-  row: { flexDirection: 'row', gap: 10 },
+  miniLabel: { fontSize: 12, fontWeight: '600' as const, color: Colors.textMuted, marginBottom: 4 },
+  row: { flexDirection: 'row', gap: 12, marginBottom: 8 },
   vehicleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   vehicleBtn: { flex: 1, minWidth: '45%', backgroundColor: '#FFF', padding: 16, borderRadius: 12, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#E2E8F0' },
   vehicleBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },

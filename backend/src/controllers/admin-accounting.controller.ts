@@ -83,6 +83,12 @@ export const processSettlement = async (req: AuthenticatedRequest, res: Response
         if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
         const id = req.params.id as string;
 
+        const settlementCheck = await prisma.settlementBatch.findUnique({ where: { id } });
+        if (!settlementCheck) return res.status(404).json({ error: 'Settlement not found' });
+        if (settlementCheck.status === 'PAID') {
+            return res.status(400).json({ error: 'Settlement already processed and paid' });
+        }
+
         // In a real app, this would trigger a Stripe Payout or Bank Transfer API call
         const settlement = await prisma.settlementBatch.update({
             where: { id },
