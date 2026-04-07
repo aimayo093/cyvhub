@@ -182,7 +182,7 @@ export class PaymentController {
     // POST /api/payments/settlements/:id/process
     static async processSettlement(req: Request, res: Response): Promise<void> {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const role = (req as any).user?.role;
 
             // Only allow admins to process payouts (SEC-04 conceptual RBAC check)

@@ -21,7 +21,7 @@ export class BusinessController {
     // GET /api/businesses/:id
     static async getBusiness(req: Request, res: Response): Promise<void> {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const business = await prisma.businessAccount.findUnique({
                 where: { id: id as string },
                 include: {

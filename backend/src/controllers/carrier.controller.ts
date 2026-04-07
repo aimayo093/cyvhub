@@ -21,7 +21,7 @@ export class CarrierController {
     // GET /api/carriers/:id
     static async getCarrierById(req: Request, res: Response): Promise<void> {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const carrier = await prisma.carrierProfile.findUnique({
                 where: { id: id as string },
                 include: {
@@ -43,7 +43,7 @@ export class CarrierController {
     // PATCH /api/carriers/:id/status (Admin Only)
     static async updateCarrierStatus(req: Request, res: Response): Promise<void> {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const { status } = req.body;
 
             if (!status || !['APPROVED', 'PENDING', 'SUSPENDED', 'REJECTED'].includes(status)) {

@@ -36,7 +36,7 @@ export class AdminCommercialController {
 
     static async updateVehicleClass(req: AuthenticatedRequest, res: Response) {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const data = req.body;
             const vc = await (prisma as any).vehicleClass.update({
                 where: { id },
@@ -64,7 +64,7 @@ export class AdminCommercialController {
 
     static async deletePricingRule(req: AuthenticatedRequest, res: Response) {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             await (prisma as any).pricingRule.delete({ where: { id } });
             res.json({ message: 'Rule successfully deleted' });
         } catch (error) {
@@ -84,7 +84,7 @@ export class AdminCommercialController {
 
     static async deletePayoutRule(req: AuthenticatedRequest, res: Response) {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             await (prisma as any).payoutRule.delete({ where: { id } });
             res.json({ message: 'Rule successfully deleted' });
         } catch (error) {

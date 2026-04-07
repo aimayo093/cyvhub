@@ -44,7 +44,7 @@ export const getPendingReviews = async (req: Request, res: Response) => {
 
 export const approveReview = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { prisma } = require('../index');
         const job = await prisma.job.update({
             where: { id },

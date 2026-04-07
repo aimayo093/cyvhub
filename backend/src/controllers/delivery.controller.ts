@@ -218,7 +218,7 @@ export class DeliveryController {
     // PATCH /api/deliveries/:id/cancel
     static async cancelDelivery(req: Request, res: Response): Promise<void> {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const userId = (req as any).user?.userId;
             const role = (req as any).user?.role;
 
@@ -269,7 +269,7 @@ export class DeliveryController {
      */
     static async updateDelivery(req: Request, res: Response): Promise<void> {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const userId = (req as any).user?.userId;
             const role = (req as any).user?.role;
             const updates = req.body;
@@ -320,7 +320,7 @@ export class DeliveryController {
     // GET /api/deliveries/:id
     static async getDeliveryById(req: Request, res: Response): Promise<void> {
         try {
-            const { id } = req.params;
+            const id = req.params.id as string;
             const userId = (req as any).user?.userId;
             const role = (req as any).user?.role;
 
