@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../index';
-import { generateToken } from '../utils/jwt';
+import { generateToken, generateRefreshToken, verifyToken } from '../utils/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/email.service';
 
 // SEC-10: Email format validation helper
@@ -20,8 +20,8 @@ export const login = async (req: Request, res: Response) => {
         const { email, password } = req.body;
         console.log(`[AUTH_DEBUG] Attempting login for: ${email}`);
 
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password are required', code: 'MISSING_FIELDS' });
+        if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: 'Email and password are required and must be strings', code: 'MISSING_FIELDS' });
         }
 
         const normalizedEmail = email.toLowerCase().trim();
@@ -59,13 +59,21 @@ export const login = async (req: Request, res: Response) => {
         }
 
         const token = generateToken({ userId: user.id, role: user.role });
+        const refreshToken = generateRefreshToken({ userId: user.id, role: user.role });
 
         // SEC-AUDIT-6: Set JWT in an HTTP-only cookie for web clients.
         res.cookie('cyvhub_session', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 24 * 60 * 60 * 1000, 
+            maxAge: 60 * 60 * 1000, 
+        });
+
+        res.cookie('cyvhub_refresh_session', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000, 
         });
 
         console.log(`[AUTH_DEBUG] Login success: ${normalizedEmail} (Role: ${user.role})`);
@@ -93,6 +101,10 @@ export const login = async (req: Request, res: Response) => {
 export const signup = async (req: Request, res: Response) => {
     try {
         const { email, password, firstName, lastName, role } = req.body;
+
+        if (typeof email !== 'string' || typeof password !== 'string' || typeof firstName !== 'string' || typeof lastName !== 'string' || typeof role !== 'string') {
+            return res.status(400).json({ error: 'Invalid input format' });
+        }
 
         // SEC: Block public registration as admin roles
         if (role === 'admin' || !ALLOWED_ROLES.includes(role)) {
@@ -263,7 +275,7 @@ export const verifySession = async (req: Request, res: Response) => {
 };
 
 /**
- * SEC-AUDIT-6: Logout — clears the HTTP-only session cookie for web clients.
+ * SEC-AUDIT-6: Logout — clears the HTTP-only session cookies for web clients.
  * Mobile clients should delete their token from SecureStore on the client side.
  */
 export const logout = (req: Request, res: Response) => {
@@ -272,7 +284,49 @@ export const logout = (req: Request, res: Response) => {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
     });
+    res.clearCookie('cyvhub_refresh_session', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+    });
     res.json({ message: 'Logged out successfully' });
+};
+
+/**
+ * POST /auth/refresh
+ * Refreshes an expired access token using the HTTP-only refresh token cookie.
+ */
+export const refresh = async (req: Request, res: Response) => {
+    try {
+        const refreshToken = req.cookies.cyvhub_refresh_session;
+        if (!refreshToken) {
+            return res.status(401).json({ error: 'No refresh token provided', code: 'NO_REFRESH_TOKEN' });
+        }
+
+        const decoded = verifyToken(refreshToken);
+        if (!decoded || !decoded.userId) {
+            return res.status(401).json({ error: 'Invalid or expired refresh token', code: 'INVALID_REFRESH_TOKEN' });
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+        if (!user || user.status === 'SUSPENDED' || user.status === 'INACTIVE') {
+            return res.status(403).json({ error: 'Account suspended or inactive' });
+        }
+
+        const newToken = generateToken({ userId: user.id, role: user.role });
+
+        res.cookie('cyvhub_session', newToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 60 * 60 * 1000,
+        });
+
+        res.json({ message: 'Token refreshed', token: newToken });
+    } catch (error) {
+        console.error('Refresh Token Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 };
 
 /**
@@ -283,7 +337,7 @@ export const logout = (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
-        if (!email || !EMAIL_REGEX.test(email)) {
+        if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
             return res.status(400).json({ error: 'A valid email address is required' });
         }
 
@@ -323,7 +377,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     try {
         const { token, newPassword } = req.body;
 
-        if (!token || !newPassword) {
+        if (!token || !newPassword || typeof token !== 'string' || typeof newPassword !== 'string') {
             return res.status(400).json({ error: 'Token and new password are required' });
         }
 

@@ -151,6 +151,42 @@ const locationRateLimiter = rateLimit({
     message: { error: 'Location update rate limit exceeded.' },
 });
 
+// SEC-INPUT: Tight limiter for quotes — 20 req / 15 min / IP
+const quoteRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many quote requests. Please wait a moment before trying again.' },
+});
+
+// SEC-INPUT: Tight limiter for bookings & payments — 20 req / 15 min / IP
+const bookingRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many booking/payment requests. Please wait before trying again.' },
+});
+
+// SEC-INPUT: Tight limiter for admin actions — 50 req / 15 min / IP
+const adminRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many admin requests.' },
+});
+
+// SEC-INPUT: Tight limiter for media uploads — 10 req / 15 min / IP
+const uploadRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many upload requests. Please wait before trying again.' },
+});
+
 // Apply global limiter to all /api routes
 app.use('/api', globalRateLimiter);
 
@@ -177,23 +213,23 @@ console.log('🛠 Starting Route Registration...');
 app.use('/api/auth', authRateLimiter, authRoutes);          // SEC-4: Auth brute-force protection
 
 // Stripe API routes (NOT webhook) — mounted after express.json() so req.body is parsed
-app.use('/api/stripe', stripeRoutes);
-app.use('/api/checkout', checkoutRoutes);
+app.use('/api/stripe', bookingRateLimiter, stripeRoutes);
+app.use('/api/checkout', bookingRateLimiter, checkoutRoutes);
 
 // Protected routes — all require JWT authentication (enforced per-router)
 app.use('/api/profile', profileRoutes);
-app.use('/api/jobs', jobRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/deliveries', deliveryRoutes);
+app.use('/api/jobs', bookingRateLimiter, jobRoutes);
+app.use('/api/payments', bookingRateLimiter, paymentRoutes);
+app.use('/api/deliveries', bookingRateLimiter, deliveryRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/contracts', contractRoutes);
-app.use('/api/quotes', quoteRoutes);
+app.use('/api/quotes', quoteRateLimiter, quoteRoutes);
 app.use('/api/carriers', carrierRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/api/ai', aiRateLimiter, aiRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/activity', activityRoutes);
-app.use('/api/media', mediaRoutes);
+app.use('/api/media', uploadRateLimiter, mediaRoutes);
 app.use('/api/settings', settingsRoutes);
 
 // Location — dedicated rate limiter to allow frequent driver GPS updates
@@ -209,9 +245,9 @@ app.use('/api/cron', cronRoutes);
 // Admin CMS & Oversight Dashboard
 // NOTE: mounted at /api/cms (not /api/cms/pages) so routes like
 // GET  /api/cms/config/:key  and  POST /api/cms/config  resolve correctly.
-app.use('/api/cms', cmsRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/admin/commercial', adminCommercialRoutes);
+app.use('/api/cms', adminRateLimiter, cmsRoutes);
+app.use('/api/admin', adminRateLimiter, adminRoutes);
+app.use('/api/admin/commercial', adminRateLimiter, adminCommercialRoutes);
 
 // External Integrations
 app.use('/api/accounting', accountingRoutes);

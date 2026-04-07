@@ -33,6 +33,16 @@ export class QuoteController {
                 return;
             }
 
+            if (typeof pickupPostcode !== 'string' || typeof dropoffPostcode !== 'string') {
+                res.status(400).json({ error: 'Postcodes must be strings', error_code: 'INVALID_INPUT' });
+                return;
+            }
+
+            if (items.length > 50) {
+                res.status(400).json({ error: 'A single quote is limited to 50 items.', error_code: 'TOO_MANY_ITEMS' });
+                return;
+            }
+
             // 1. Calculate Distance
             let miles = 0;
             try {
@@ -144,6 +154,17 @@ export class QuoteController {
                 basePrice,
                 bulkDiscount,
             } = req.body;
+
+            if (
+                typeof quoteNumber !== 'string' ||
+                typeof customerId !== 'string' ||
+                typeof pickupPostcode !== 'string' ||
+                typeof dropoffPostcode !== 'string' ||
+                typeof vehicleType !== 'string'
+            ) {
+                res.status(400).json({ error: 'Invalid field types present in request.' });
+                return;
+            }
 
             if (!quoteNumber || !customerId || !pickupPostcode || !dropoffPostcode || !vehicleType || !distanceKm || !estimatedCost) {
                 res.status(400).json({

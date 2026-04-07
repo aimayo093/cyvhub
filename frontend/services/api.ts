@@ -24,12 +24,37 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
         headers.set('Authorization', `Bearer ${token}`);
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    let response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
         headers,
         // 'include' sends the HTTP-only session cookie on web; on native this is ignored.
         credentials: 'include',
     });
+
+    // Auto-refresh logic on 401
+    if (response.status === 401 && !endpoint.startsWith('/auth/')) {
+        try {
+            const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+            if (refreshRes.ok) {
+                const refreshData = await refreshRes.json();
+                if (refreshData.token) {
+                    await setToken(refreshData.token);
+                    headers.set('Authorization', `Bearer ${refreshData.token}`);
+                    // Retry original request
+                    response = await fetch(`${API_URL}${endpoint}`, {
+                        ...options,
+                        headers,
+                        credentials: 'include',
+                    });
+                }
+            }
+        } catch (refreshErr) {
+            console.warn('[API] Auto-refresh token failed:', refreshErr);
+        }
+    }
 
     if (!response.ok) {
         let errorMessage = 'An error occurred';
