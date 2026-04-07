@@ -9,7 +9,11 @@ router.post('/calculate', QuoteController.calculatePrice);
 
 router.use(authenticate);
 
+import { requireRole } from '../middleware/auth.middleware';
+
 router.get('/', QuoteController.getQuotes);
+router.get('/:id', QuoteController.getQuote);
 router.post('/', QuoteController.createQuote);
+router.patch('/:id/status', requireRole(['admin']), QuoteController.updateQuoteStatus);
 
 export default router;

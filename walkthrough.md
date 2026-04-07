@@ -31,6 +31,39 @@ The CYVhub platform has been successfully hardened against the security vulnerab
 
 ---
 
+# CYVhub Refactor Walkthrough
+**Phase 1: Operational Dispatch (Completed)**
+* See previous logs for details. Dispatch, Job Tracking, and All Jobs are fully wired to the backend.
+
+**Phase 2: Partner Ecosystem (Completed)**
+
+### 1. Carrier Management Integrated
+- Un-mocked the Admin "Suspend Carrier", "Approve", and "Reject" buttons inside `(tabs)/carriers/[id].tsx`.
+- Wrote the `PATCH /api/carriers/:id/status` endpoint to securely allow Administrators to modify a CarrierProfile's operational status.
+- Connected the "Upload Compliance Document" flow securely using base64 payload to Cloudinary streaming logic in `compliance.controller.ts`, which prevents bloated Postgres database rows on the backend while capturing document metadata correctly `ComplianceDocument` table.
+
+### 2. Business Management Tools Wired
+- Completely wired the `(tabs)/businesses/[id].tsx` Admin interface to modify business accounts.
+- Administrators can now adjust the Business "Credit Limit" and "Billing Terms" via `PATCH /api/businesses/:id`.
+- The 'Suspend Account' and 'Reactivate Account' functionality has been wired securely to `PATCH /api/businesses/:id/status`.
+
+### 3. User Management Control
+- Enabled full Role-based global user control within `(tabs)/users/index.tsx`.
+- The interactive `handleUserAction` flow triggers `PATCH /api/admin/users/:id/status` connecting to the `adminUpdateUserStatus` backend controller, allowing immediate suspension or reactivation of any User, Driver, Customer, or Carrier platform-wide.
+
+> [!NOTE]
+> All actions now natively reflect and persist their state into the live Prisma/Supabase backend!
+
+**Phase 3: Commercial Rules Engine (Completed)**
+- Verified the pre-existing `GET` and `POST /api/contracts` API endpoints, completing all administrative lifecycle capabilities for Commercial Subscriptions.
+
+## Next Objective
+**Phase 4: Invoice & Payment Systems**
+- Wiring invoice generation logic.
+- Finishing the Admin accounting / settlement processes.
+
+---
+
 ## Deployment & Verification Instructions
 
 Since the secure files are now on your machine, deploy the infrastructure by following these commands. (Please avoid using the browser for manual tweaks on Vercel/Supabase where code handles it automatically and securely).

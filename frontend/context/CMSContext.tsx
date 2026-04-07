@@ -23,6 +23,7 @@ import {
     ContactPageConfig,
     ServicesPageConfig,
     IndustryDetail,
+    initialHomepageData,
 } from '@/constants/cmsDefaults';
 
 // ─────────────────────────────────────────────
@@ -62,7 +63,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const [contactPage, setContactPageState] = useState<ContactPageConfig>(initialContactPage);
     const [servicesPage, setServicesPageState] = useState<ServicesPageConfig>(initialServicesPage);
     const [industryDetails, setIndustryDetailsState] = useState<Record<string, IndustryDetail>>(initialIndustryDetails);
-    const [homepageData, setHomepageData] = useState<Record<string, any>>({});
+    const [homepageData, setHomepageData] = useState<Record<string, any>>(initialHomepageData);
     const [isLoaded, setIsLoaded] = useState(false);
 
     const applyData = useCallback((data: any) => {

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../index';
+import cloudinary from '../utils/cloudinary';
 
 // ─── Document type definitions ───────────────────────────────────────────────
 export const REQUIRED_DOC_TYPES = [
@@ -116,10 +117,19 @@ export const uploadComplianceDoc = async (req: Request, res: Response) => {
         const validType = REQUIRED_DOC_TYPES.find((t) => t.slug === documentType);
         if (!validType) return res.status(400).json({ error: `Unknown type: ${documentType}` });
 
+        let finalFileUrl = fileUrl;
+        if (fileUrl.startsWith('data:')) {
+            const uploadRes = await cloudinary.uploader.upload(fileUrl, {
+                folder: 'compliance_docs',
+                resource_type: 'auto'
+            });
+            finalFileUrl = uploadRes.secure_url;
+        }
+
         const existing = await prisma.driverComplianceDocument.findFirst({ where: { driverId, documentType } });
 
         const data = {
-            fileName, fileUrl, mimeType: mimeType || null,
+            fileName, fileUrl: finalFileUrl, mimeType: mimeType || null,
             fileSize: fileSize ? parseInt(fileSize) : null,
             issueDate: issueDate ? new Date(issueDate) : null,
             expiryDate: expiryDate ? new Date(expiryDate) : null,
@@ -153,10 +163,19 @@ export const uploadCarrierComplianceDoc = async (req: Request, res: Response) =>
         const validType = CARRIER_DOC_TYPES.find((t) => t.slug === documentType);
         if (!validType) return res.status(400).json({ error: `Unknown type: ${documentType}` });
 
+        let finalFileUrl = fileUrl;
+        if (fileUrl.startsWith('data:')) {
+            const uploadRes = await cloudinary.uploader.upload(fileUrl, {
+                folder: 'compliance_docs',
+                resource_type: 'auto'
+            });
+            finalFileUrl = uploadRes.secure_url;
+        }
+
         const existing = await prisma.complianceDocument.findFirst({ where: { carrierId, type: documentType } });
 
         const data = {
-            fileName, fileUrl, mimeType: mimeType || null,
+            fileName, fileUrl: finalFileUrl, mimeType: mimeType || null,
             fileSize: fileSize ? parseInt(fileSize) : null,
             issueDate: issueDate ? new Date(issueDate) : null,
             expiryDate: expiryDate ? new Date(expiryDate) : null,

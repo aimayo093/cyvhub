@@ -53,32 +53,9 @@ export const listLedger = async (req: AuthenticatedRequest, res: Response) => {
 
 /**
  * PATCH /api/admin/accounting/settlements/:id/approve
+ * Approves and natively processes the settlement in one click
  */
 export const approveSettlement = async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-        const id = req.params.id as string;
-
-        const settlement = await prisma.settlementBatch.update({
-            where: { id },
-            data: { 
-                status: 'APPROVED',
-                approvedBy: req.user?.userId,
-                approvedAt: new Date()
-            }
-        });
-
-        res.json({ message: 'Settlement approved', settlement });
-    } catch (error) {
-        console.error('Approve Settlement Error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-};
-
-/**
- * PATCH /api/admin/accounting/settlements/:id/process
- */
-export const processSettlement = async (req: AuthenticatedRequest, res: Response) => {
     try {
         if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
         const id = req.params.id as string;
@@ -89,22 +66,23 @@ export const processSettlement = async (req: AuthenticatedRequest, res: Response
             return res.status(400).json({ error: 'Settlement already processed and paid' });
         }
 
-        // In a real app, this would trigger a Stripe Payout or Bank Transfer API call
         const settlement = await prisma.settlementBatch.update({
             where: { id },
             data: { 
-                status: 'PAID',
+                status: 'PAID', // Native direct processing
+                approvedBy: req.user?.userId,
+                approvedAt: new Date(),
                 processedAt: new Date()
             }
         });
 
-        // Log to ledger
+        // Log to ledger natively
         await prisma.accountingEntry.create({
             data: {
                 type: 'debit',
                 category: 'driver_payout',
                 amount: settlement.netAmount,
-                description: `Payout to ${settlement.recipientName} (${settlement.reference})`,
+                description: `Payout auto-processed to ${settlement.recipientName} (${settlement.reference})`,
                 reference: settlement.id,
                 recipientId: settlement.recipientId,
                 recipientName: settlement.recipientName,
@@ -112,9 +90,9 @@ export const processSettlement = async (req: AuthenticatedRequest, res: Response
             }
         });
 
-        res.json({ message: 'Settlement processed and paid', settlement });
+        res.json({ message: 'Settlement approved and processed', settlement });
     } catch (error) {
-        console.error('Process Settlement Error:', error);
+        console.error('Approve Settlement Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -129,15 +107,82 @@ export const listInvoices = async (req: AuthenticatedRequest, res: Response) => 
 
         const invoices = await prisma.invoice.findMany({
             include: {
-                businessAccount: { select: { companyName: true, tradingName: true } },
-                jobs: { select: { jobNumber: true, calculatedPrice: true } }
+                businessAccount: { select: { companyName: true, tradingName: true, billingAddress: true, billingCity: true, billingPostcode: true } },
+                jobs: { select: { id: true, jobNumber: true, calculatedPrice: true } }
             },
             orderBy: { date: 'desc' }
         });
 
-        res.json(invoices);
+        // Map VAT specifics required for PDF generation
+        const vatRate = 20; // 20%
+        const vatRegNumber = "GB123456789";
+
+        const enrichedInvoices = invoices.map(inv => ({
+            ...inv,
+            vatRate,
+            vatRegNumber,
+            taxAmount: (inv.amount * (vatRate / 100)),
+            totalWithTax: inv.amount + (inv.amount * (vatRate / 100))
+        }));
+
+        res.json({ invoices: enrichedInvoices });
     } catch (error) {
         console.error('List Invoices Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/**
+ * GET /api/admin/accounting/invoices/:id
+ */
+export const getInvoiceDetails = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        
+        const id = req.params.id as string;
+        const invoice = await prisma.invoice.findUnique({
+            where: { id },
+            include: {
+                businessAccount: { select: { companyName: true, tradingName: true, billingAddress: true, billingCity: true, billingPostcode: true } },
+                jobs: { select: { id: true, jobNumber: true, calculatedPrice: true, pickupPostcode: true, dropoffPostcode: true, createdAt: true } }
+            }
+        });
+
+        if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+        const vatRate = 20; 
+        const vatRegNumber = "GB123456789";
+
+        const enrichedInvoice = {
+            ...invoice,
+            vatRate,
+            vatRegNumber,
+            taxAmount: (invoice.amount * (vatRate / 100)),
+            totalWithTax: invoice.amount + (invoice.amount * (vatRate / 100))
+        };
+
+        res.json({ invoice: enrichedInvoice });
+    } catch (error) {
+        console.error('Get Invoice Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/**
+ * PATCH /api/admin/accounting/invoices/:id/paid
+ */
+export const markInvoicePaid = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        
+        const id = req.params.id as string;
+        const invoice = await prisma.invoice.update({
+            where: { id },
+            data: { status: 'PAID' }
+        });
+        res.json({ message: 'Invoice marked as paid', invoice });
+    } catch (error) {
+        console.error('Mark Invoice Paid Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

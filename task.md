@@ -7,6 +7,15 @@
 
 - [x] **Phase 3: Database RLS (Section C)**
   - [x] Create `backend/prisma/migrations/20260407000000_enable_rls/migration.sql` with `ENABLE ROW LEVEL SECURITY` scripts and limited policies for Supabase anon.
+  - [ ] **Section D: Carrier Management**
+  - [ ] Connect "Upload Compliance Document" directly to MediaAsset backend / Supabase storage.
+  - [ ] Un-mock "Suspend Carrier" actions.
+  - [ ] **Section E: Businesses Module**
+  - [ ] Wire UI to allow modifying Business Account properties (billing terms, overrides).
+  - [ ] Enable business account suspensions/approvals.
+  - [ ] **Section F: User Management**
+  - [ ] General user suspension routes for drivers/customers.
+  - [ ] Wire up User Management list component
 
 - [x] **Phase 4: Input Validation (Section D)**
   - [x] Review and sanitize `quote.controller.ts` payload limits and type-checking.
@@ -18,3 +27,17 @@
   - [x] Modify `backend/src/controllers/auth.controller.ts` to implement `/refresh`.
   - [x] Register new route in `backend/src/routes/auth.routes.ts`.
   - [x] Update frontend `frontend/services/api.ts` to handle 401 and refresh automatically.
+
+### Phase 3: Commercial Rules Engine (Current)
+- [x] **Section G: Quotes & Booking Rules**
+  - [x] Connect Quote Generator to backend pricing engine.
+  - [x] Fix manual Quote state persistence in Admin tool.
+- [x] **Section H: SLA Contracts**
+### Phase 4: Invoice & Payment Systems (Current)
+- [x] **Section I: Invoicing & Export**
+  - [x] Implement robust `GET /api/admin/accounting/invoices` with VAT% and VAT Reg included.
+  - [x] Wire `frontend/app/(tabs)/accounting/invoices.tsx` to display real invoice data from API.
+  - [x] Implement frontend-native "Print/Export PDF" action.
+- [x] **Section J: Automated Settlements**
+  - [x] Wire `frontend/app/(tabs)/accounting/settlements.tsx` to handle "Approve" via `PATCH /api/admin/accounting/settlements/:id/approve`.
+  - [x] Ensure backend natively handles processing logic and state persistence.

@@ -33,15 +33,24 @@ export default function CarrierProfileScreen() {
         if (id) fetchCarrier();
     }, [id, router]);
 
-    const handleApprove = () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Approved', `${carrier.tradingName} has been approved as an active Carrier Partner.`, [{ text: 'OK', onPress: () => router.back() }]);
+    const updateStatus = async (status: string) => {
+        try {
+            await apiClient(`/carriers/${id}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status })
+            });
+            setCarrier(prev => ({ ...prev, status }));
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert('Success', `Carrier status updated to ${status}.`, [{ text: 'OK', onPress: () => router.back() }]);
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            Alert.alert('Error', 'Failed to update carrier status.');
+        }
     };
 
-    const handleReject = () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Rejected', `${carrier.tradingName} application has been rejected.`, [{ text: 'OK', onPress: () => router.back() }]);
-    };
+    const handleApprove = () => updateStatus('APPROVED');
+
+    const handleReject = () => updateStatus('REJECTED');
 
     const handleViewDoc = (docUrl: string) => {
         Alert.alert('Document Viewer', `Viewing document URL: ${docUrl}`);
@@ -176,7 +185,12 @@ export default function CarrierProfileScreen() {
                         <TouchableOpacity style={[styles.actionBtn, { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.adminPrimary }]} onPress={() => Alert.alert('Rate Cards', 'Navigating to detailed Rate Card comparison...')}>
                             <Text style={[styles.actionText, { color: Colors.adminPrimary }]}>Review Rate Cards</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.danger }]} onPress={() => Alert.alert('Suspend', `Are you sure you want to suspend ${carrier.tradingName}?`)}>
+                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.danger }]} onPress={() => {
+                            Alert.alert('Suspend', `Are you sure you want to suspend ${carrier.tradingName}?`, [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Suspend', style: 'destructive', onPress: () => updateStatus('SUSPENDED') }
+                            ]);
+                        }}>
                             <Text style={[styles.actionText, { color: Colors.danger }]}>Suspend Carrier</Text>
                         </TouchableOpacity>
                     </View>

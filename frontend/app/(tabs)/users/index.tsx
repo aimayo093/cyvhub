@@ -111,21 +111,34 @@ export default function UsersScreen() {
   const handleUserAction = useCallback((user: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const userName = `${user.firstName} ${user.lastName}`;
+    
+    const updateStatus = async (newStatus: string) => {
+      try {
+        await apiClient(`/admin/users/${user.id}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: newStatus })
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        fetchUsers();
+      } catch (err) {
+        Alert.alert('Error', 'Failed to update user status.');
+      }
+    };
+
     const actions = user.status === 'SUSPENDED'
       ? [
-        { text: 'Reactivate', onPress: () => { } },
-        { text: 'Edit', onPress: () => router.push(`/(tabs)/users/${user.id}` as any) },
-        { text: 'Suspend', style: 'destructive' as const, onPress: () => { } },
+        { text: 'Reactivate', onPress: () => updateStatus('ACTIVE') },
         { text: 'View Details', onPress: () => { } },
         { text: 'Cancel', style: 'cancel' as const },
       ]
       : [
-        { text: 'Suspend', style: 'destructive' as const, onPress: () => { } },
+        { text: 'Suspend', style: 'destructive' as const, onPress: () => updateStatus('SUSPENDED') },
         { text: 'View Details', onPress: () => { } },
         { text: 'Cancel', style: 'cancel' as const },
       ];
+
     Alert.alert(userName, `Role: ${user.role} | Status: ${user.status}`, actions);
-  }, []);
+  }, [fetchUsers]);
 
   const filters: { key: UserFilter; label: string }[] = [
     { key: 'all', label: 'All' },

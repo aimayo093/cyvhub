@@ -3,64 +3,51 @@ import createContextHook from '@nkzw/create-context-hook';
 import { DriverLocation } from '@/types';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthProvider';
+import { apiClient } from '@/services/api';
 import { Platform } from 'react-native';
 
 const SOCKET_SERVER_URL = process.env.EXPO_PUBLIC_SOCKET_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
 
 export const [LocationProvider, useLocation] = createContextHook(() => {
-    const { token, userProfile } = useAuth();
+    const { isAuthenticated } = useAuth();
     const [driverLocations, setDriverLocations] = useState<DriverLocation[]>([]);
     const [isTracking, setIsTracking] = useState(false);
     const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const simulationRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const waypointIndexRef = useRef(0);
-    const socketRef = useRef<Socket | null>(null);
+    const socketRef = useRef<any>(null); // Kept for backwards-compat signature without importing Socket -> changed to any or keep Socket import
 
     useEffect(() => {
-        if (!token) return;
+        if (!isAuthenticated) return;
 
-        // Initialize socket connection
-        socketRef.current = io(SOCKET_SERVER_URL, {
-            transports: ['websocket'],
-            autoConnect: true
-        });
-
-        socketRef.current.on('connect', () => {
-            console.log('[LocationProvider] Socket connected', socketRef.current?.id);
-            // Send auth token to bind socket to user ID
-            socketRef.current?.emit('authenticate', token);
-        });
-
-        socketRef.current.on('driver_location_updated', (data: any) => {
-            setDriverLocations(prev => {
-                const existing = prev.find(d => d.driverId === data.driverId);
-                const updatedObj: DriverLocation = {
-                    driverId: data.driverId,
-                    driverName: existing?.driverName || `Driver ${data.driverId.slice(-4)}`,
-                    latitude: data.lat,
-                    longitude: data.lng,
-                    heading: data.heading || 0,
-                    speed: data.speed || 0,
-                    status: 'ONLINE',
-                    timestamp: data.timestamp
-                };
-                if (existing) {
-                    return prev.map(d => d.driverId === data.driverId ? updatedObj : d);
+        const fetchLocations = async () => {
+            try {
+                const res = await apiClient('/location/drivers');
+                if (res && res.drivers) {
+                    const mapped = res.drivers.map((d: any) => ({
+                        driverId: d.id,
+                        driverName: `${d.firstName} ${d.lastName}`,
+                        latitude: d.lastKnownLat,
+                        longitude: d.lastKnownLng,
+                        heading: 0,
+                        speed: 0,
+                        status: d.status,
+                        // Add vehicleType and currentJobId if available in the API response in the future
+                        vehicleType: 'Van',
+                        timestamp: new Date().toISOString()
+                    }));
+                    setDriverLocations(mapped);
                 }
-                return [...prev, updatedObj];
-            });
-        });
-
-        socketRef.current.on('driver_offline', (data: { driverId: string }) => {
-            setDriverLocations(prev => prev.map(d => 
-                d.driverId === data.driverId ? { ...d, status: 'OFFLINE' } : d
-            ));
-        });
-
-        return () => {
-            socketRef.current?.disconnect();
+            } catch (err) {
+                console.warn('[LocationProvider] Poll error:', err);
+            }
         };
-    }, [token]);
+
+        fetchLocations();
+        const interval = setInterval(fetchLocations, 10000); // Poll every 10 seconds
+
+        return () => clearInterval(interval);
+    }, [isAuthenticated]);
 
     // Simulate driver movement emitting real websocket data to the backend
     const startSimulation = useCallback((driverId: string) => {

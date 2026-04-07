@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware';
-import { getDashboardOverview, getComplianceList, getHRList, getUsersList, adminListJobs, getBusinessesList, adminCreateJob, adminUpdateCompliance, adminUpdateHR, adminUpdateUserStatus, adminAssignJob } from '../controllers/admin.controller';
-import { listSettlements, listLedger, approveSettlement, processSettlement, listInvoices } from '../controllers/admin-accounting.controller';
+import { getDashboardOverview, getComplianceList, getHRList, getUsersList, adminListJobs, getBusinessesList, adminCreateJob, adminUpdateCompliance, adminUpdateHR, adminUpdateUserStatus, adminAssignJob, adminUpdateBusiness } from '../controllers/admin.controller';
+import { listSettlements, listLedger, approveSettlement, listInvoices, getInvoiceDetails, markInvoicePaid } from '../controllers/admin-accounting.controller';
 
 const router = Router();
 
@@ -16,6 +16,7 @@ router.patch('/hr-records/:id', adminUpdateHR);
 router.get('/users', getUsersList);
 router.patch('/users/:id/status', adminUpdateUserStatus);
 router.get('/businesses', getBusinessesList);
+router.patch('/businesses/:id', adminUpdateBusiness);
 router.post('/jobs', adminCreateJob);
 router.get('/jobs', adminListJobs);
 router.patch('/jobs/:jobId/assign', adminAssignJob);
@@ -23,8 +24,9 @@ router.patch('/jobs/:jobId/assign', adminAssignJob);
 // Accounting & Settlement (Financials)
 router.get('/accounting/settlements', listSettlements);
 router.patch('/accounting/settlements/:id/approve', approveSettlement);
-router.patch('/accounting/settlements/:id/process', processSettlement);
 router.get('/accounting/ledger', listLedger);
 router.get('/accounting/invoices', listInvoices);
+router.get('/accounting/invoices/:id', getInvoiceDetails);
+router.patch('/accounting/invoices/:id/paid', markInvoicePaid);
 
 export default router;

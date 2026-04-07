@@ -20,6 +20,9 @@ router.patch('/my/rates/:id', authenticate, CarrierController.updateRate);
 // Retrieve a specific carrier block by ID
 router.get('/:id', authenticate, CarrierController.getCarrierById);
 
+// Update status of a specific carrier (Admin Only)
+router.patch('/:id/status', authenticate, requireRole(['admin']), CarrierController.updateCarrierStatus);
+
 // Add a new carrier (Requires Admin)
 router.post('/', authenticate, requireRole(['admin']), CarrierController.createCarrier);
 

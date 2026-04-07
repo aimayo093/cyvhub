@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Building2, CreditCard, FileText, Settings, PauseCircle, PlayCircle, ShieldBan, Mail, Phone, MapPin } from 'lucide-react-native';
+import { ChevronLeft, Building2, CreditCard, FileText, Settings, PauseCircle, PlayCircle, ShieldBan, Mail, Phone, MapPin, Edit2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
@@ -30,9 +30,127 @@ export default function BusinessProfileScreen() {
         fetchBiz();
     }, [id]);
 
-    const handleAction = (title: string, message: string, style: 'default' | 'destructive' | 'cancel' = 'default') => {
+    const handleAction = async (title: string, message: string, style: 'default' | 'destructive' | 'cancel' = 'default') => {
         Haptics.impactAsync(style === 'destructive' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium);
+        
+        if (title === 'Suspend Account' || title === 'Reactivate Account') {
+            const newStatus = title === 'Suspend Account' ? 'SUSPENDED' : 'ACTIVE';
+            Alert.alert(title, message, [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Confirm', 
+                    style: style === 'destructive' ? 'destructive' : 'default',
+                    onPress: async () => {
+                        try {
+                            const res = await apiClient(`/businesses/${id}/status`, {
+                                method: 'PATCH',
+                                body: JSON.stringify({ status: newStatus })
+                            });
+                            setBiz(res.business);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (err) {
+                            Alert.alert('Error', 'Failed to update business status.');
+                        }
+                    }
+                }
+            ]);
+            return;
+        }
+
+        if (title === 'Modify Billing') {
+            Alert.prompt(
+                'Modify Billing', 
+                'Enter new Credit Limit (e.g. 5000)',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Save', onPress: async (limit?: string) => {
+                        try {
+                            const res = await apiClient(`/businesses/${id}`, {
+                                method: 'PATCH',
+                                body: JSON.stringify({ creditLimit: parseFloat(limit || '0') })
+                            });
+                            setBiz(res.business);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (err) {
+                            Alert.alert('Error', 'Failed to update billing details.');
+                        }
+                    }}
+                ],
+                'plain-text',
+                biz?.creditLimit?.toString() || '0'
+            );
+            return;
+        }
+
+        if (title === 'Assign Contract') {
+            Alert.prompt(
+                'Assign SLA Contract',
+                'Enter the Contract ID to assign to this business. Leave blank to remove.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Save', onPress: async (contractId?: string) => {
+                        try {
+                            const res = await apiClient(`/businesses/${id}`, {
+                                method: 'PATCH',
+                                body: JSON.stringify({ contractId: contractId || null })
+                            });
+                            setBiz(res.business);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (err) {
+                            Alert.alert('Error', 'Failed to assign contract. Ensure the Contract ID is valid.');
+                        }
+                    }}
+                ],
+                'plain-text',
+                biz?.contractId || ''
+            );
+            return;
+        }
+
+        if (title === 'Edit Information') {
+            // Simplified multi-field editing via multiple prompts or a dedicated modal
+            // Here we'll use a specific field selector for brevity in this UI pattern
+            Alert.alert(
+                'Edit Information',
+                'Which field would you like to update?',
+                [
+                    { text: 'Trading Name', onPress: () => editField('tradingName', 'Trading Name', biz.tradingName) },
+                    { text: 'Legal Name', onPress: () => editField('companyName', 'Legal Name', biz.companyName) },
+                    { text: 'Contact Email', onPress: () => editField('contactEmail', 'Contact Email', biz.contactEmail) },
+                    { text: 'Cancel', style: 'cancel' }
+                ]
+            );
+            return;
+        }
+
         Alert.alert(title, message);
+    };
+
+    const editField = (field: string, label: string, current: string) => {
+        Alert.prompt(
+            `Update ${label}`,
+            `Enter the new ${label} for this business:`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Save', onPress: async (val?: string) => {
+                    if (!val) return;
+                    try {
+                        const res = await apiClient(`/admin/businesses/${id}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ [field]: val })
+                        });
+                        if (res.business) {
+                            setBiz(res.business);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        }
+                    } catch (err) {
+                        Alert.alert('Error', 'Failed to update field.');
+                    }
+                }}
+            ],
+            'plain-text',
+            current
+        );
     };
 
     if (loading || !biz) {
@@ -54,7 +172,9 @@ export default function BusinessProfileScreen() {
                 <View style={styles.headerTitleWrap}>
                     <Text style={styles.headerTitle}>Business Profile</Text>
                 </View>
-                <View style={{ width: 32 }} />
+                <TouchableOpacity style={styles.editBtn} onPress={() => handleAction('Edit Information', '')}>
+                    <Edit2 size={20} color={Colors.textInverse} />
+                </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
@@ -193,6 +313,7 @@ const styles = StyleSheet.create({
     backBtn: { padding: 4, marginLeft: -4 },
     headerTitleWrap: { flex: 1, alignItems: 'center' },
     headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.textInverse },
+    editBtn: { padding: 4, marginRight: -4 },
 
     body: { flex: 1 },
     bodyContent: { padding: 16, gap: 16 },

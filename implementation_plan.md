@@ -6,8 +6,34 @@ This document outlines the approach for remediating five critical security areas
 
 > [!IMPORTANT]
 > **RLS Policies in Prisma Migration**
-> We are adding a raw SQL migration to enable Row-Level Security (RLS) on all tables because the Supabase Anon Key is exposed in the frontend for real-time tracking, meaning all tables might currently be fully writable by malicious actors using the anon key. 
-> The migration script will `ENABLE ROW LEVEL SECURITY` on all tables and create an `admin` bypass policy. I want to confirm whether your Prisma backend connects via a SUPERUSER/postgres role (which naturally bypasses RLS) or if Prisma runs as an unprivileged user. Assuming Prisma hits the DB as `postgres` role, it will bypass RLS nicely, and RLS will only block the frontend Supabase Anon Key.
+> We are adding a raw SQL migration to enable Row-Level Security (RLS) on all tables because the Supabase Anon Key is exposed in the frontend for real-time## Active Phase: Phase 3 (Commercial Rules Engine)
+
+### Section G: Quotes & Booking Rules
+*   **Quote Generator Logic**:
+    *   Wire the Admin `QuotesScreen` inside `frontend/app/(tabs)/quotes/index.tsx` to use the live `GET /api/quotes` endpoint rather than the mock list.
+    *   Implement manual Quote state updates inside `frontend/app/(tabs)/quotes/[id].tsx` (e.g., updating statuses like `PENDING` -> `APPROVED` / `REJECTED`) by calling `PATCH /api/quotes/:id/status`. Note that `backend/src/routes/quote.routes.ts` or `quote.controller.ts` will need to have a `PATCH :id/status` endpoint created.
+*   **Fix manual Quote state persistence in Admin tool.**
+
+### Section H: SLA Contracts
+*   **Business Contracts (`BusinessContract`) CRUD**:
+    *   The database `schema.prisma` already defines `BusinessContract` logic (linked to `BusinessAccount`).
+    *   Create CRUD endpoints in an `admin-contracts.controller.ts` or add them to the existing business endpoints. We need ability to view, create, and assign contracts with specific `rateRules`.
+*   **Contract Assignment UI**:
+    *   Wire `businesses/[id].tsx` "Assign Contract" to hit the API endpoints and save to the database.
+
+> [!IMPORTANT]
+> **User Input Required**: Should Contracts be universally shared across multiple businesses, or is each Contract directly owned/tied to a single `BusinessAccount`? Based on current schema `BusinessContract` has `businessId String?`, suggesting they are tied but standard templates might exist? Let's assume standard 1:1 business-contract relationships unless specified otherwise.
+
+## Open Questions
+
+*   **Contract Generation**: For assigning contracts, should we present a list of pre-defined standard rate templates, or allow full custom creation of rate rules for every assignment? 
+
+## Verification Plan
+
+### Automated/Manual Tests
+*   **Quotes**: Verify that changing Quote state in the Admin detail view correctly updates it in the backend and reflects on refresh.
+*   **Contracts**: Open a `Business Profile`, assign a new contract, set a dummy discount rate, and verify the backend data is accurately persisted.
+ on all tables and create an `admin` bypass policy. I want to confirm whether your Prisma backend connects via a SUPERUSER/postgres role (which naturally bypasses RLS) or if Prisma runs as an unprivileged user. Assuming Prisma hits the DB as `postgres` role, it will bypass RLS nicely, and RLS will only block the frontend Supabase Anon Key.
 
 > [!WARNING]
 > **Session Expiry Change**

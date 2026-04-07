@@ -102,16 +102,32 @@ export default function QuotesScreen() {
 
   const [activeFilter, setActiveFilter] = useState<QuoteFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [quotes, setQuotes] = useState<any[]>([]);
+
+  const fetchQuotes = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      const res = await apiClient('/quotes');
+      setQuotes(res.quotes || []);
+    } catch (err) {
+      console.error('Failed to fetch quotes:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchQuotes();
+  }, [fetchQuotes]);
 
   const filteredQuotes = useMemo(() => {
-    if (activeFilter === 'all') return MOCK_QUOTES;
-    return MOCK_QUOTES.filter((q: any) => q.status === activeFilter);
-  }, [activeFilter]);
+    if (activeFilter === 'all') return quotes;
+    return quotes.filter((q: any) => q.status === activeFilter);
+  }, [activeFilter, quotes]);
 
   const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    fetchQuotes();
+  }, [fetchQuotes]);
 
   const handleQuoteTap = useCallback((quote: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -120,15 +136,8 @@ export default function QuotesScreen() {
 
   const handleNewQuote = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      'Create Quote',
-      'New quotation request:\n\n1. Select business account\n2. Set pickup location & city\n3. Set dropoff location & city\n4. Choose vehicle type\n5. Select job type / industry\n6. Set SLA requirement\n7. Calculate estimated price\n8. Set expiry date\n9. Add notes',
-      [
-        { text: 'Start', onPress: () => Alert.alert('Quote Builder', 'Quote creation form would open here with pricing engine integration') },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
-  }, []);
+    router.push('/book-delivery' as any);
+  }, [router]);
 
   const filters: { key: QuoteFilter; label: string }[] = [
     { key: 'all', label: 'All' },

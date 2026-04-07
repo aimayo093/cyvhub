@@ -21,6 +21,7 @@ import {
   TrendingUp,
   FileText,
   ChevronRight,
+  Plus,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -115,8 +116,16 @@ export default function BusinessesScreen() {
             <Text style={styles.headerTitle}>Business Accounts</Text>
             <Text style={styles.headerSubtitle}>Manage B2B client accounts</Text>
           </View>
-          <View style={styles.headerIcon}>
-            <Building2 size={20} color={Colors.adminPrimary} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity 
+              style={[styles.headerIcon, { backgroundColor: Colors.success + '18' }]} 
+              onPress={() => router.push('/(tabs)/businesses/create')}
+            >
+              <Plus size={20} color={Colors.success} />
+            </TouchableOpacity>
+            <View style={styles.headerIcon}>
+              <Building2 size={20} color={Colors.adminPrimary} />
+            </View>
           </View>
         </View>
 

@@ -33,6 +33,7 @@ import {
     CheckSquare,
     XCircle,
 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
 import { SettlementBatch, SettlementStatus, AccountingEntry } from '@/types';
@@ -67,8 +68,8 @@ export default function AdminAccountingScreen() {
     const loadData = useCallback(async () => {
         try {
             const [settlementsRes, ledgerRes] = await Promise.all([
-                apiClient('/payments/settlements'),
-                apiClient('/payments/ledger')
+                apiClient('/admin/accounting/settlements'),
+                apiClient('/admin/accounting/ledger')
             ]);
             if (settlementsRes.settlements) setSettlements(settlementsRes.settlements);
             if (ledgerRes.ledger) setLedger(ledgerRes.ledger);
@@ -107,65 +108,31 @@ export default function AdminAccountingScreen() {
     }, [ledger, ledgerFilter]);
 
     const handleApprove = useCallback((id: string) => {
-        Alert.alert('Approve Settlement', 'Are you sure you want to approve this settlement?', [
+        Alert.alert('Approve & Process', 'Are you sure you want to approve and natively process this settlement? This action is irreversible.', [
             { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Approve', onPress: () => {
-                    setSettlements(prev => prev.map(s =>
-                        s.id === id ? { ...s, status: 'APPROVED' as SettlementStatus, approvedBy: 'Admin', approvedAt: new Date().toISOString() } : s
-                    ));
-                    setSelectedSettlement(null);
-                }
-            },
-        ]);
-    }, []);
-
-    const handleProcess = useCallback((id: string) => {
-        Alert.alert('Process Payment', 'This will initiate payment to the recipient. Continue?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Process', onPress: () => {
-                    setSettlements(prev => prev.map(s =>
-                        s.id === id ? { ...s, status: 'PROCESSING' as SettlementStatus } : s
-                    ));
-                    setTimeout(() => {
-                        setSettlements(prev => prev.map(s =>
-                            s.id === id ? { ...s, status: 'PAID' as SettlementStatus, processedAt: new Date().toISOString() } : s
-                        ));
-                    }, 2000);
-                    setSelectedSettlement(null);
-                }
-            },
-        ]);
-    }, []);
-
-    const handleBatchProcess = useCallback(() => {
-        const approved = settlements.filter(s => s.status === 'APPROVED');
-        if (approved.length === 0) {
-            Alert.alert('No Settlements', 'No approved settlements to process.');
-            return;
-        }
-        Alert.alert(
-            'Batch Process',
-            `Process ${approved.length} approved settlement(s) totaling ${formatCurrency(approved.reduce((s, a) => s + a.netAmount, 0))}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Process All', onPress: () => {
-                        const ids = approved.map(a => a.id);
-                        setSettlements(prev => prev.map(s =>
-                            ids.includes(s.id) ? { ...s, status: 'PROCESSING' as SettlementStatus } : s
-                        ));
-                        setTimeout(() => {
-                            setSettlements(prev => prev.map(s =>
-                                ids.includes(s.id) ? { ...s, status: 'PAID' as SettlementStatus, processedAt: new Date().toISOString() } : s
-                            ));
-                        }, 2500);
+                text: 'Process Now', onPress: async () => {
+                    setSettlements(prev => prev.map(s => s.id === id ? { ...s, status: 'PROCESSING' as SettlementStatus } : s));
+                    try {
+                        const res = await apiClient(`/admin/accounting/settlements/${id}/approve`, { method: 'PATCH' });
+                        if (res.settlement) {
+                            setSettlements(prev => prev.map(s => s.id === id ? res.settlement : s));
+                            loadData(); // Pull fresh ledger entries
+                        }
+                        setSelectedSettlement(null);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        Alert.alert('Success', 'Settlement natively processed and logged to ledger.');
+                    } catch (error) {
+                        console.error('Approve failure', error);
+                        Alert.alert('Error', 'Failed to approve settlement');
+                        loadData(); // Revert status
                     }
-                },
-            ]
-        );
-    }, [settlements]);
+                }
+            },
+        ]);
+    }, [loadData]);
+
+
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -267,11 +234,6 @@ export default function AdminAccountingScreen() {
                 {settlements.filter(s => s.status === 'PENDING_APPROVAL').length === 0 && (
                     <Text style={styles.emptyText}>No pending approvals</Text>
                 )}
-
-                <TouchableOpacity style={styles.batchButton} onPress={handleBatchProcess}>
-                    <Send size={16} color="#fff" />
-                    <Text style={styles.batchButtonText}>Process All Approved Settlements</Text>
-                </TouchableOpacity>
             </View>
 
             <View style={{ height: 40 }} />
@@ -412,16 +374,7 @@ export default function AdminAccountingScreen() {
                                         onPress={() => handleApprove(selectedSettlement.id)}
                                     >
                                         <CheckSquare size={16} color="#fff" />
-                                        <Text style={styles.modalActionText}>Approve Settlement</Text>
-                                    </TouchableOpacity>
-                                )}
-                                {selectedSettlement.status === 'APPROVED' && (
-                                    <TouchableOpacity
-                                        style={[styles.modalAction, { backgroundColor: Colors.primary }]}
-                                        onPress={() => handleProcess(selectedSettlement.id)}
-                                    >
-                                        <Send size={16} color="#fff" />
-                                        <Text style={styles.modalActionText}>Process Payment</Text>
+                                        <Text style={styles.modalActionText}>Approve & Process</Text>
                                     </TouchableOpacity>
                                 )}
 

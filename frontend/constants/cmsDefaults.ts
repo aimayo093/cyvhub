@@ -727,6 +727,19 @@ export const initialContactPage: ContactPageConfig = {
     mapLongitude: -0.1278
 };
 
+export const initialHomepageData = {
+    cms_heroConfig: initialHero,
+    cms_slidesConfig: initialSlides,
+    cms_howItWorksConfig: initialHowItWorks,
+    cms_whyUsConfig: initialWhyUs,
+    cms_servicesConfig: initialServices,
+    cms_statsConfig: initialStats,
+    cms_industriesConfig: initialIndustries,
+    cms_testimonialsConfig: initialTestimonials,
+    cms_customSections: [] as any[],
+    cms_ctaConfig: initialCta,
+};
+
 export const initialIndustryDetails: Record<string, IndustryDetail> = {
     'construction': {
         id: 'construction',

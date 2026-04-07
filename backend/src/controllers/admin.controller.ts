@@ -285,3 +285,22 @@ export const adminCreateJob = async (req: AuthenticatedRequest, res: Response) =
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+export const adminUpdateBusiness = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        const id = req.params.id as string;
+        const data = req.body;
+
+        const updated = await prisma.businessAccount.update({
+            where: { id },
+            data,
+            include: { contract: true }
+        });
+
+        res.json({ message: 'Business account updated', business: updated });
+    } catch (error) {
+        console.error('Admin Update Business Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};

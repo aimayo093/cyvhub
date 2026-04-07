@@ -147,7 +147,7 @@ export default function AdminCreateJobScreen() {
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Success', 'Job & Quote created successfully', [
-        { text: 'OK', onPress: () => router.replace('/admin-dashboard') }
+        { text: 'OK', onPress: () => router.replace('/(tabs)/manage-jobs' as any) }
       ]);
     } catch (error: any) {
         console.error('Submit Error:', error);

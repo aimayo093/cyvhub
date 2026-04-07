@@ -9,13 +9,90 @@ export class QuoteController {
     // GET /api/quotes
     static async getQuotes(req: Request, res: Response): Promise<void> {
         try {
-            const quotes = await prisma.quote.findMany({
+            const quotesRaw = await prisma.quote.findMany({
                 orderBy: { createdAt: 'desc' }
+            });
+
+            // Map business names manually since Prisma relation is missing
+            const businessIds = [...new Set(quotesRaw.map(q => q.businessId).filter(Boolean))] as string[];
+            const businesses = await prisma.businessAccount.findMany({ where: { id: { in: businessIds } } });
+            const businessMap = new Map(businesses.map(b => [b.id, b.companyName]));
+
+            const customerIds = [...new Set(quotesRaw.map(q => q.customerId).filter(Boolean))] as string[];
+            const customers = await prisma.user.findMany({ where: { id: { in: customerIds } } });
+            const customerMap = new Map(customers.map(c => [c.id, `${c.firstName} ${c.lastName}`]));
+
+            const quotes = quotesRaw.map((q) => {
+                const businessName = q.businessId ? businessMap.get(q.businessId) : customerMap.get(q.customerId) || 'Guest Customer';
+                return {
+                    ...q,
+                    businessName,
+                    pickupCity: q.pickupPostcode,
+                    dropoffCity: q.dropoffPostcode
+                };
             });
             res.status(200).json({ quotes });
         } catch (error) {
             console.error('[QuoteController] Error fetching quotes:', error);
             res.status(500).json({ error: 'Failed to fetch quotes.' });
+        }
+    }
+
+    // GET /api/quotes/:id
+    static async getQuote(req: Request, res: Response): Promise<void> {
+        try {
+            const id = req.params.id as string;
+            const quoteRaw = await prisma.quote.findUnique({ where: { id } });
+            
+            if (!quoteRaw) {
+                res.status(404).json({ error: 'Quote not found.' });
+                return;
+            }
+
+            let businessName = 'Guest Customer';
+            if (quoteRaw.businessId) {
+                const b = await prisma.businessAccount.findUnique({ where: { id: quoteRaw.businessId } });
+                if (b) businessName = b.companyName;
+            } else if (quoteRaw.customerId) {
+                const c = await prisma.user.findUnique({ where: { id: quoteRaw.customerId } });
+                if (c) businessName = `${c.firstName} ${c.lastName}`;
+            }
+
+            const quote = {
+                ...quoteRaw,
+                businessName,
+                pickupCity: quoteRaw.pickupPostcode,
+                dropoffCity: quoteRaw.dropoffPostcode,
+                jobType: 'Courier', // Quote model doesn't store this directly
+                slaRequirement: 'Standard' // Quote model doesn't store this directly
+            };
+
+            res.status(200).json({ quote });
+        } catch (error) {
+            console.error('[QuoteController] Error fetching quote:', error);
+            res.status(500).json({ error: 'Failed to fetch quote details.' });
+        }
+    }
+
+    // PATCH /api/quotes/:id/status
+    static async updateQuoteStatus(req: Request, res: Response): Promise<void> {
+        try {
+            const id = req.params.id as string;
+            const { status } = req.body;
+
+            if (!status || !['PENDING', 'APPROVED', 'REJECTED', 'CONVERTED', 'EXPIRED'].includes(status)) {
+                res.status(400).json({ error: 'Invalid quote status provided.' });
+                return;
+            }
+
+            const updated = await prisma.quote.update({
+                where: { id },
+                data: { status }
+            });
+            res.status(200).json({ quote: updated });
+        } catch (error) {
+            console.error('[QuoteController] Error updating quote status:', error);
+            res.status(500).json({ error: 'Failed to update quote status.' });
         }
     }
 

@@ -40,6 +40,29 @@ export class CarrierController {
         }
     }
 
+    // PATCH /api/carriers/:id/status (Admin Only)
+    static async updateCarrierStatus(req: Request, res: Response): Promise<void> {
+        try {
+            const { id } = req.params;
+            const { status } = req.body;
+
+            if (!status || !['APPROVED', 'PENDING', 'SUSPENDED', 'REJECTED'].includes(status)) {
+                res.status(400).json({ error: 'Invalid status provided.' });
+                return;
+            }
+
+            const updated = await prisma.carrierProfile.update({
+                where: { id },
+                data: { status }
+            });
+
+            res.status(200).json({ data: updated });
+        } catch (error) {
+            console.error('[CarrierController] Error updating carrier status:', error);
+            res.status(500).json({ error: 'Failed to update status.' });
+        }
+    }
+
     // POST /api/carriers — Admin only (enforced in route)
     static async createCarrier(req: Request, res: Response): Promise<void> {
         try {

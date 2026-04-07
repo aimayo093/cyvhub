@@ -28,6 +28,8 @@ import {
   Truck,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import Colors from '@/constants/colors';
 import { Invoice } from '@/types';
 import { apiClient } from '@/services/api';
@@ -102,8 +104,8 @@ export default function InvoicesScreen() {
 
   const fetchInvoices = useCallback(async () => {
     try {
-      const data = await apiClient('/invoices');
-      setInvoices(data);
+      const data = await apiClient('/admin/accounting/invoices');
+      setInvoices(data.invoices || []);
     } catch (error) {
       console.error('Failed to fetch invoices:', error);
       Alert.alert('Error', 'Could not load invoices history.');
@@ -153,15 +155,94 @@ export default function InvoicesScreen() {
     router.push('/(tabs)/invoices/generate');
   }, [router]);
 
-  const handleExportWithFilters = useCallback((format: 'csv' | 'pdf') => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const handleExportWithFilters = useCallback(async (format: 'csv' | 'pdf') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const rangeName = DATE_RANGES.find(r => r.key === exportDateRange)?.label ?? 'All Time';
-    setShowExportModal(false);
-    Alert.alert(
-      'Export Complete',
-      `Exported ${exportFilteredCount.count} records as ${format.toUpperCase()}\n\nDate Range: ${rangeName}\nRoute: ${exportRoute}\nStatus: ${exportStatus}\nTotal Value: £${exportFilteredCount.total.toFixed(2)}`
-    );
-  }, [exportDateRange, exportRoute, exportStatus, exportFilteredCount]);
+    
+    const filtered = invoices.filter((inv: any) => {
+      if (exportStatus !== 'All Statuses' && inv.status !== exportStatus) return false;
+      if (!isInDateRange(inv.date, exportDateRange)) return false;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+        Alert.alert('No Data', 'No invoices match these filters to export.');
+        return;
+    }
+
+    if (format === 'csv') {
+        setShowExportModal(false);
+        Alert.alert(
+          'Export Complete',
+          `Exported ${exportFilteredCount.count} records as ${format.toUpperCase()}`
+        );
+        return;
+    }
+
+    // PDF Bundle mode
+    try {
+        const htmlContent = `
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Helvetica', 'Arial', sans-serif; padding: 40px; color: #333; }
+                    h1 { color: #1e3a8a; margin-bottom: 5px; }
+                    .header { border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 30px; }
+                    .meta { font-size: 14px; margin-bottom: 5px; color: #666; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+                    th { background-color: #f3f4f6; text-align: left; padding: 12px; font-size: 14px; color: #4b5563; }
+                    td { padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>CYVHUB Invoices Bundle</h1>
+                    <div class="meta">Exported on: ${new Date().toLocaleDateString('en-GB')}</div>
+                    <div class="meta">Filters: ${rangeName} | Status: ${exportStatus}</div>
+                    <div class="meta">Total Value: £${exportFilteredCount.total.toFixed(2)}</div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Date</th>
+                            <th>Business</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filtered.map((inv: any) => `
+                            <tr>
+                                <td>${inv.invoiceNumber}</td>
+                                <td>${new Date(inv.date).toLocaleDateString('en-GB')}</td>
+                                <td>${inv.businessAccount?.companyName || 'Guest'}</td>
+                                <td>${inv.status}</td>
+                                <td style="text-align: right;">£${inv.amount.toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        const { uri } = await Print.printToFileAsync({ html: htmlContent });
+        
+        setShowExportModal(false);
+
+        if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(uri, { dialogTitle: 'Invoice_Bundle.pdf', UTI: 'com.adobe.pdf' });
+        } else {
+            Alert.alert('Saved', 'Bundle generated successfully at: ' + uri);
+        }
+    } catch (error) {
+        console.error('PDF Bundle Export Error', error);
+        Alert.alert('Error', 'Failed to generate PDF Bundle.');
+    }
+
+  }, [invoices, exportDateRange, exportStatus, exportFilteredCount]);
 
   const filters: { key: InvoiceFilter; label: string }[] = [
     { key: 'all', label: 'All' },

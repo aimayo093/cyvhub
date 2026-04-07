@@ -7,56 +7,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { QuoteStatus } from '@/types';
 
-const MOCK_QUOTES: any[] = [
-    {
-        id: '1',
-        quoteNumber: 'QT-2023-001',
-        businessName: 'TechCorp Ltd',
-        pickupCity: 'London',
-        dropoffCity: 'Manchester',
-        vehicleType: 'Small Van',
-        jobType: 'B2B',
-        slaRequirement: 'Same Day',
-        distanceKm: 320,
-        estimatedPrice: 145.00,
-        status: 'PENDING' as QuoteStatus,
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        expiresAt: new Date(Date.now() + 86400000 * 6).toISOString(),
-        notes: 'Please ensure fragile handling.',
-    },
-    {
-        id: '2',
-        quoteNumber: 'QT-2023-002',
-        businessName: 'BuildCo Supplies',
-        pickupCity: 'Birmingham',
-        dropoffCity: 'Bristol',
-        vehicleType: 'Large Van',
-        jobType: 'Construction',
-        slaRequirement: 'Next Day',
-        distanceKm: 140,
-        estimatedPrice: 95.50,
-        finalPrice: 85.00,
-        status: 'CONVERTED' as QuoteStatus,
-        convertedJobId: 'JOB-9921',
-        createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-        expiresAt: new Date(Date.now() + 86400000 * 4).toISOString(),
-    },
-    {
-        id: '3',
-        quoteNumber: 'QT-2023-003',
-        businessName: 'MedEquip Pro',
-        pickupCity: 'Leeds',
-        dropoffCity: 'Newcastle',
-        vehicleType: 'Medium Van',
-        jobType: 'Medical',
-        slaRequirement: 'Standard',
-        distanceKm: 160,
-        estimatedPrice: 110.00,
-        status: 'REJECTED' as QuoteStatus,
-        createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-        expiresAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    },
-];
+import { apiClient } from '@/services/api';
 
 function getQuoteStatusColor(status: QuoteStatus) {
     switch (status) {
@@ -77,17 +28,62 @@ export default function QuoteDetailsScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
-    const quote = useMemo(() => MOCK_QUOTES.find((q: any) => q.id === id) || MOCK_QUOTES[0], [id]);
-    const statusColor = getQuoteStatusColor(quote.status);
+    const [quote, setQuote] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
 
-    const estimatedBase = parseFloat((quote.estimatedPrice * 0.3).toFixed(2));
-    const estimatedMileage = parseFloat((quote.estimatedPrice * 0.5).toFixed(2));
-    const estimatedSurcharge = parseFloat((quote.estimatedPrice * 0.2).toFixed(2));
+    const fetchQuote = React.useCallback(async () => {
+        try {
+            const res = await apiClient(`/quotes/${id}`);
+            setQuote(res.quote);
+        } catch (err) {
+            console.error('Failed to load quote details', err);
+            Alert.alert('Error', 'Failed to load quote details.');
+            router.back();
+        } finally {
+            setLoading(false);
+        }
+    }, [id, router]);
 
-    const handleAction = (title: string, message: string, style: 'default' | 'destructive' = 'default') => {
+    React.useEffect(() => {
+        fetchQuote();
+    }, [fetchQuote]);
+
+    const statusColor = quote ? getQuoteStatusColor(quote.status) : Colors.textMuted;
+
+    const estimatedBase = quote ? parseFloat(((quote.estimatedCost || 0) * 0.3).toFixed(2)) : 0;
+    const estimatedMileage = quote ? parseFloat(((quote.estimatedCost || 0) * 0.5).toFixed(2)) : 0;
+    const estimatedSurcharge = quote ? parseFloat(((quote.estimatedCost || 0) * 0.2).toFixed(2)) : 0;
+
+    const handleAction = async (title: string, message: string, newStatus?: string, style: 'default' | 'destructive' = 'default') => {
         Haptics.impactAsync(style === 'destructive' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium);
+        
+        if (newStatus && quote) {
+            Alert.alert(title, message, [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Confirm', 
+                    style: style === 'destructive' ? 'destructive' : 'default',
+                    onPress: async () => {
+                        try {
+                            await apiClient(`/quotes/${id}/status`, {
+                                method: 'PATCH',
+                                body: JSON.stringify({ status: newStatus })
+                            });
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            fetchQuote();
+                        } catch (err) {
+                            Alert.alert('Error', 'Failed to update quote status.');
+                        }
+                    }
+                }
+            ]);
+            return;
+        }
+
         Alert.alert(title, message);
     };
+
+    if (loading || !quote) return null;
 
     return (
         <View style={styles.container}>
@@ -171,13 +167,13 @@ export default function QuoteDetailsScreen() {
                     </View>
                     <View style={styles.totalRow}>
                         <Text style={styles.totalLabel}>Estimated Total</Text>
-                        <Text style={styles.totalValue}>£{quote.estimatedPrice.toFixed(2)}</Text>
+                        <Text style={styles.totalValue}>£{(quote.estimatedCost || 0).toFixed(2)}</Text>
                     </View>
 
-                    {quote.finalPrice && quote.finalPrice !== quote.estimatedPrice && (
+                    {quote.basePrice && quote.estimatedCost && quote.basePrice !== quote.estimatedCost && (
                         <View style={styles.finalTotalRow}>
                             <Text style={styles.finalTotalLabel}>Adjusted Final Price</Text>
-                            <Text style={styles.finalTotalValue}>£{quote.finalPrice.toFixed(2)}</Text>
+                            <Text style={styles.finalTotalValue}>£{(quote.basePrice || 0).toFixed(2)}</Text>
                         </View>
                     )}
                 </View>
@@ -197,12 +193,12 @@ export default function QuoteDetailsScreen() {
                             <Text style={[styles.actionText, { color: Colors.adminPrimary }]}>Adjust Price</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: Colors.success }]} onPress={() => handleAction('Approve Quote', 'Quote approved. The client will be notified.')}>
+                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: Colors.success }]} onPress={() => handleAction('Approve Quote', 'Quote approved. The client will be notified.', 'APPROVED')}>
                             <CheckCircle size={18} color="#FFFFFF" />
                             <Text style={styles.actionText}>Approve & Send</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: Colors.danger }]} onPress={() => handleAction('Reject Quote', 'Are you sure you want to reject this quote request?', 'destructive')}>
+                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: Colors.danger }]} onPress={() => handleAction('Reject Quote', 'Are you sure you want to reject this quote request?', 'REJECTED', 'destructive')}>
                             <XCircle size={18} color="#FFFFFF" />
                             <Text style={styles.actionText}>Reject</Text>
                         </TouchableOpacity>
