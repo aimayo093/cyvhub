@@ -16,7 +16,7 @@ export const getJobs = async (req: AuthenticatedRequest, res: Response) => {
 
         if (userRole === 'driver') {
             // Drivers see jobs assigned to them OR jobs available for pickup
-            jobs = await prisma.job.findMany({
+            const rawJobs = await prisma.job.findMany({
                 where: {
                     OR: [
                         { assignedDriverId: userId },
@@ -25,9 +25,17 @@ export const getJobs = async (req: AuthenticatedRequest, res: Response) => {
                 },
                 include: { quoteRequest: { include: { lineItems: true } } }
             });
+
+            // SEC: Obfuscate commercial data
+            jobs = rawJobs.map((j: any) => {
+                const payoutAmount = j.quoteRequest?.driverPayoutTotal || (j.calculatedPrice * 0.8);
+                const { calculatedPrice, quoteRequest, ...safeJob } = j;
+                return { ...safeJob, payoutAmount };
+            });
+
         } else if (userRole === 'carrier') {
             // Carriers see jobs assigned to their fleet OR available for pickup
-            jobs = await prisma.job.findMany({
+            const rawJobs = await prisma.job.findMany({
                 where: {
                     OR: [
                         { assignedCarrierId: userId },
@@ -35,6 +43,13 @@ export const getJobs = async (req: AuthenticatedRequest, res: Response) => {
                     ]
                 },
                 include: { quoteRequest: { include: { lineItems: true } } }
+            });
+
+            // SEC: Obfuscate commercial data
+            jobs = rawJobs.map((j: any) => {
+                const payoutAmount = j.quoteRequest?.driverPayoutTotal || (j.calculatedPrice * 0.8);
+                const { calculatedPrice, quoteRequest, ...safeJob } = j;
+                return { ...safeJob, payoutAmount };
             });
         } else if (userRole === 'customer') {
             // Customers see deliveries they requested
@@ -216,6 +231,62 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
                             method: 'stripe'
                         }
                     });
+                }
+
+                // ==========================================
+                // ACCOUNTING ENTRY (Internal Ledger)
+                // ==========================================
+                // Ensure platform revenue and VAT are logged cleanly
+                const marginAmount = updatedJob.calculatedPrice - payoutAmount;
+                const vatAmount = updatedJob.calculatedPrice * 0.20;
+
+                try {
+                    await prisma.accountingEntry.createMany({
+                        data: [
+                            {
+                                type: 'credit',
+                                category: 'platform_revenue',
+                                amount: marginAmount,
+                                description: `Revenue margin for Job ${updatedJob.jobNumber}`,
+                                reference: updatedJob.jobNumber,
+                                date: new Date(),
+                            },
+                            {
+                                type: 'credit',
+                                category: 'vat',
+                                amount: vatAmount,
+                                description: `VAT due for Job ${updatedJob.jobNumber}`,
+                                reference: updatedJob.jobNumber,
+                                date: new Date(),
+                            }
+                        ]
+                    });
+                } catch (accErr) {
+                    console.error('Failed to write accounting entries:', accErr);
+                }
+
+                // ==========================================
+                // PAYROLL HOOK (If Employment matches)
+                // ==========================================
+                if (recipientType === 'driver') {
+                    try {
+                        const { PayrollService } = require('../services/payroll.service');
+                        
+                        const now = new Date();
+                        const periodStart = new Date(now);
+                        periodStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+                        periodStart.setHours(0, 0, 0, 0);
+
+                        const periodEnd = new Date(periodStart);
+                        periodEnd.setDate(periodStart.getDate() + 6); // End of week (Saturday)
+                        periodEnd.setHours(23, 59, 59, 999);
+
+                        // This will calculate standard UK Tax/NI and create a payslip
+                        // We do not await it tightly here to avoid blocking the main user flow.
+                        PayrollService.generatePayslip(recipient.id, periodStart, periodEnd).catch(console.error);
+                    } catch (payErr) {
+                        console.error('Failed to trigger payroll updates:', payErr);
+                    }
                 }
             }
         }

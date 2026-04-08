@@ -29,9 +29,12 @@ export class PayrollService {
 
         // 3. Calculate Deductions
         if (hrRecord?.employmentType === 'EMPLOYEE') {
-            // Placeholder for real tax band calculations (e.g. 1257L tax code)
-            taxDeductions = grossPay * 0.20; // 20% basic rate assumption
-            niDeductions = grossPay * 0.08;  // 8% national insurance assumption
+            // Statutory UK Weekly tax bands (1257L tax code ~ £242/week tax-free)
+            const weeklyAllowance = 242;
+            const taxablePay = Math.max(0, grossPay - weeklyAllowance);
+            
+            taxDeductions = taxablePay * 0.20; // 20% basic rate
+            niDeductions = taxablePay * 0.08;  // 8% national insurance
         }
 
         const netPay = grossPay - taxDeductions - niDeductions - otherDeductions;

@@ -202,7 +202,7 @@ function DriverEarningsScreen() {
               <ArrowDownRight size={16} color={Colors.danger} />
             </View>
             <Text style={styles.statItemValue}>£{deductions.toFixed(2)}</Text>
-            <Text style={styles.statItemLabel}>Deductions</Text>
+            <Text style={styles.statItemLabel}>Tax/NI Deduct</Text>
           </View>
           <View style={styles.statItem}>
             <View style={[styles.statIcon, { backgroundColor: Colors.infoLight }]}>

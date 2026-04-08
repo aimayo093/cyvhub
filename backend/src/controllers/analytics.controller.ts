@@ -140,24 +140,16 @@ export const getEarnings = async (req: Request, res: Response) => {
         const period = req.query.period || 'week'; // 'week' | 'month'
 
         if (role === 'carrier') {
-            // Real carrier earnings from DB
-            const user = await prisma.user.findUnique({ where: { id: userId } });
-            const carrierId = user?.carrierProfileId;
-
-            const carrierJobs = await prisma.job.findMany({
-                where: { assignedCarrierId: userId, status: 'COMPLETED' },
-                select: { calculatedPrice: true, completedAt: true },
-            });
-
-            const totalRevenue = carrierJobs.reduce((sum, j) => sum + j.calculatedPrice, 0);
-            const completedJobs = carrierJobs.length;
-            const avgPerJob = completedJobs > 0 ? totalRevenue / completedJobs : 0;
-
+            // Real carrier earnings from DB using Settlement Batches instead of referencing customer pricing
             const settlementsRes = await prisma.settlementBatch.findMany({
-                where: { recipientId: userId, status: 'PAID' },
-                select: { netAmount: true },
+                where: { recipientId: userId }
             });
-            const paidOut = settlementsRes.reduce((sum, s) => sum + s.netAmount, 0);
+
+            const totalRevenue = settlementsRes.reduce((sum, s) => sum + s.grossAmount, 0);
+            const paidOut = settlementsRes.filter(s => s.status === 'PAID').reduce((sum, s) => sum + s.netAmount, 0);
+            
+            const completedJobs = settlementsRes.reduce((sum, s) => sum + s.jobsCount, 0);
+            const avgPerJob = completedJobs > 0 ? totalRevenue / completedJobs : 0;
 
             return res.json({
                 role: 'carrier',
@@ -214,40 +206,36 @@ export const getEarnings = async (req: Request, res: Response) => {
                 }
             });
         } else {
-            // Real driver earnings from DB
-            const now = new Date();
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - now.getDay());
-            weekStart.setHours(0, 0, 0, 0);
-
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-            const since = period === 'week' ? weekStart : monthStart;
-
-            const driverJobs = await prisma.job.findMany({
-                where: {
-                    assignedDriverId: userId,
-                    status: 'COMPLETED',
-                    completedAt: { gte: since },
-                },
-                select: { calculatedPrice: true, completedAt: true },
+            // Real driver earnings from DB relying entirely on securely generated settlement batches
+            const settlementsRes = await prisma.settlementBatch.findMany({
+                where: { recipientId: userId }
             });
 
-            const grossPay = driverJobs.reduce((sum, j) => sum + (j.calculatedPrice * 0.8), 0);
-            const deductions = grossPay * 0.085; // NI + platform fee
-            const netPay = grossPay - deductions;
+            const grossPay = settlementsRes.reduce((sum, s) => sum + s.grossAmount, 0);
+            const defaultDeductions = settlementsRes.reduce((sum, s) => sum + s.totalDeductions, 0);
+            
+            // Check for employee Payslips (Tax/NI)
+            let employeeTax = 0;
+            try {
+                const payslips = await (prisma as any).payslip.findMany({ where: { userId } });
+                employeeTax = payslips.reduce((sum: number, p: any) => sum + p.taxDeductions + p.niDeductions, 0);
+            } catch (e) {
+                employeeTax = 0;
+            }
+
+            const totalDeductions = defaultDeductions + employeeTax;
+            const netPay = grossPay - totalDeductions;
 
             const summary = {
                 netPay: parseFloat(netPay.toFixed(2)),
                 grossPay: parseFloat(grossPay.toFixed(2)),
-                deductions: parseFloat(deductions.toFixed(2)),
-                jobsCompleted: driverJobs.length,
+                deductions: parseFloat(totalDeductions.toFixed(2)),
+                jobsCompleted: settlementsRes.reduce((sum, s) => sum + s.jobsCount, 0),
                 hoursWorked: 0,   // Placeholder until time-tracking is implemented
                 milesDriven: 0,   // Placeholder until route tracking is implemented
             };
 
             return res.json({ role: 'driver', data: { summary, weeklyEarnings: [] } });
-
         }
     } catch (error) {
         console.error('Error fetching earnings analytics:', error);

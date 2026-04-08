@@ -295,7 +295,9 @@ export default function JobDetailScreen() {
         </View>
 
         <View style={styles.priceRow}>
-          <Text style={styles.price}>£{job.calculatedPrice.toFixed(2)}</Text>
+          <Text style={styles.price}>
+            £{job.calculatedPrice ? job.calculatedPrice.toFixed(2) : (job.payoutAmount ? job.payoutAmount.toFixed(2) : '0.00')}
+          </Text>
           {job.distanceKm != null && (
             <Text style={styles.distance}>{job.distanceKm.toFixed(1)} km</Text>
           )}
