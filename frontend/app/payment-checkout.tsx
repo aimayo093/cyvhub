@@ -144,8 +144,7 @@ export default function PaymentCheckoutScreen() {
       const { sessionId, transaction } = await initiateStripeCheckout(
         amount,
         description,
-        params.deliveryId,
-        params.trackingNumber,
+        params.deliveryId
       );
 
       setTimeout(async () => {

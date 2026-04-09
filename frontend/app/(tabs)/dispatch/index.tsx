@@ -99,7 +99,7 @@ export default function DispatchScreen() {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Save', 
-          onPress: (text) => {
+          onPress: (text?: string) => {
             if (text) addJobNote(job.id, text);
           } 
         }

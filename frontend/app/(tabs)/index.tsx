@@ -477,6 +477,16 @@ function CustomerHome() {
         </View>
 
         <View style={styles.content}>
+          <TouchableOpacity 
+            style={styles.premiumAiCard}
+            onPress={() => router.push('/customer-ai' as any)}
+            activeOpacity={0.9}
+          >
+            <View style={styles.aiGlow} />
+            <View style={{ flex: 1, zIndex: 1 }}>
+              <Text style={styles.aiCardTitle}>Logistics AI Insights</Text>
+              <Text style={styles.aiCardSub}>{analytics.aiSummary}</Text>
+            </View>
             <ChevronRight size={24} color="#FFF" style={{ zIndex: 1 }} />
           </TouchableOpacity>
 
@@ -2208,36 +2218,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: '#FFFFFF',
-  },
-  emptyActivityCard: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 8,
-  },
-  emptyActivityText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-  aiAlertCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  aiAlertText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    flex: 1,
   },
   instantQuoteContainer: {
     marginBottom: 24,

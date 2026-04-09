@@ -53,6 +53,7 @@ interface NotificationLog {
   type: string;
   recipient: string;
   message: string;
+  subject?: string;
   status: string;
   error?: string;
   createdAt: string;

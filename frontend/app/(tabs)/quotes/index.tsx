@@ -24,6 +24,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/providers/AuthProvider';
 import { QuoteStatus } from '@/types';
+import { apiClient } from '@/services/api';
 
 export const MOCK_QUOTES: any[] = [
   {

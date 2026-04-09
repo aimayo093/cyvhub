@@ -87,9 +87,12 @@ export default function AdminCreateJobScreen() {
     if (step === 2 && formData.pickupPostcode && formData.dropoffPostcode) {
         setLoading(true);
         try {
-            const res = await apiClient('/location/distance', 'POST', {
-                pickupPostcode: formData.pickupPostcode,
-                dropoffPostcode: formData.dropoffPostcode
+            const res = await apiClient('/location/distance', {
+                method: 'POST',
+                body: JSON.stringify({
+                    pickupPostcode: formData.pickupPostcode,
+                    dropoffPostcode: formData.dropoffPostcode
+                })
             });
             if (res && res.distanceMiles) {
                 setFormData(prev => ({ ...prev, distanceMiles: res.distanceMiles.toString() }));

@@ -20,6 +20,8 @@ interface PODData {
   receiverName: string;
   podUrl?: string;
   signatureUrl?: string;
+  signatureCaptured?: boolean;
+  photoCount?: number;
   notes?: string;
 }
 

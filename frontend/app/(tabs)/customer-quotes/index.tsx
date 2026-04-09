@@ -14,6 +14,7 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   FileText,
@@ -62,6 +63,7 @@ function formatDate(dateStr: string): string {
 
 export default function CustomerQuotesScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [filter, setFilter] = useState<FilterTab>('all');
   const [refreshing, setRefreshing] = useState(false);

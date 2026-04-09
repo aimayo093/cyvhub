@@ -43,7 +43,10 @@ export default function AdminDisputesScreen() {
                 refundStatus: refundType,
                 refundAmount: refundType !== 'NONE' ? parseFloat(refundAmount) : 0
             };
-            await apiClient(`/disputes/${selectedDispute.id}/resolve`, 'PATCH', payload);
+            await apiClient(`/disputes/${selectedDispute.id}/resolve`, {
+                method: 'PATCH',
+                body: JSON.stringify(payload)
+            });
             Alert.alert('Resolved', 'Dispute has been resolved.');
             setResolveModal(false);
             loadDisputes();
