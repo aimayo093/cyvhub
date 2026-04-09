@@ -34,6 +34,7 @@ import commercialRoutes from './routes/commercial.routes';
 import adminCommercialRoutes from './routes/admin.commercial.routes';
 import complianceRoutes from './routes/compliance.routes';
 import paypalRoutes from './routes/paypal.routes';
+import stripeConnectRoutes from './routes/stripe-connect.routes';
 
 dotenv.config();
 
@@ -201,6 +202,11 @@ const webhookOnlyRouter = stripeWebhookRouter.Router();
 webhookOnlyRouter.post('/webhook', stripeWebhookRouter.raw({ type: 'application/json' }), require('./controllers/stripe.controller').StripeController.handleWebhook);
 app.use('/api/stripe', webhookOnlyRouter);
 
+// Stripe Connect webhook — raw body required
+const connectWebhookRouter = stripeWebhookRouter.Router();
+connectWebhookRouter.post('/webhook', stripeWebhookRouter.raw({ type: 'application/json' }), require('./controllers/stripe-connect.controller').handleConnectWebhook);
+app.use('/api/stripe-connect', connectWebhookRouter);
+
 // SEC-AUDIT-5: Hard limit body to 100kb to block large-payload DoS attacks.
 app.use(express.json({ limit: '100kb' }));
 
@@ -258,6 +264,9 @@ app.use('/api/commercial', commercialRoutes);
 
 // Driver Compliance (upload, status, admin verification)
 app.use('/api/compliance', complianceRoutes);
+
+// Stripe Connect — marketplace payout system
+app.use('/api/stripe-connect', stripeConnectRoutes);
 
 console.log('✅ All routes registered.');
 

@@ -8,8 +8,10 @@ import {
   RefreshControl,
   Animated,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
 import {
   TrendingUp,
   Clock,
@@ -25,6 +27,36 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/services/api';
+import { useRouter } from 'expo-router';
+
+const StripeOnboardingBanner = () => {
+    const router = useRouter();
+    const [status, setStatus] = useState<any>(null);
+
+    useEffect(() => {
+        apiClient('/stripe-connect/status').then(res => setStatus(res)).catch(console.error);
+    }, []);
+
+    if (!status || status.onboardingComplete) return null;
+
+    return (
+        <View style={{ margin: 16, padding: 16, backgroundColor: Colors.warningLight, borderRadius: 12, borderWidth: 1, borderColor: Colors.warning }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <DollarSign size={20} color={Colors.warning} />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.warning, marginLeft: 8 }}>Action Required: Set up payouts</Text>
+            </View>
+            <Text style={{ fontSize: 13, color: Colors.text, marginBottom: 12 }}>
+                Please complete your Stripe identity verification to receive weekly payouts for your completed jobs.
+            </Text>
+            <TouchableOpacity 
+                style={{ backgroundColor: Colors.warning, paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
+                onPress={() => router.push('/stripe-onboard' as never)}
+            >
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Complete Setup</Text>
+            </TouchableOpacity>
+        </View>
+    );
+};
 
 const SettlementHistoryList = ({ history, isCarrier }: { history: any[], isCarrier?: boolean }) => {
   if (!history || history.length === 0) return null;
@@ -41,14 +73,18 @@ const SettlementHistoryList = ({ history, isCarrier }: { history: any[], isCarri
               <Text style={{ fontSize: 14, fontWeight: '500', color: Colors.text }}>
                 Ref: {s.id.slice(0, 8).toUpperCase()}
               </Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: s.status === 'PAID' ? Colors.success : Colors.warning, marginTop: 4 }}>
-                {s.status}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                  {s.payoutStatus === 'PAID' ? <CheckCircle size={14} color={Colors.success} /> : <Clock size={14} color={Colors.warning} />}
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: s.payoutStatus === 'PAID' ? Colors.success : Colors.warning, marginLeft: 4 }}>
+                      {s.payoutStatus === 'PAID' ? 'TRANSFERRED' : 'PENDING'}
+                  </Text>
+              </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ fontSize: 14, color: Colors.textSecondary }}>Gross: £{(s.grossAmount || 0).toFixed(2)}</Text>
               {!isCarrier && s.totalDeductions > 0 && <Text style={{ fontSize: 13, color: Colors.danger }}>Tax/NI: -£{s.totalDeductions.toFixed(2)}</Text>}
-              <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.text, marginTop: 4 }}>Net Pay: £{(s.netAmount || 0).toFixed(2)}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: Colors.text, marginTop: 4 }}>Net Pay: £{(s.netAmount || 0).toFixed(2)}</Text>
+              {s.stripeTransferId && <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>{s.stripeTransferId}</Text>}
             </View>
           </View>
         ))}
@@ -289,6 +325,7 @@ function DriverEarningsScreen() {
           </View>
         </View>
 
+        <StripeOnboardingBanner />
         {data?.history && <SettlementHistoryList history={data.history} />}
 
         <View style={{ height: 24 }} />
@@ -465,6 +502,7 @@ function CarrierRevenueScreen() {
           </View>
         </View>
 
+        <StripeOnboardingBanner />
         {data?.history && <SettlementHistoryList history={data.history} isCarrier={true} />}
 
         <View style={{ height: 24 }} />

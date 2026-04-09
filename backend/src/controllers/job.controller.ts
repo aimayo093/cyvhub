@@ -236,9 +236,9 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
                 // ==========================================
                 // ACCOUNTING ENTRY (Internal Ledger)
                 // ==========================================
-                // Ensure platform revenue and VAT are logged cleanly
                 const marginAmount = updatedJob.calculatedPrice - payoutAmount;
                 const vatAmount = updatedJob.calculatedPrice * 0.20;
+                const customerAmountIncVat = updatedJob.calculatedPrice * 1.20;
 
                 try {
                     await prisma.accountingEntry.createMany({
@@ -266,27 +266,139 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
                 }
 
                 // ==========================================
-                // PAYROLL HOOK (If Employment matches)
+                // VAT RECORD (Explicit HMRC ledger)
+                // ==========================================
+                try {
+                    await (prisma as any).vatRecord.create({
+                        data: {
+                            jobId: jobId,
+                            customerAmount: updatedJob.calculatedPrice,
+                            vatRate: 20.0,
+                            vatAmount: vatAmount,
+                        }
+                    });
+                } catch (vatErr) {
+                    console.error('Failed to create VatRecord:', vatErr);
+                }
+
+                // ==========================================
+                // JOB FINANCIAL RECORD (Admin breakdown table)
+                // ==========================================
+                try {
+                    await (prisma as any).jobFinancialRecord.upsert({
+                        where: { jobId: jobId },
+                        create: {
+                            jobId: jobId,
+                            jobNumber: updatedJob.jobNumber,
+                            customerAmount: customerAmountIncVat,
+                            driverPayout: recipientType === 'driver' ? payoutAmount : 0,
+                            carrierPayout: recipientType === 'carrier' ? payoutAmount : 0,
+                            vatAmount: vatAmount,
+                            marginAmount: marginAmount,
+                            stripePaymentIntentId: updatedJob.paymentIntentId || null,
+                        },
+                        update: {
+                            driverPayout: recipientType === 'driver' ? payoutAmount : undefined,
+                            carrierPayout: recipientType === 'carrier' ? payoutAmount : undefined,
+                        }
+                    });
+                } catch (finErr) {
+                    console.error('Failed to create JobFinancialRecord:', finErr);
+                }
+
+                // ==========================================
+                // PAYROLL HOOK (UK Tax/NI for employees)
                 // ==========================================
                 if (recipientType === 'driver') {
                     try {
                         const { PayrollService } = require('../services/payroll.service');
-                        
                         const now = new Date();
                         const periodStart = new Date(now);
-                        periodStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+                        periodStart.setDate(now.getDate() - now.getDay());
                         periodStart.setHours(0, 0, 0, 0);
-
                         const periodEnd = new Date(periodStart);
-                        periodEnd.setDate(periodStart.getDate() + 6); // End of week (Saturday)
+                        periodEnd.setDate(periodStart.getDate() + 6);
                         periodEnd.setHours(23, 59, 59, 999);
 
-                        // This will calculate standard UK Tax/NI and create a payslip
-                        // We do not await it tightly here to avoid blocking the main user flow.
+                        // Check employment type before applying PAYE
+                        const hrRecord = await (prisma as any).hRRecord.findUnique({
+                            where: { userId: recipient.id }
+                        });
+                        const isEmployee = hrRecord?.employmentType === 'EMPLOYEE';
+
+                        if (isEmployee) {
+                            // Calculate Tax/NI deductions
+                            const weeklyTaxFreeAllowance = 242; // 1257L basis
+                            const taxableIncome = Math.max(0, payoutAmount - weeklyTaxFreeAllowance);
+                            const taxAmount = taxableIncome * 0.20; // Basic rate
+                            const niThreshold = 242;
+                            const niAmount = Math.max(0, payoutAmount - niThreshold) * 0.08;
+
+                            // Create explicit TaxNI record
+                            await (prisma as any).taxNiRecord.create({
+                                data: {
+                                    userId: recipient.id,
+                                    jobId: jobId,
+                                    employmentType: 'EMPLOYEE',
+                                    grossPay: payoutAmount,
+                                    taxAmount: parseFloat(taxAmount.toFixed(2)),
+                                    niAmount: parseFloat(niAmount.toFixed(2)),
+                                    netPay: parseFloat((payoutAmount - taxAmount - niAmount).toFixed(2)),
+                                    taxCode: hrRecord?.taxCode || '1257L',
+                                    periodStart,
+                                    periodEnd,
+                                }
+                            });
+                        }
+
                         PayrollService.generatePayslip(recipient.id, periodStart, periodEnd).catch(console.error);
                     } catch (payErr) {
                         console.error('Failed to trigger payroll updates:', payErr);
                     }
+                }
+
+                // ==========================================
+                // STRIPE CONNECT TRANSFER (Automated Payout)
+                // ==========================================
+                // Find the just-created settlement batch and attempt Stripe transfer
+                const newBatch = await prisma.settlementBatch.findFirst({
+                    where: { recipientId: recipient.id, status: 'PENDING_APPROVAL' },
+                    orderBy: { createdAt: 'desc' }
+                });
+
+                if (newBatch) {
+                    // Fire-and-forget: transfer is non-blocking but logged
+                    (async () => {
+                        try {
+                            const recipientUser = await prisma.user.findUnique({
+                                where: { id: recipient.id },
+                                select: { stripeAccountId: true, stripeOnboardingComplete: true }
+                            });
+
+                            if (recipientUser?.stripeAccountId && recipientUser?.stripeOnboardingComplete) {
+                                const { StripeConnectService } = require('../services/stripe-connect.service');
+                                const result = await StripeConnectService.executeTransfer(
+                                    payoutAmount,
+                                    recipientUser.stripeAccountId,
+                                    newBatch.id,
+                                    jobId
+                                );
+
+                                // Update JobFinancialRecord with transfer ID
+                                if (result.success) {
+                                    const transferField = recipientType === 'driver' ? 'stripeDriverTransferId' : 'stripeCarrierTransferId';
+                                    await (prisma as any).jobFinancialRecord.update({
+                                        where: { jobId: jobId },
+                                        data: { [transferField]: result.transferId }
+                                    }).catch(console.error);
+                                }
+                            } else {
+                                console.log(`[PAYOUT] Recipient ${recipient.id} has no Stripe account — batch ${newBatch.id} queued for manual payout`);
+                            }
+                        } catch (transferErr) {
+                            console.error('[PAYOUT] Stripe transfer failed:', transferErr);
+                        }
+                    })();
                 }
             }
         }

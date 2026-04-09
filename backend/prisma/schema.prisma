@@ -60,6 +60,10 @@ model User {
   complianceDocs         DriverComplianceDocument[] @relation("DriverDocs")
   complianceReviews      DriverComplianceDocument[] @relation("ReviewedByAdmin")
   carrierComplianceReviews ComplianceDocument[]     @relation("CarrierDocReview")
+
+  // Stripe Connect — marketplace payout fields
+  stripeAccountId          String?  // Connected account ID (acct_xxx)
+  stripeOnboardingComplete Boolean  @default(false)
 }
 
 // ─── Driver Compliance Documents ────────────────────────────────────────────
@@ -250,6 +254,14 @@ model SettlementBatch {
   approvedAt  DateTime?
   processedAt DateTime?
   createdAt   DateTime  @default(now())
+
+  // Stripe Connect payout tracking
+  stripeTransferId  String?  // transfer_xxx from Stripe Connect
+  stripePayoutId    String?  // po_xxx if manual payout
+  payoutStatus      String   @default("PENDING") // PENDING | PROCESSING | PAID | FAILED | RETRYING
+  payoutError       String?  // Error message if failed
+  payoutAttempts    Int      @default(0)
+  lastPayoutAt      DateTime?
 }
 
 model MediaAsset {
@@ -817,4 +829,72 @@ model GlobalConfig {
 model JobCounter {
   id      Int @id @default(1)
   current Int @default(0)
+}
+
+// ==========================================
+// STRIPE MARKETPLACE TAX LEDGERS
+// ==========================================
+
+// Explicit per-job Tax & NI ledger for UK compliance
+model TaxNiRecord {
+  id     String @id @default(uuid())
+  userId String
+  jobId  String
+
+  employmentType String // "EMPLOYEE" | "CONTRACTOR"
+  grossPay       Float
+  taxAmount      Float
+  niAmount       Float
+  netPay         Float
+
+  taxCode   String  @default("1257L")
+  niCategory String  @default("A") // Standard rate NI
+
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([jobId])
+}
+
+// Explicit per-job VAT ledger for HMRC compliance
+model VatRecord {
+  id    String @id @default(uuid())
+  jobId String
+
+  customerAmount Float  // Full amount customer paid (ex VAT)
+  vatRate        Float  @default(20.0)
+  vatAmount      Float  // Calculated VAT
+  vatRegNumber   String @default("GB 384 9210 55")
+
+  reconciled     Boolean  @default(false)
+  reconciledAt   DateTime?
+  reconciledBy   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+}
+
+// Per-job financial breakdown for admin reporting
+model JobFinancialRecord {
+  id    String @id @default(uuid())
+  jobId String @unique
+
+  jobNumber      String
+  customerAmount Float  // Full price paid by customer (inc VAT)
+  driverPayout   Float  @default(0)
+  carrierPayout  Float  @default(0)
+  vatAmount      Float
+  marginAmount   Float
+
+  stripePaymentIntentId String?
+  stripeDriverTransferId  String?
+  stripeCarrierTransferId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobId])
 }
