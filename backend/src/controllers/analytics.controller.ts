@@ -159,6 +159,7 @@ export const getEarnings = async (req: Request, res: Response) => {
                     pendingPayment: parseFloat((totalRevenue - paidOut).toFixed(2)),
                     completedJobs,
                     avgPerJob: parseFloat(avgPerJob.toFixed(2)),
+                    history: settlementsRes
                 }
             });
         } else if (role === 'customer' || role === 'business') {
@@ -235,7 +236,7 @@ export const getEarnings = async (req: Request, res: Response) => {
                 milesDriven: 0,   // Placeholder until route tracking is implemented
             };
 
-            return res.json({ role: 'driver', data: { summary, weeklyEarnings: [] } });
+            return res.json({ role: 'driver', data: { summary, weeklyEarnings: [], history: settlementsRes } });
         }
     } catch (error) {
         console.error('Error fetching earnings analytics:', error);

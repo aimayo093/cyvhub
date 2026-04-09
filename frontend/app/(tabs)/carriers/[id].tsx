@@ -39,7 +39,7 @@ export default function CarrierProfileScreen() {
                 method: 'PATCH',
                 body: JSON.stringify({ status })
             });
-            setCarrier(prev => ({ ...prev, status }));
+            setCarrier((prev: any) => ({ ...prev, status }));
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             Alert.alert('Success', `Carrier status updated to ${status}.`, [{ text: 'OK', onPress: () => router.back() }]);
         } catch (error) {

@@ -186,3 +186,97 @@ export const markInvoicePaid = async (req: AuthenticatedRequest, res: Response) 
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+/**
+ * GET /api/admin/accounting/tax-ni
+ * Lists all employee Payslip deductions aggregated by User
+ */
+export const listTaxAndNi = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        
+        // Use any cast to bypass schema linter caching if Payslip model gives TS errors
+        const payslips = await (prisma as any).payslip.findMany({
+            include: {
+                user: {
+                    select: { firstName: true, lastName: true, email: true }
+                }
+            },
+            orderBy: { periodStart: 'desc' }
+        });
+
+        // Group by user for the UI
+        const groupedMap = new Map();
+        payslips.forEach((p: any) => {
+            const name = `${p.user.firstName} ${p.user.lastName}`;
+            if (!groupedMap.has(p.userId)) {
+                groupedMap.set(p.userId, {
+                    userId: p.userId,
+                    name,
+                    email: p.user.email,
+                    totalTax: 0,
+                    totalNi: 0,
+                    records: []
+                });
+            }
+            const g = groupedMap.get(p.userId);
+            g.totalTax += p.taxDeductions;
+            g.totalNi += p.niDeductions;
+            g.records.push(p);
+        });
+
+        res.json({ taxRecords: Array.from(groupedMap.values()) });
+    } catch (error) {
+        console.error('List Tax And NI Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/**
+ * GET /api/admin/accounting/vat
+ * Lists all VAT Accounting Entries
+ */
+export const listVat = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        
+        const entries = await prisma.accountingEntry.findMany({
+            where: { category: 'vat' },
+            orderBy: { date: 'desc' }
+        });
+
+        res.json({ vatRecords: entries });
+    } catch (error) {
+        console.error('List VAT Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/**
+ * PATCH /api/admin/accounting/vat/:id/reconcile
+ * Marks a VAT accounting entry as reconciled
+ */
+export const reconcileVat = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        
+        const id = req.params.id as string;
+        
+        const entry = await prisma.accountingEntry.findUnique({ where: { id }});
+        if (!entry) return res.status(404).json({ error: 'Not found' });
+        
+        if (entry.description.includes('[RECONCILED]')) {
+            return res.status(400).json({ error: 'Already reconciled' });
+        }
+
+        const updated = await prisma.accountingEntry.update({
+            where: { id },
+            data: { description: `[RECONCILED] ${entry.description}` }
+        });
+        
+        res.json({ message: 'Marked as reconciled', record: updated });
+    } catch (error) {
+        console.error('Reconcile VAT Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};

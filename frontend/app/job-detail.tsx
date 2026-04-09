@@ -593,6 +593,39 @@ export default function JobDetailScreen() {
           </View>
         )}
 
+        {userRole === 'admin' && job.calculatedPrice !== undefined && (
+          <View style={styles.adminSection}>
+            <View style={styles.adminHeader}>
+              <Shield size={16} color={Colors.adminPrimary || Colors.primary} />
+              <Text style={styles.adminTitle}>Admin Financial Breakdown</Text>
+            </View>
+            <View style={styles.adminFinanceGrid}>
+              <View style={styles.adminFinanceRow}>
+                <Text style={styles.adminFinanceLabel}>Customer Charge</Text>
+                <Text style={styles.adminFinanceValue}>£{job.calculatedPrice.toFixed(2)}</Text>
+              </View>
+              <View style={styles.adminFinanceRow}>
+                <Text style={styles.adminFinanceLabel}>Assigned Payout ({job.assignedDriver ? 'Driver' : 'Carrier'})</Text>
+                <Text style={[styles.adminFinanceValue, { color: Colors.danger }]}>
+                  -£{job.payoutAmount ? job.payoutAmount.toFixed(2) : (job.calculatedPrice * 0.8).toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.adminFinanceRow}>
+                <Text style={styles.adminFinanceLabel}>VAT Liability (20%)</Text>
+                <Text style={[styles.adminFinanceValue, { color: Colors.warning }]}>
+                  -£{(job.calculatedPrice * 0.20).toFixed(2)}
+                </Text>
+              </View>
+              <View style={[styles.adminFinanceRow, { borderTopWidth: 1, borderColor: Colors.border, paddingTop: 8, marginTop: 4 }]}>
+                <Text style={[styles.adminFinanceLabel, { fontWeight: '700' as const }]}>Gross Margin</Text>
+                <Text style={[styles.adminFinanceValue, { fontWeight: '700' as const, color: Colors.success }]}>
+                  £{(job.calculatedPrice - (job.payoutAmount || job.calculatedPrice * 0.8) - (job.calculatedPrice * 0.20)).toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         <View style={{ height: 120 }} />
       </ScrollView>
 
@@ -1280,5 +1313,41 @@ const styles = StyleSheet.create({
   parcelDims: {
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  adminSection: {
+    marginTop: 20,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  adminHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  adminTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#0F172A',
+  },
+  adminFinanceGrid: {
+    gap: 8,
+  },
+  adminFinanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  adminFinanceLabel: {
+    fontSize: 14,
+    color: '#475569',
+  },
+  adminFinanceValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#0F172A',
   },
 });

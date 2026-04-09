@@ -26,8 +26,36 @@ import Colors from '@/constants/colors';
 import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/services/api';
 
-
-
+const SettlementHistoryList = ({ history, isCarrier }: { history: any[], isCarrier?: boolean }) => {
+  if (!history || history.length === 0) return null;
+  return (
+    <View style={styles.chartSection}>
+      <Text style={styles.chartTitle}>Settlement History</Text>
+      <View style={{ marginTop: 10, borderTopWidth: 1, borderColor: Colors.border }}>
+        {history.map((s, i) => (
+          <View key={s.id || i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderColor: Colors.border }}>
+            <View>
+              <Text style={{ fontSize: 13, color: Colors.textMuted, marginBottom: 4 }}>
+                {s.jobsCount} Jobs • {new Date(s.createdAt || s.periodStart).toLocaleDateString()}
+              </Text>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: Colors.text }}>
+                Ref: {s.id.slice(0, 8).toUpperCase()}
+              </Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: s.status === 'PAID' ? Colors.success : Colors.warning, marginTop: 4 }}>
+                {s.status}
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ fontSize: 14, color: Colors.textSecondary }}>Gross: £{(s.grossAmount || 0).toFixed(2)}</Text>
+              {!isCarrier && s.totalDeductions > 0 && <Text style={{ fontSize: 13, color: Colors.danger }}>Tax/NI: -£{s.totalDeductions.toFixed(2)}</Text>}
+              <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.text, marginTop: 4 }}>Net Pay: £{(s.netAmount || 0).toFixed(2)}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
 type Period = 'week' | 'month';
 
 function DriverEarningsScreen() {
@@ -261,6 +289,8 @@ function DriverEarningsScreen() {
           </View>
         </View>
 
+        {data?.history && <SettlementHistoryList history={data.history} />}
+
         <View style={{ height: 24 }} />
       </ScrollView>
     </View>
@@ -434,6 +464,8 @@ function CarrierRevenueScreen() {
             </View>
           </View>
         </View>
+
+        {data?.history && <SettlementHistoryList history={data.history} isCarrier={true} />}
 
         <View style={{ height: 24 }} />
       </ScrollView>

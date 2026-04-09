@@ -67,6 +67,7 @@ export interface Job {
   specialInstructions?: string;
   goodsDescription?: string;
   calculatedPrice: number;
+  payoutAmount?: number;
   distanceKm?: number;
   businessName?: string;
   categoryName: string;
@@ -78,6 +79,7 @@ export interface Job {
   podSignature?: boolean;
   podPhotos?: number;
   podNotes?: string;
+  assignedDriver?: string;
   assignedCarrier?: string;
   parcels?: Parcel[];
   notes?: any[];

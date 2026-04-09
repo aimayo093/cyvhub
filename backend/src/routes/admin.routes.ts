@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware';
 import { getDashboardOverview, getComplianceList, getHRList, getUsersList, adminListJobs, getBusinessesList, adminCreateJob, adminUpdateCompliance, adminUpdateHR, adminUpdateUserStatus, adminAssignJob, adminUpdateBusiness } from '../controllers/admin.controller';
-import { listSettlements, listLedger, approveSettlement, listInvoices, getInvoiceDetails, markInvoicePaid } from '../controllers/admin-accounting.controller';
+import { listSettlements, listLedger, approveSettlement, listInvoices, getInvoiceDetails, markInvoicePaid, listTaxAndNi, listVat, reconcileVat } from '../controllers/admin-accounting.controller';
 
 const router = Router();
 
@@ -28,5 +28,8 @@ router.get('/accounting/ledger', listLedger);
 router.get('/accounting/invoices', listInvoices);
 router.get('/accounting/invoices/:id', getInvoiceDetails);
 router.patch('/accounting/invoices/:id/paid', markInvoicePaid);
+router.get('/accounting/tax-ni', listTaxAndNi);
+router.get('/accounting/vat', listVat);
+router.patch('/accounting/vat/:id/reconcile', reconcileVat);
 
 export default router;

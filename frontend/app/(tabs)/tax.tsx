@@ -38,12 +38,20 @@ export default function TaxComplianceScreen() {
   const [vatRate, setVatRate] = useState('20.0');
   const [mtdConnected, setMtdConnected] = useState(true);
   const [stats, setStats] = useState<any>(null);
+  const [vatRecords, setVatRecords] = useState<any[]>([]);
+  const [taxRecords, setTaxRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await apiClient('/analytics/platform');
+      const [res, vatRes, taxRes] = await Promise.all([
+        apiClient('/analytics/platform'),
+        apiClient('/admin/accounting/vat').catch(() => ({ vatRecords: [] })),
+        apiClient('/admin/accounting/tax-ni').catch(() => ({ taxRecords: [] }))
+      ]);
       setStats(res.stats);
+      setVatRecords(vatRes.vatRecords || []);
+      setTaxRecords(taxRes.taxRecords || []);
     } catch (err) {
       console.error('fetchData error:', err);
     } finally {
@@ -259,6 +267,76 @@ export default function TaxComplianceScreen() {
                   <Text style={styles.boxValue}>£{vatData.box9.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
               </View>
+            </View>
+          )}
+        </View>
+
+        {/* VAT Transactions Ledger (Raw) */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <FileText size={18} color={Colors.adminPrimary} />
+            <Text style={styles.sectionTitle}>Raw VAT Transactions</Text>
+          </View>
+          <Text style={styles.helperText}>Each record tracks the precise VAT liability computed upon an atomic job completion. Reconcile records to clear them.</Text>
+          {vatRecords.length === 0 ? (
+             <Text style={{ ...styles.helperText, textAlign: 'center', marginTop: 10 }}>No VAT records exist yet.</Text>
+          ) : (
+            <View style={styles.ledgerTable}>
+              {vatRecords.map((v) => {
+                const isReconciled = v.description.includes('[RECONCILED]');
+                return (
+                  <TouchableOpacity 
+                    key={v.id} 
+                    style={[styles.ledgerRow, isReconciled && { opacity: 0.6 }]}
+                    onPress={() => {
+                        if (isReconciled) return;
+                        Alert.alert('Reconcile VAT', 'Mark this VAT liability as settled with HMRC?', [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Reconcile', onPress: async () => {
+                                try {
+                                    await apiClient(`/admin/accounting/vat/${v.id}/reconcile`, { method: 'PATCH' });
+                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                    fetchData();
+                                } catch(e) { Alert.alert('Error', 'Failed to reconcile.'); }
+                            }}
+                        ])
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.ledgerDate}>{new Date(v.date).toLocaleDateString()}</Text>
+                      <Text style={styles.ledgerTitle}>{isReconciled ? '✓ RECONCILED' : v.description}</Text>
+                    </View>
+                    <Text style={[styles.ledgerAmount, { color: Colors.warning }]}>£{v.amount.toFixed(2)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        {/* Employee Tax & NI Ledger */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Building2 size={18} color={Colors.adminPrimary} />
+            <Text style={styles.sectionTitle}>Employee Tax & NI Ledger</Text>
+          </View>
+          <Text style={styles.helperText}>Shows cumulative payroll deductions for HR employee drivers. This is fully isolated from external carrier settlements.</Text>
+          {taxRecords.length === 0 ? (
+             <Text style={{ ...styles.helperText, textAlign: 'center', marginTop: 10 }}>No employee payroll taxes recorded.</Text>
+          ) : (
+            <View style={styles.ledgerTable}>
+              {taxRecords.map((t) => (
+                <View key={t.userId} style={styles.ledgerRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.ledgerTitle}>{t.name}</Text>
+                    <Text style={styles.ledgerDate}>{t.email}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.ledgerAmount, { color: Colors.danger }]}>Tax: £{t.totalTax.toFixed(2)}</Text>
+                    <Text style={[styles.ledgerAmount, { color: Colors.info, fontSize: 13 }]}>NI: £{t.totalNi.toFixed(2)}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           )}
         </View>
@@ -507,7 +585,34 @@ const styles = StyleSheet.create({
   },
   actionBtnTextPrimary: {
     color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 15,
+    fontWeight: '600' as const,
+    fontSize: 14,
   },
+  ledgerTable: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderColor: Colors.border,
+  },
+  ledgerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
+  },
+  ledgerDate: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginBottom: 4,
+  },
+  ledgerTitle: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500' as const,
+  },
+  ledgerAmount: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+  }
 });
