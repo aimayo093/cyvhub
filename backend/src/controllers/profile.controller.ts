@@ -56,8 +56,10 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
 
         // SEC-05: Mass Assignment Protection
         // Extract only the allowed fields from the request body.
-        // Ignored fields: role, id, email, status (Admin only for status/role).
-        const { firstName, lastName, phone, avatar } = req.body;
+        const { 
+            firstName, lastName, phone, avatar,
+            billingAddress, billingCity, billingPostcode, industryProfile, contactPhone
+        } = req.body;
 
         const dataToUpdate: any = {};
         if (firstName !== undefined) dataToUpdate.firstName = firstName;
@@ -76,9 +78,26 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
                 role: true,
                 status: true,
                 phone: true,
-                avatar: true
+                avatar: true,
+                businessAccountId: true
             }
         });
+
+        if (updatedUser.businessAccountId) {
+            const businessDataToUpdate: any = {};
+            if (billingAddress !== undefined) businessDataToUpdate.billingAddress = billingAddress;
+            if (billingCity !== undefined) businessDataToUpdate.billingCity = billingCity;
+            if (billingPostcode !== undefined) businessDataToUpdate.billingPostcode = billingPostcode;
+            if (industryProfile !== undefined) businessDataToUpdate.industryProfile = industryProfile;
+            if (contactPhone !== undefined) businessDataToUpdate.contactPhone = contactPhone;
+
+            if (Object.keys(businessDataToUpdate).length > 0) {
+                await prisma.businessAccount.update({
+                    where: { id: updatedUser.businessAccountId },
+                    data: businessDataToUpdate
+                });
+            }
+        }
 
         res.json({ message: 'Profile updated successfully', user: updatedUser });
     } catch (error) {

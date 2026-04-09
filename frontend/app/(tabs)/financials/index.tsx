@@ -297,7 +297,10 @@ export default function FinancialsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Receipt size={44} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>No invoices</Text>
+              <Text style={styles.emptyTitle}>No invoices found</Text>
+              <Text style={[styles.emptySubtitle, { textAlign: 'center', marginTop: 8, paddingHorizontal: 32 }]}>
+                You don't have any invoices matching the current filter.
+              </Text>
             </View>
           }
         />
@@ -313,6 +316,9 @@ export default function FinancialsScreen() {
             <View style={styles.emptyState}>
               <FileText size={44} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>No statements yet</Text>
+              <Text style={[styles.emptySubtitle, { textAlign: 'center', marginTop: 8, paddingHorizontal: 32 }]}>
+                Account statements are generated at the end of your billing cycle.
+              </Text>
             </View>
           }
         />
@@ -379,4 +385,5 @@ const styles = StyleSheet.create({
   statementTotalValue: { fontSize: 17, fontWeight: '800' as const, color: Colors.text },
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 10 },
   emptyTitle: { fontSize: 17, fontWeight: '700' as const, color: Colors.text },
+  emptySubtitle: { fontSize: 14, color: Colors.textMuted },
 });

@@ -224,6 +224,47 @@ export default function BookDeliveryScreen() {
     }
   }, [validate, createDelivery, pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, selectedVehicle, router, selectedJobType, specialInstructions, selectedPickupWindow, selectedDeliveryWindow, estimatedPrice, parcels, isReadyNow]);
 
+  const handleSaveQuote = useCallback(async () => {
+    if (!validate()) return;
+    if (estimatedPrice <= 0) {
+      Alert.alert('Cannot Save', 'Please ensure a valid price is calculated before saving.');
+      return;
+    }
+    setIsSubmitting(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const quantity = parcels.reduce((sum, p) => sum + (parseInt(p.quantity, 10) || 1), 0);
+      
+      const payload = {
+        quoteNumber: `QT-${Date.now()}`,
+        customerId: customer?.id ?? 'guest',
+        businessId: customer?.businessAccountId || undefined,
+        pickupPostcode: pickupPostcode.trim(),
+        dropoffPostcode: dropoffPostcode.trim(),
+        vehicleType: selectedVehicle,
+        distanceKm: 0, // backend distance overrides anyway in Quote but model requires it
+        estimatedCost: estimatedPrice,
+        quantity,
+      };
+
+      const res = await apiClient('/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Quote Saved', 'Your quote has been saved successfully.');
+      router.back();
+    } catch (error: any) {
+      console.error('Save Quote failed:', error);
+      Alert.alert('Save Failed', error?.message || 'Failed to save quote.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [validate, estimatedPrice, customer, pickupPostcode, dropoffPostcode, selectedVehicle, parcels, router]);
+
   const renderQuickFill = useCallback((target: LocationTarget) => (
     <View style={styles.savedLocationsWrap}>
       <TouchableOpacity 
@@ -677,22 +718,33 @@ export default function BookDeliveryScreen() {
             {calculationError && <AlertCircle size={20} color={Colors.danger} />}
           </View>
 
-          <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-            activeOpacity={0.8}
-            testID="submit-delivery"
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <>
-                <Text style={styles.submitButtonText}>Confirm Booking</Text>
-                <ChevronRight size={18} color="#FFFFFF" />
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.saveQuoteButton, isSubmitting && styles.submitButtonDisabled]}
+              onPress={handleSaveQuote}
+              disabled={isSubmitting || calculationError !== ''}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.saveQuoteButtonText}>Save Quote</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+              onPress={handleSubmit}
+              disabled={isSubmitting || calculationError !== ''}
+              activeOpacity={0.8}
+              testID="submit-delivery"
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.submitButtonText}>Book Now</Text>
+                  <ChevronRight size={18} color="#FFFFFF" />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -898,7 +950,27 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: Colors.customerPrimary,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  saveQuoteButton: {
+    flex: 1,
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: Colors.customerPrimary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  saveQuoteButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.customerPrimary,
+  },
   submitButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -113,10 +113,23 @@ export default function CompanyProfileScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSaving(true);
     try {
-      // Update own user profile fields
+      const parts = editContactName.trim().split(' ');
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || '';
+
+      // Update both user profile and business account fields via the enhanced profile endpoint
       await apiClient(`/profile/${userData?.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ phone: editContactPhone }),
+        body: JSON.stringify({ 
+          firstName,
+          lastName,
+          phone: editContactPhone,
+          contactPhone: editContactPhone,
+          billingAddress: editBillingAddress,
+          billingCity: editBillingCity,
+          billingPostcode: editBillingPostcode,
+          industryProfile: editIndustry
+        }),
       });
       await fetchProfile();
       setIsEditing(false);

@@ -574,11 +574,11 @@ export default function ProfileScreen() {
           <View style={styles.menuCard}>
             <MenuItem icon={Shield} label="Privacy Policy" accent={accent} onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(public)/privacy' as any);
+              router.push('/privacy' as any);
             }} />
             <MenuItem icon={FileText} label="Terms & Conditions" accent={accent} last onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(public)/terms' as any);
+              router.push('/terms-legal' as any);
             }} />
           </View>
         </View>
