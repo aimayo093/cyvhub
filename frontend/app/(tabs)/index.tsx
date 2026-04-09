@@ -9,6 +9,8 @@ import {
   Animated,
   Dimensions,
   Platform,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,13 +51,61 @@ import MapView from '@/components/MapView';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
+// Opens Google Maps navigation for an active job (state-aware)
+function openGoogleMaps(job: any) {
+  const isPickedUp = ['PICKED_UP', 'EN_ROUTE_TO_DROPOFF', 'ARRIVED_DROPOFF'].includes(job.status);
+  
+  let lat: number | null = null;
+  let lng: number | null = null;
+  let address: string = '';
+
+  if (isPickedUp) {
+    lat = job.dropoffLatitude;
+    lng = job.dropoffLongitude;
+    address = `${job.dropoffAddressLine1 || ''}, ${job.dropoffCity || ''}, ${job.dropoffPostcode || ''}`;
+  } else {
+    lat = job.pickupLatitude;
+    lng = job.pickupLongitude;
+    address = `${job.pickupAddressLine1 || ''}, ${job.pickupCity || ''}, ${job.pickupPostcode || ''}`;
+  }
+
+  let url: string;
+  if (lat && lng) {
+    url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  } else {
+    const encoded = encodeURIComponent(address.trim());
+    url = `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`;
+  }
+
+  Linking.openURL(url).catch(() => {
+    // Fallback to maps.apple.com on iOS if Google Maps fails
+    const fallback = `maps://maps.apple.com/?daddr=${encodeURIComponent(address)}`;
+    Linking.openURL(fallback);
+  });
+}
+
 function DriverDashboard() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { driver } = useAuth();
   const { currentJob, activeJobs, availableJobs, completedJobs, advanceJobStatus } = useJobs();
   const [refreshing, setRefreshing] = useState(false);
+  const [activity, setActivity] = useState<any[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const loadActivity = useCallback(async () => {
+    try {
+      const res = await apiClient('/activity');
+      setActivity(Array.isArray(res) ? res : []);
+    } catch (e) {
+      console.warn('Failed to load activity:', e);
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadActivity(); }, [loadActivity]);
 
   useEffect(() => {
     if (currentJob) {
@@ -72,8 +122,9 @@ function DriverDashboard() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    loadActivity();
     setTimeout(() => setRefreshing(false), 800);
-  }, []);
+  }, [loadActivity]);
 
   const handleJobPress = useCallback((jobId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -179,12 +230,62 @@ function DriverDashboard() {
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                 <JobCard job={currentJob} onPress={() => handleJobPress(currentJob.id)} isCurrent isDark />
             </Animated.View>
-            <TouchableOpacity style={styles.actionBtnPrimary} onPress={handleAdvanceStatus}>
+            {/* Google Maps Navigate Button */}
+            <TouchableOpacity 
+              style={[styles.actionBtnPrimary, { backgroundColor: '#1a73e8', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}
+              onPress={() => openGoogleMaps(currentJob)}
+            >
+              <Navigation size={18} color="#FFF" />
+              <Text style={styles.actionBtnText}>
+                Navigate to {['PICKED_UP','EN_ROUTE_TO_DROPOFF','ARRIVED_DROPOFF'].includes(currentJob.status) ? 'Dropoff' : 'Pickup'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionBtnPrimary, { marginTop: 8 }]} onPress={handleAdvanceStatus}>
                 <Navigation size={20} color="#FFF" style={{ marginRight: 10 }} />
                 <Text style={styles.actionBtnText}>{getNextActionLabel(currentJob.status)}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
+
+        {/* ACTIVITY FEED */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Activity size={16} color={Colors.textMuted} />
+          </View>
+          {activityLoading ? (
+            <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 16 }} />
+          ) : activity.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+              <Activity size={32} color={Colors.textMuted} style={{ opacity: 0.3 }} />
+              <Text style={{ color: Colors.textMuted, marginTop: 8, fontSize: 13 }}>No activity yet. Accept a job to get started!</Text>
+            </View>
+          ) : (
+            activity.slice(0, 8).map((evt: any) => (
+              <TouchableOpacity
+                key={evt.id}
+                style={styles.activityEvent}
+                onPress={() => evt.jobId && router.push({ pathname: '/job-detail' as any, params: { id: evt.jobId } })}
+              >
+                <View style={[styles.activityDot, { 
+                  backgroundColor: evt.severity === 'danger' ? Colors.danger 
+                    : evt.severity === 'warning' ? Colors.warning 
+                    : Colors.primary 
+                }]} />
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>{evt.title}</Text>
+                  <Text style={styles.activityDesc} numberOfLines={1}>{evt.message}</Text>
+                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>
+                    {new Date(evt.timestamp).toLocaleString()}
+                  </Text>
+                </View>
+                {evt.amount != null && evt.amount > 0 && (
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.success }}>£{evt.amount.toFixed(2)}</Text>
+                )}
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
 
       </View>
     </ScrollView>
@@ -848,13 +949,29 @@ function CarrierDashboard() {
 
             {activeJobs.length > 0 ? (
               activeJobs.slice(0, 3).map(job => (
-                <JobCard 
-                  key={job.id} 
-                  job={job} 
-                  onPress={() => router.push({ pathname: '/job-detail' as any, params: { id: job.id } })}
-                  isCurrent={true}
-                  isDark={false}
-                />
+                <View key={job.id}>
+                  <JobCard 
+                    job={job} 
+                    onPress={() => router.push({ pathname: '/job-detail' as any, params: { id: job.id } })}
+                    isCurrent={true}
+                    isDark={false}
+                  />
+                  {/* Google Maps Navigation Button */}
+                  <TouchableOpacity
+                    style={[styles.actionBtnPrimary, { 
+                      marginTop: 4, marginBottom: 8,
+                      backgroundColor: '#1a73e8',
+                      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      paddingVertical: 10, borderRadius: 10
+                    }]}
+                    onPress={() => openGoogleMaps(job)}
+                  >
+                    <Navigation size={16} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>
+                      Navigate to {['PICKED_UP','EN_ROUTE_TO_DROPOFF','ARRIVED_DROPOFF'].includes(job.status) ? 'Dropoff' : 'Pickup'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               ))
             ) : (
               <View style={styles.emptyActivityCard}>
@@ -2001,5 +2118,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: '#FFFFFF',
+  },
+  emptyActivityCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 8,
+  },
+  emptyActivityText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  aiAlertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  aiAlertText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    flex: 1,
   },
 });

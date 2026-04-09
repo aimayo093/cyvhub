@@ -194,35 +194,45 @@ export const markInvoicePaid = async (req: AuthenticatedRequest, res: Response) 
 export const listTaxAndNi = async (req: AuthenticatedRequest, res: Response) => {
     try {
         if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-        
-        // Use any cast to bypass schema linter caching if Payslip model gives TS errors
-        const payslips = await (prisma as any).payslip.findMany({
-            include: {
-                user: {
-                    select: { firstName: true, lastName: true, email: true }
-                }
-            },
-            orderBy: { periodStart: 'desc' }
+
+        // Fetch TaxNiRecord with linked user (driver)
+        const records = await (prisma as any).taxNiRecord.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 200
         });
 
-        // Group by user for the UI
-        const groupedMap = new Map();
-        payslips.forEach((p: any) => {
-            const name = `${p.user.firstName} ${p.user.lastName}`;
-            if (!groupedMap.has(p.userId)) {
-                groupedMap.set(p.userId, {
-                    userId: p.userId,
+        // Lookup unique userIds
+        const userIds = [...new Set(records.map((r: any) => r.userId))] as string[];
+        const users = await prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, firstName: true, lastName: true, email: true }
+        });
+        const userMap = new Map(users.map(u => [u.id, u]));
+
+        // Group by user
+        const groupedMap = new Map<string, any>();
+        records.forEach((r: any) => {
+            const user = userMap.get(r.userId);
+            const name = user ? `${user.firstName} ${user.lastName}` : 'Unknown Driver';
+            const email = user?.email || null;
+            if (!groupedMap.has(r.userId)) {
+                groupedMap.set(r.userId, {
+                    userId: r.userId,
                     name,
-                    email: p.user.email,
+                    email,
                     totalTax: 0,
                     totalNi: 0,
+                    totalGross: 0,
+                    totalNet: 0,
                     records: []
                 });
             }
-            const g = groupedMap.get(p.userId);
-            g.totalTax += p.taxDeductions;
-            g.totalNi += p.niDeductions;
-            g.records.push(p);
+            const g = groupedMap.get(r.userId);
+            g.totalTax += r.taxAmount || 0;
+            g.totalNi += r.niAmount || 0;
+            g.totalGross += r.grossPay || 0;
+            g.totalNet += r.netPay || 0;
+            g.records.push(r);
         });
 
         res.json({ taxRecords: Array.from(groupedMap.values()) });

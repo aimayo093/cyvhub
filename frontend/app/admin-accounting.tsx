@@ -68,9 +68,9 @@ export default function AdminFinanceDashboard() {
             const vatRes = await apiClient('/stripe-connect/vat-records');
             setVatRecords(vatRes.records || []);
 
-            // 4. Fetch Tax/NI
-            const taxNiRes = await apiClient('/stripe-connect/tax-ni-records');
-            setTaxNiRecords(taxNiRes.taxNiGroups || []);
+            // 4. Fetch Tax/NI from correct endpoint
+            const taxNiRes = await apiClient('/admin/accounting/tax-ni');
+            setTaxNiRecords(taxNiRes.taxRecords || []);
 
             // Calculate Summary
             const rev = jobs.reduce((sum: number, j: any) => sum + j.customerAmount, 0);
@@ -246,15 +246,42 @@ export default function AdminFinanceDashboard() {
                 {/* 4. TAX & NI TAB */}
                 {activeTab === 'tax-ni' && (
                     <View style={styles.tabContent}>
-                        {taxNiRecords.map(group => (
-                            <View key={group.userId} style={styles.listCard}>
-                                <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Employee: {group.userId.slice(0, 8)}</Text>
-                                <View style={styles.rowItem}><Text>Gross Earnings:</Text><Text>£{group.totalGross.toFixed(2)}</Text></View>
-                                <View style={styles.rowItem}><Text>Income Tax Deducted:</Text><Text style={{ color: Colors.danger }}>£{group.totalTax.toFixed(2)}</Text></View>
-                                <View style={styles.rowItem}><Text>NI Deducted:</Text><Text style={{ color: Colors.danger }}>£{group.totalNi.toFixed(2)}</Text></View>
-                                <View style={styles.rowItem}><Text>Net Pay Transferred:</Text><Text style={{ color: Colors.success, fontWeight: 'bold' }}>£{group.totalNet.toFixed(2)}</Text></View>
+                        {taxNiRecords.length === 0 ? (
+                            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                                <Layers size={40} color={Colors.textMuted} />
+                                <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 15 }}>No Tax & NI records yet</Text>
+                                <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>Records appear automatically when employee drivers complete jobs</Text>
                             </View>
-                        ))}
+                        ) : (
+                            taxNiRecords.map((group: any) => (
+                                <View key={group.userId} style={styles.listCard}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                                        <View>
+                                            <Text style={{ fontWeight: 'bold', fontSize: 15 }}>{group.name}</Text>
+                                            {group.email && <Text style={{ color: Colors.textMuted, fontSize: 12 }}>{group.email}</Text>}
+                                        </View>
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            <Text style={{ fontSize: 12, color: Colors.textMuted }}>Records: {group.records?.length || 0}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.rowItem}><Text>Gross Earnings:</Text><Text style={{ fontWeight: '600' }}>£{(group.totalGross || 0).toFixed(2)}</Text></View>
+                                    <View style={styles.rowItem}><Text>Income Tax:</Text><Text style={{ color: Colors.danger }}>-£{(group.totalTax || 0).toFixed(2)}</Text></View>
+                                    <View style={styles.rowItem}><Text>National Insurance:</Text><Text style={{ color: Colors.danger }}>-£{(group.totalNi || 0).toFixed(2)}</Text></View>
+                                    <View style={[styles.rowItem, { marginTop: 6, borderTopWidth: 1, borderTopColor: Colors.borderLight, paddingTop: 8 }]}>
+                                        <Text style={{ fontWeight: '700' }}>Net Pay:</Text>
+                                        <Text style={{ color: Colors.success, fontWeight: '800', fontSize: 16 }}>£{(group.totalNet || 0).toFixed(2)}</Text>
+                                    </View>
+                                    {group.records?.slice(0, 3).map((r: any, i: number) => (
+                                        <View key={r.id || i} style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.borderLight }}>
+                                            <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+                                                Job Period: {new Date(r.periodStart).toLocaleDateString()} — {new Date(r.periodEnd).toLocaleDateString()}
+                                            </Text>
+                                            <Text style={{ fontSize: 11, color: Colors.textMuted }}>Tax Code: {r.taxCode}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            ))
+                        )}
                     </View>
                 )}
 

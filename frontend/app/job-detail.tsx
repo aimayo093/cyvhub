@@ -652,6 +652,41 @@ export default function JobDetailScreen() {
           </View>
         )}
 
+        {/* SECTION: GOOGLE MAPS NAVIGATION — Driver/Carrier Active Jobs */}
+        {isActive && (userRole === 'driver' || userRole === 'carrier') && (
+            <TouchableOpacity
+                style={{
+                    backgroundColor: '#1a73e8',
+                    borderRadius: 14,
+                    padding: 16,
+                    marginTop: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    shadowColor: '#1a73e8',
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 4,
+                }}
+                onPress={() => {
+                    const isPickedUp = ['PICKED_UP', 'EN_ROUTE_TO_DROPOFF', 'ARRIVED_DROPOFF'].includes(job.status);
+                    if (isPickedUp) {
+                        handleNavigate(job.dropoffLatitude, job.dropoffLongitude, `${job.dropoffAddressLine1}, ${job.dropoffCity}`);
+                    } else {
+                        handleNavigate(job.pickupLatitude, job.pickupLongitude, `${job.pickupAddressLine1}, ${job.pickupCity}`);
+                    }
+                }}
+            >
+                <Navigation size={22} color="#FFF" />
+                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>
+                    {['PICKED_UP','EN_ROUTE_TO_DROPOFF','ARRIVED_DROPOFF'].includes(job.status)
+                        ? 'Open Google Maps → Dropoff'
+                        : 'Open Google Maps → Pickup'}
+                </Text>
+            </TouchableOpacity>
+        )}
+
         {/* SECTION: RAISE DISPUTE */}
         {(job.status === 'DELIVERED' || job.status === 'COMPLETED') && (userRole === 'customer' || userRole === 'admin') && (
             <TouchableOpacity 
