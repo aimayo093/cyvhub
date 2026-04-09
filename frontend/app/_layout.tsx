@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { JobsProvider } from "@/providers/JobsProvider";
 import { DeliveriesProvider } from "@/providers/DeliveriesProvider";
@@ -363,6 +364,7 @@ export default function RootLayout() {
                   <CarrierProvider>
                     <PaymentProvider>
                       <RootLayoutNav />
+                      {Platform.OS === 'web' && <SpeedInsights />}
                     </PaymentProvider>
                   </CarrierProvider>
                 </DeliveriesProvider>
