@@ -103,6 +103,33 @@ export default function FinancialsScreen() {
     [invoices]
   );
 
+  const statements = useMemo(() => {
+    const groups: Record<string, any> = {};
+    invoices.forEach(inv => {
+      const date = new Date(inv.createdAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      
+      if (!groups[key]) {
+        groups[key] = {
+          id: key,
+          period: monthLabel,
+          invoiceCount: 0,
+          subtotal: 0,
+          vat: 0,
+          total: 0,
+          paid: 0,
+        };
+      }
+      groups[key].invoiceCount += 1;
+      groups[key].subtotal += (Number(inv.subtotal) || 0);
+      groups[key].vat += (Number(inv.vatAmount) || 0);
+      groups[key].total += (Number(inv.amount) || 0);
+      if (inv.status === 'PAID') groups[key].paid += (Number(inv.amount) || 0);
+    });
+    return Object.values(groups).sort((a: any, b: any) => b.id.localeCompare(a.id));
+  }, [invoices]);
+
   const handleDownloadPDF = useCallback((invoice: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert('Download Invoice', `Invoice ${invoice.invoiceNumber} PDF would be downloaded.`);
@@ -306,7 +333,7 @@ export default function FinancialsScreen() {
         />
       ) : (
         <FlatList
-          data={[]}
+          data={statements}
           renderItem={renderStatement}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}

@@ -11,7 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import {
   MapPin,
   User,
@@ -49,6 +49,7 @@ export default function BookDeliveryScreen() {
   const { createDelivery } = useDeliveries();
   const { customer } = useAuth();
 
+  const params = useLocalSearchParams();
   const [pickupAddress, setPickupAddress] = useState<string>('');
   const [pickupCity, setPickupCity] = useState<string>('');
   const [pickupPostcode, setPickupPostcode] = useState<string>('');
@@ -59,6 +60,14 @@ export default function BookDeliveryScreen() {
   const [dropoffContact, setDropoffContact] = useState<string>(
     customer ? `${customer.firstName} ${customer.lastName}` : ''
   );
+  
+  useEffect(() => {
+    if (params.prePickup) setPickupPostcode(params.prePickup as string);
+    if (params.preDropoff) setDropoffPostcode(params.preDropoff as string);
+    if (params.preVehicle) setSelectedVehicle(params.preVehicle as string);
+    if (params.prePrice) setEstimatedPrice(parseFloat(params.prePrice as string) || 0);
+  }, [params]);
+
   const [parcels, setParcels] = useState<any[]>([
     { lengthCm: '', widthCm: '', heightCm: '', weightKg: '', quantity: '1', description: '' }
   ]);
@@ -201,6 +210,8 @@ export default function BookDeliveryScreen() {
         pickupTimeWindow: isReadyNow ? 'READY_NOW' : (selectedPickupWindow || undefined),
         deliveryTimeWindow: selectedDeliveryWindow || undefined,
         isReadyNow,
+        businessAccountId: customer?.businessAccountId || undefined,
+        quoteId: params.quoteId || undefined,
       } as any);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

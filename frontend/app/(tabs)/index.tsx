@@ -11,6 +11,7 @@ import {
   Platform,
   Linking,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -301,11 +302,44 @@ function CustomerHome() {
   
   // Dynamic analytics state
   const [analytics, setAnalytics] = useState<any>({
-    spend: 0,
-    sla: 100,
-    emissions: 0,
     aiSummary: "Start booking deliveries to generate your first logistics performance summary.",
   });
+
+  // Instant Quote State
+  const [instantQuote, setInstantQuote] = useState({
+    pickup: '',
+    dropoff: '',
+    price: 0,
+    loading: false,
+    error: '',
+  });
+
+  const handleInstantQuote = async () => {
+    if (!instantQuote.pickup || !instantQuote.dropoff) {
+      setInstantQuote(prev => ({ ...prev, error: 'Enter both postcodes' }));
+      return;
+    }
+    setInstantQuote(prev => ({ ...prev, loading: true, error: '', price: 0 }));
+    try {
+      const res = await apiClient('/quotes/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pickupPostcode: instantQuote.pickup,
+          dropoffPostcode: instantQuote.dropoff,
+          items: [{ lengthCm: 30, widthCm: 30, heightCm: 30, weightKg: 5, quantity: 1 }],
+          vehicleType: 'Small Van'
+        })
+      });
+      if (res && res.length > 0) {
+        setInstantQuote(prev => ({ ...prev, price: res[0].totalIncVat, loading: false }));
+      } else {
+        setInstantQuote(prev => ({ ...prev, error: 'Route not found', loading: false }));
+      }
+    } catch (e) {
+      setInstantQuote(prev => ({ ...prev, error: 'Failed to estimate', loading: false }));
+    }
+  };
 
   const loadCustomerData = useCallback(async () => {
     try {
@@ -443,18 +477,65 @@ function CustomerHome() {
         </View>
 
         <View style={styles.content}>
-          <TouchableOpacity 
-            style={styles.premiumAiCard}
-            onPress={() => router.push('/customer-ai' as any)}
-            activeOpacity={0.9}
-          >
-            <View style={styles.aiGlow} />
-            <View style={{ flex: 1, zIndex: 1 }}>
-              <Text style={styles.aiCardTitle}>Logistics AI Insights</Text>
-              <Text style={styles.aiCardSub}>{analytics.aiSummary}</Text>
-            </View>
             <ChevronRight size={24} color="#FFF" style={{ zIndex: 1 }} />
           </TouchableOpacity>
+
+          {/* INSTANT QUOTE WIDGET */}
+          <View style={styles.instantQuoteContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Instant Estimate</Text>
+              <Zap size={16} color={Colors.warning} />
+            </View>
+            <View style={styles.instantQuoteCard}>
+              <View style={styles.iqInputRow}>
+                <View style={[styles.iqInputWrap, { marginRight: 8 }]}>
+                  <MapPin size={14} color={Colors.textMuted} style={styles.iqIcon} />
+                  <TextInput
+                    style={styles.iqInput}
+                    placeholder="From"
+                    placeholderTextColor={Colors.textMuted}
+                    value={instantQuote.pickup}
+                    onChangeText={t => setInstantQuote(prev => ({ ...prev, pickup: t.toUpperCase() }))}
+                    autoCapitalize="characters"
+                  />
+                </View>
+                <View style={styles.iqInputWrap}>
+                  <MapPin size={14} color={Colors.customerPrimary} style={styles.iqIcon} />
+                  <TextInput
+                    style={styles.iqInput}
+                    placeholder="To"
+                    placeholderTextColor={Colors.textMuted}
+                    value={instantQuote.dropoff}
+                    onChangeText={t => setInstantQuote(prev => ({ ...prev, dropoff: t.toUpperCase() }))}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.iqFooter}>
+                {instantQuote.price > 0 ? (
+                  <View style={styles.iqResult}>
+                    <Text style={styles.iqPriceLabel}>Estimate:</Text>
+                    <Text style={styles.iqPrice}>£{instantQuote.price.toFixed(2)}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.iqError}>{instantQuote.error}</Text>
+                )}
+                
+                <TouchableOpacity 
+                   style={[styles.iqButton, instantQuote.loading && { opacity: 0.7 }]} 
+                   onPress={handleInstantQuote}
+                   disabled={instantQuote.loading}
+                >
+                  {instantQuote.loading ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.iqButtonText}>{instantQuote.price > 0 ? 'Book Now' : 'Get Price'}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
 
           <View style={styles.activeSection}>
             <View style={styles.sectionHeader}>
@@ -492,7 +573,7 @@ function CustomerHome() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Elite Services</Text>
+            <Text style={styles.sectionTitle}>Business Operations Hub</Text>
             <View style={styles.quickActionsGrid}>
               <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/book-delivery' as any)}>
                 <View style={[styles.quickActionIcon, { backgroundColor: Colors.customerPrimary + '15' }]}>
@@ -500,17 +581,26 @@ function CustomerHome() {
                 </View>
                 <Text style={styles.quickActionLabel}>New Booking</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/customer-analytics' as any)}>
-                <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + '15' }]}>
-                  <BarChart3 size={24} color={Colors.primary} />
+              
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/customer-quotes' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.warning + '15' }]}>
+                  <Tag size={24} color={Colors.warning} />
                 </View>
-                <Text style={styles.quickActionLabel}>Insights</Text>
+                <Text style={styles.quickActionLabel}>My Quotes</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/support' as any)}>
-                <View style={[styles.quickActionIcon, { backgroundColor: Colors.purple + '15' }]}>
-                  <Shield size={24} color={Colors.purple} />
+
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/financials' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.success + '15' }]}>
+                  <DollarSign size={24} color={Colors.success} />
                 </View>
-                <Text style={styles.quickActionLabel}>Security</Text>
+                <Text style={styles.quickActionLabel}>Financials</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/company-profile' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.purple + '15' }]}>
+                  <Briefcase size={24} color={Colors.purple} />
+                </View>
+                <Text style={styles.quickActionLabel}>Profile</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2148,5 +2238,88 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     flex: 1,
+  },
+  instantQuoteContainer: {
+    marginBottom: 24,
+  },
+  instantQuoteCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  iqInputRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  iqInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  iqIcon: {
+    marginRight: 8,
+  },
+  iqInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  iqFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+  },
+  iqResult: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  iqPriceLabel: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '500' as const,
+  },
+  iqPrice: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: Colors.customerPrimary,
+  },
+  iqError: {
+    fontSize: 12,
+    color: Colors.danger,
+    fontWeight: '500' as const,
+    flex: 1,
+  },
+  iqButton: {
+    backgroundColor: Colors.customerPrimary,
+    paddingHorizontal: 20,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.customerPrimary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  iqButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700' as const,
   },
 });

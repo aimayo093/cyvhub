@@ -116,17 +116,23 @@ export default function CustomerQuotesScreen() {
         { text: 'Decline', style: 'cancel' },
         {
           text: 'Accept Price',
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            setQuotes(prev => prev.map(q =>
-              q.id === quoteId ? { ...q, status: 'APPROVED' as QuoteStatus, finalPrice: price } : q
-            ));
-            Alert.alert('Quote Accepted', 'You can now convert this quote to a delivery job.');
+          onPress: async () => {
+            try {
+              await apiClient(`/quotes/${quoteId}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status: 'APPROVED' })
+              });
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              fetchQuotes();
+              Alert.alert('Quote Accepted', 'You can now convert this quote to a delivery job.');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to approve quote on the server.');
+            }
           },
         },
       ]
     );
-  }, [quotes]);
+  }, [quotes, fetchQuotes]);
 
   const handleRejectQuote = useCallback((quoteId: string) => {
     Alert.alert('Decline Quote', 'Are you sure you want to decline this quote?', [
@@ -150,15 +156,24 @@ export default function CustomerQuotesScreen() {
       {
         text: 'Create Job',
         onPress: () => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          setQuotes(prev => prev.map(q =>
-            q.id === quoteId ? { ...q, status: 'CONVERTED' as QuoteStatus, convertedJobId: `job-${Date.now()}` } : q
-          ));
-          Alert.alert('Job Created', 'A delivery job has been created from this quote.');
+          const quote = quotes.find(q => q.id === quoteId);
+          if (!quote) return;
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          // Navigate to booking with pre-filled info
+          router.push({
+            pathname: '/book-delivery' as any,
+            params: {
+              prePickup: quote.pickupPostcode,
+              preDropoff: quote.dropoffPostcode,
+              preVehicle: quote.vehicleType,
+              quoteId: quote.id,
+              prePrice: (quote.finalPrice || quote.estimatedPrice).toString()
+            }
+          });
         },
       },
     ]);
-  }, []);
+  }, [quotes, router]);
 
   const handleSubmitQuote = useCallback(async () => {
     if (!dropoffCity.trim() || !dropoffPostcode.trim()) {
