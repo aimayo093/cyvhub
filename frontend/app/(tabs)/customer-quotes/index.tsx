@@ -29,10 +29,13 @@ import {
   Shield,
   Send,
   X,
+  Package as PackageIcon,
+  Trash2,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { Quote, QuoteStatus } from '@/types';
+import { useAuth } from '@/providers/AuthProvider';
 
 const MOCK_SAVED_LOCATIONS = [
   { id: '1', label: 'London HQ', city: 'London', postcode: 'EC1A 1BB' },
@@ -62,13 +65,92 @@ function formatDate(dateStr: string): string {
 }
 
 export default function CustomerQuotesScreen() {
-  const insets = useSafeAreaInsets();
+  const { customer } = useAuth();
+  const [insets, setInsets] = useState(useSafeAreaInsets()); // Fix insets issues on some platforms
   const router = useRouter();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [filter, setFilter] = useState<FilterTab>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [showNewQuote, setShowNewQuote] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [pickupCity, setPickupCity] = useState('London');
+  const [pickupPostcode, setPickupPostcode] = useState('');
+  const [dropoffCity, setDropoffCity] = useState('');
+  const [dropoffPostcode, setDropoffPostcode] = useState('');
+  const [vehicleType, setVehicleType] = useState('Small Van');
+  const [jobType, setJobType] = useState('General Freight');
+  const [slaRequirement, setSlaRequirement] = useState('Standard 24h');
+  const [notes, setNotes] = useState('');
+  const [showVehiclePicker, setShowVehiclePicker] = useState(false);
+  const [showJobTypePicker, setShowJobTypePicker] = useState(false);
+  const [showSlaPicker, setShowSlaPicker] = useState(false);
+
+  const [parcels, setParcels] = useState<any[]>([
+    { lengthCm: '30', widthCm: '30', heightCm: '30', weightKg: '5', quantity: '1', description: '' }
+  ]);
+  const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
+  const [calculationError, setCalculationError] = useState<string>('');
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  const fetchPrice = useCallback(async () => {
+    if (!pickupPostcode || !dropoffPostcode || parcels.length === 0) {
+      setEstimatedPrice(0);
+      setCalculationError('');
+      return;
+    }
+
+    setIsCalculating(true);
+    setCalculationError('');
+    try {
+      const response = await apiClient('/quotes/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pickupPostcode,
+          dropoffPostcode,
+          items: parcels.map(p => ({
+            lengthCm: parseFloat(p.lengthCm) || 0,
+            widthCm: parseFloat(p.widthCm) || 0,
+            heightCm: parseFloat(p.heightCm) || 0,
+            weightKg: parseFloat(p.weightKg) || 0,
+            quantity: parseInt(p.quantity, 10) || 1
+          })),
+          businessId: customer?.businessAccountId || undefined
+        })
+      });
+
+      if (response && response.quotes) {
+        const quote = response.quotes.find((q: any) => q.vehicleName === vehicleType);
+        if (quote) {
+          setEstimatedPrice(quote.totalExVat);
+          setCalculationError('');
+        } else if (response.error) {
+          setCalculationError(response.error);
+          setEstimatedPrice(0);
+        } else {
+          setCalculationError(`No pricing for ${vehicleType}`);
+          setEstimatedPrice(0);
+        }
+      }
+    } catch (e: any) {
+      setCalculationError('Route/Pricing unavailable');
+      setEstimatedPrice(0);
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [pickupPostcode, dropoffPostcode, parcels, vehicleType, customer]);
+
+  useEffect(() => {
+    if (showNewQuote) {
+      fetchPrice();
+    }
+  }, [fetchPrice, showNewQuote]);
+
+  const filteredQuotes = useMemo(() => {
+    if (filter === 'all') return quotes;
+    return quotes.filter(q => q.status === filter);
+  }, [filter, quotes]);
 
   const fetchQuotes = useCallback(async () => {
     try {
@@ -85,23 +167,6 @@ export default function CustomerQuotesScreen() {
   useEffect(() => {
     fetchQuotes();
   }, [fetchQuotes]);
-
-  const [pickupCity, setPickupCity] = useState('Swansea');
-  const [pickupPostcode, setPickupPostcode] = useState('SA1 1EG');
-  const [dropoffCity, setDropoffCity] = useState('');
-  const [dropoffPostcode, setDropoffPostcode] = useState('');
-  const [vehicleType, setVehicleType] = useState('Small Van');
-  const [jobType, setJobType] = useState('IT Equipment');
-  const [slaRequirement, setSlaRequirement] = useState('Standard 24h');
-  const [notes, setNotes] = useState('');
-  const [showVehiclePicker, setShowVehiclePicker] = useState(false);
-  const [showJobTypePicker, setShowJobTypePicker] = useState(false);
-  const [showSlaPicker, setShowSlaPicker] = useState(false);
-
-  const filteredQuotes = useMemo(() => {
-    if (filter === 'all') return quotes;
-    return quotes.filter(q => q.status === filter);
-  }, [filter, quotes]);
 
   const onRefresh = useCallback(() => {
     fetchQuotes();
@@ -177,48 +242,51 @@ export default function CustomerQuotesScreen() {
     ]);
   }, [quotes, router]);
 
-  const handleSubmitQuote = useCallback(async () => {
-    if (!dropoffCity.trim() || !dropoffPostcode.trim()) {
-      Alert.alert('Missing Info', 'Please fill in the dropoff location.');
+  const handleSubmitQuote = async () => {
+    if (!dropoffPostcode || !pickupPostcode) {
+      Alert.alert('Missing Info', 'Please provide both postcodes.');
       return;
     }
+    if (estimatedPrice <= 0 && !calculationError) {
+      Alert.alert('Incomplete', 'Price not yet calculated.');
+      return;
+    }
+
     setIsSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
+      const quantity = parcels.reduce((sum, p) => sum + (parseInt(p.quantity, 10) || 1), 0);
+      
       const payload = {
-        quoteNumber: `CYV-QT-2026-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`,
-        businessId: 'biz-1', // Default hardcoded for now
-        pickupCity: pickupCity.trim(),
-        pickupPostcode: pickupPostcode.trim(),
-        dropoffCity: dropoffCity.trim(),
-        dropoffPostcode: dropoffPostcode.trim(),
+        quoteNumber: `QT-${Date.now().toString().slice(-6)}`,
+        customerId: customer?.id ?? 'guest',
+        businessId: customer?.businessAccountId || undefined,
+        pickupPostcode,
+        dropoffPostcode,
         vehicleType,
-        jobType,
-        distanceKm: Math.round(20 + Math.random() * 80),
-        estimatedPrice: Math.round(50 + Math.random() * 200),
-        slaRequirement,
-        notes: notes.trim() || null,
+        distanceKm: 0, 
+        estimatedCost: estimatedPrice,
+        quantity,
       };
 
       await apiClient('/quotes', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
-      setShowNewQuote(false);
-      setDropoffCity('');
-      setDropoffPostcode('');
-      setNotes('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Quote Requested', 'Your quote request has been submitted.');
+      Alert.alert('Success', 'Quote request submitted successfully.');
+      setShowNewQuote(false);
       fetchQuotes();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to submit quote request.');
+    } catch (error: any) {
+      console.error('Failed to submit quote:', error);
+      Alert.alert('Error', error.message || 'Failed to submit quote request.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [pickupCity, pickupPostcode, dropoffCity, dropoffPostcode, vehicleType, jobType, slaRequirement, notes, fetchQuotes]);
+  };
 
   const renderQuote = useCallback(({ item }: { item: Quote }) => {
     const config = STATUS_CONFIG[item.status];
@@ -479,6 +547,111 @@ export default function CustomerQuotesScreen() {
               </View>
 
               <View style={styles.formSection}>
+                <Text style={styles.formSectionLabel}>Parcels Information</Text>
+                <View style={styles.parcelsList}>
+                  {parcels.map((parcel, index) => (
+                    <View key={index} style={styles.parcelBox}>
+                        <View style={styles.formRow}>
+                             <TextInput
+                                 style={[styles.smallInput, { flex: 3 }]}
+                                 placeholder="Description (Box of parts)"
+                                 placeholderTextColor={Colors.textMuted}
+                                 value={parcel.description}
+                                 onChangeText={(v) => {
+                                     const newParcels = [...parcels];
+                                     newParcels[index].description = v;
+                                     setParcels(newParcels);
+                                 }}
+                             />
+                             <TextInput
+                                 style={[styles.smallInput, { flex: 1 }]}
+                                 placeholder="Qty"
+                                 placeholderTextColor={Colors.textMuted}
+                                 keyboardType="numeric"
+                                 value={parcel.quantity}
+                                 onChangeText={(v) => {
+                                     const newParcels = [...parcels];
+                                     newParcels[index].quantity = v;
+                                     setParcels(newParcels);
+                                 }}
+                             />
+                        </View>
+                       <View style={styles.formRow}>
+                            <TextInput
+                                style={styles.smallInput}
+                                placeholder="L (cm)"
+                                placeholderTextColor={Colors.textMuted}
+                                keyboardType="numeric"
+                                value={parcel.lengthCm}
+                                onChangeText={(v) => {
+                                    const newParcels = [...parcels];
+                                    newParcels[index].lengthCm = v;
+                                    setParcels(newParcels);
+                                }}
+                            />
+                            <TextInput
+                                style={styles.smallInput}
+                                placeholder="W"
+                                placeholderTextColor={Colors.textMuted}
+                                keyboardType="numeric"
+                                value={parcel.widthCm}
+                                onChangeText={(v) => {
+                                    const newParcels = [...parcels];
+                                    newParcels[index].widthCm = v;
+                                    setParcels(newParcels);
+                                }}
+                            />
+                            <TextInput
+                                style={styles.smallInput}
+                                placeholder="H"
+                                placeholderTextColor={Colors.textMuted}
+                                keyboardType="numeric"
+                                value={parcel.heightCm}
+                                onChangeText={(v) => {
+                                    const newParcels = [...parcels];
+                                    newParcels[index].heightCm = v;
+                                    setParcels(newParcels);
+                                }}
+                            />
+                            <TextInput
+                                style={styles.smallInput}
+                                placeholder="Kg"
+                                placeholderTextColor={Colors.textMuted}
+                                keyboardType="numeric"
+                                value={parcel.weightKg}
+                                onChangeText={(v) => {
+                                    const newParcels = [...parcels];
+                                    newParcels[index].weightKg = v;
+                                    setParcels(newParcels);
+                                }}
+                            />
+                        </View>
+                        {parcels.length > 1 && (
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    const newParcels = [...parcels];
+                                    newParcels.splice(index, 1);
+                                    setParcels(newParcels);
+                                }}
+                                style={styles.removeParcelBtn}
+                            >
+                                <Trash2 size={14} color={Colors.danger} />
+                                <Text style={styles.removeParcelText}>Remove</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                  ))}
+                  <TouchableOpacity 
+                    style={styles.addParcelBtn}
+                    onPress={() => setParcels([...parcels, { lengthCm: '', widthCm: '', heightCm: '', weightKg: '', quantity: '1', description: '' }])}
+                  >
+                    <Plus size={14} color={Colors.customerPrimary} />
+                    <Text style={styles.addParcelBtnText}>Add Another Parcel Type</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.formSection}>
                 <Text style={styles.formSectionLabel}>Notes (Optional)</Text>
                 <View style={[styles.formInput, { minHeight: 80, alignItems: 'flex-start', paddingTop: 14 }]}>
                   <TextInput
@@ -492,10 +665,27 @@ export default function CustomerQuotesScreen() {
                 </View>
               </View>
 
+              <View style={[styles.estimateCard, calculationError && styles.estimateCardError]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.estimateLabel}>
+                    {calculationError ? 'Pricing Issue' : 'Estimated Quote'}
+                  </Text>
+                  <Text style={styles.estimateSubLabel}>
+                    {isCalculating ? 'Calculating real-time rates...' : (calculationError || `${vehicleType} · ${parcels.length} Items`)}
+                  </Text>
+                </View>
+                {!calculationError && !isCalculating && estimatedPrice > 0 && (
+                  <Text style={styles.estimatePrice}>
+                    £{estimatedPrice.toFixed(2)}
+                  </Text>
+                )}
+                {isCalculating && <ActivityIndicator size="small" color={Colors.customerPrimary} />}
+              </View>
+
               <TouchableOpacity
-                style={[styles.submitBtn, isSubmitting && { opacity: 0.7 }]}
+                style={[styles.submitBtn, (isSubmitting || estimatedPrice <= 0 || !!calculationError) && { opacity: 0.5 }]}
                 onPress={handleSubmitQuote}
-                disabled={isSubmitting}
+                disabled={isSubmitting || estimatedPrice <= 0 || !!calculationError}
                 activeOpacity={0.8}
               >
                 {isSubmitting ? (
@@ -582,4 +772,16 @@ const styles = StyleSheet.create({
   pickerOptionTextActive: { color: '#FFFFFF', fontWeight: '600' as const },
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.customerPrimary, borderRadius: 14, height: 56, gap: 8 },
   submitBtnText: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF' },
+  parcelsList: { gap: 10 },
+  parcelBox: { backgroundColor: Colors.surfaceAlt, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: Colors.borderLight, gap: 8 },
+  smallInput: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, height: 40, fontSize: 13, color: Colors.text, flex: 1 },
+  removeParcelBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end', paddingTop: 4 },
+  removeParcelText: { fontSize: 12, color: Colors.danger, fontWeight: '600' as const },
+  addParcelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: Colors.customerPrimary, borderRadius: 12, gap: 6, marginTop: 4 },
+  addParcelBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.customerPrimary },
+  estimateCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.customerPrimary + '10', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: Colors.customerPrimary + '30' },
+  estimateCardError: { backgroundColor: Colors.danger + '05', borderColor: Colors.danger + '20' },
+  estimateLabel: { fontSize: 12, fontWeight: '700' as const, color: Colors.textMuted, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+  estimateSubLabel: { fontSize: 13, color: Colors.text, fontWeight: '600' as const, marginTop: 2 },
+  estimatePrice: { fontSize: 24, fontWeight: '800' as const, color: Colors.customerPrimary },
 });

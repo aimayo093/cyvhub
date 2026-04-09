@@ -107,6 +107,8 @@ export default function FinancialsScreen() {
     const groups: Record<string, any> = {};
     invoices.forEach(inv => {
       const date = new Date(inv.createdAt);
+      if (isNaN(date.getTime())) return; // Defensive: skip invalid dates
+
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const monthLabel = date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
       
@@ -119,13 +121,23 @@ export default function FinancialsScreen() {
           vat: 0,
           total: 0,
           paid: 0,
+          openingBalance: 0,
+          totalInvoiced: 0,
+          totalPaid: 0,
+          closingBalance: 0
         };
       }
       groups[key].invoiceCount += 1;
+      const amt = Number(inv.amount) || 0;
       groups[key].subtotal += (Number(inv.subtotal) || 0);
       groups[key].vat += (Number(inv.vatAmount) || 0);
-      groups[key].total += (Number(inv.amount) || 0);
-      if (inv.status === 'PAID') groups[key].paid += (Number(inv.amount) || 0);
+      groups[key].total += amt;
+      groups[key].totalInvoiced += amt;
+      if (inv.status === 'PAID') {
+        groups[key].paid += amt;
+        groups[key].totalPaid += amt;
+      }
+      groups[key].closingBalance = groups[key].totalInvoiced - groups[key].totalPaid;
     });
     return Object.values(groups).sort((a: any, b: any) => b.id.localeCompare(a.id));
   }, [invoices]);

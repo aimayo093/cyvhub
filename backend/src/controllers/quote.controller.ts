@@ -146,7 +146,14 @@ export class QuoteController {
             
             for (const vc of available) {
                 try {
-                    const pricing = await PricingService.generateCustomerQuote(vc.id, miles, chargeableWeightKg, req.body.flags || {}, totalQuantity);
+                    const pricing = await PricingService.generateCustomerQuote(
+                        vc.id, 
+                        miles, 
+                        chargeableWeightKg, 
+                        req.body.flags || {}, 
+                        totalQuantity,
+                        req.body.businessId
+                    );
                     quotes.push({
                         vehicleId: vc.id,
                         vehicleName: vc.name,

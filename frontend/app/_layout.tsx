@@ -41,8 +41,7 @@ function RootLayoutNav() {
       seg === 'privacy' ||
       seg === 'payment-checkout' ||
       seg === 'checkout' ||
-      seg === 'track' ||
-      seg === 'book-delivery';
+      seg === 'track';
 
     const isAdminRoute = seg === 'admin' || seg?.startsWith('admin-');
 

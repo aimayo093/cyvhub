@@ -315,10 +315,25 @@ function CustomerHome() {
   });
 
   const handleInstantQuote = async () => {
+    // If we already have a quote, go to booking
+    if (instantQuote.price > 0) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      router.push({
+        pathname: '/book-delivery' as any,
+        params: {
+          prePickup: instantQuote.pickup,
+          preDropoff: instantQuote.dropoff,
+          prePrice: instantQuote.price.toString()
+        }
+      });
+      return;
+    }
+
     if (!instantQuote.pickup || !instantQuote.dropoff) {
       setInstantQuote(prev => ({ ...prev, error: 'Enter both postcodes' }));
       return;
     }
+
     setInstantQuote(prev => ({ ...prev, loading: true, error: '', price: 0 }));
     try {
       const res = await apiClient('/quotes/calculate', {
@@ -327,17 +342,28 @@ function CustomerHome() {
         body: JSON.stringify({
           pickupPostcode: instantQuote.pickup,
           dropoffPostcode: instantQuote.dropoff,
-          items: [{ lengthCm: 30, widthCm: 30, heightCm: 30, weightKg: 5, quantity: 1 }],
+          items: [{ lengthCm: 40, widthCm: 40, heightCm: 40, weightKg: 10, quantity: 1 }],
           vehicleType: 'Small Van'
         })
       });
-      if (res && res.length > 0) {
-        setInstantQuote(prev => ({ ...prev, price: res[0].totalIncVat, loading: false }));
+
+      if (res && res.quotes && res.quotes.length > 0) {
+        // Find best price or just the first one
+        const price = res.quotes[0].totalExVat;
+        setInstantQuote(prev => ({ ...prev, price, loading: false }));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else if (res && res.error) {
+        setInstantQuote(prev => ({ ...prev, error: res.error, loading: false }));
       } else {
-        setInstantQuote(prev => ({ ...prev, error: 'Route not found', loading: false }));
+        setInstantQuote(prev => ({ ...prev, error: 'Route not supported', loading: false }));
       }
-    } catch (e) {
-      setInstantQuote(prev => ({ ...prev, error: 'Failed to estimate', loading: false }));
+    } catch (e: any) {
+      console.error('[InstantQuote] Failed:', e);
+      setInstantQuote(prev => ({ 
+        ...prev, 
+        error: e.message?.includes('postcode') ? 'Invalid Postcode' : 'Service currently unavailable', 
+        loading: false 
+      }));
     }
   };
 
