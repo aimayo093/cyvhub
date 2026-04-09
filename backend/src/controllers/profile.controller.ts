@@ -90,6 +90,12 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
             if (billingPostcode !== undefined) businessDataToUpdate.billingPostcode = billingPostcode;
             if (industryProfile !== undefined) businessDataToUpdate.industryProfile = industryProfile;
             if (contactPhone !== undefined) businessDataToUpdate.contactPhone = contactPhone;
+            
+            // New persistent meta-fields
+            if (req.body.registrationNumber !== undefined) businessDataToUpdate.registrationNumber = req.body.registrationNumber;
+            if (req.body.vatNumber !== undefined) businessDataToUpdate.vatNumber = req.body.vatNumber;
+            if (req.body.directorName !== undefined) businessDataToUpdate.directorName = req.body.directorName;
+            if (req.body.logoUrl !== undefined) businessDataToUpdate.logoUrl = req.body.logoUrl;
 
             if (Object.keys(businessDataToUpdate).length > 0) {
                 await prisma.businessAccount.update({

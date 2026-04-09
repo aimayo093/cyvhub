@@ -519,7 +519,10 @@ function CustomerHome() {
           {/* INSTANT QUOTE WIDGET */}
           <View style={styles.instantQuoteContainer}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Instant Estimate</Text>
+              <View>
+                <Text style={styles.sectionTitle}>Instant Estimate</Text>
+                <Text style={styles.iqSub}>Standard Parcel · Small Van</Text>
+              </View>
               <Zap size={16} color={Colors.warning} />
             </View>
             <View style={styles.instantQuoteCard}>
@@ -570,6 +573,7 @@ function CustomerHome() {
                   )}
                 </TouchableOpacity>
               </View>
+              <Text style={styles.iqNotice}>* Based on 10kg standard parcel (40x40x40cm)</Text>
             </View>
           </View>
 
@@ -2283,6 +2287,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.text,
+  },
+  iqSub: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+    fontWeight: '500' as const,
+  },
+  iqNotice: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 12,
+    fontStyle: 'italic' as const,
+    textAlign: 'center' as const,
   },
   iqFooter: {
     flexDirection: 'row',

@@ -76,8 +76,8 @@ export default function BookDeliveryScreen() {
   const [selectedJobType, setSelectedJobType] = useState<string>('General Freight');
   const [selectedPickupWindow, setSelectedPickupWindow] = useState<string>('');
   const [selectedDeliveryWindow, setSelectedDeliveryWindow] = useState<string>('');
-  const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
   const [showVehiclePicker, setShowVehiclePicker] = useState<boolean>(false);
+  const [distanceMiles, setDistanceMiles] = useState<number>(0);
   const [showJobTypePicker, setShowJobTypePicker] = useState<boolean>(false);
   const [showPickupWindowPicker, setShowPickupWindowPicker] = useState<boolean>(false);
   const [showDeliveryWindowPicker, setShowDeliveryWindowPicker] = useState<boolean>(false);
@@ -112,6 +112,7 @@ export default function BookDeliveryScreen() {
       });
 
       if (response && response.quotes) {
+        setDistanceMiles(response.distanceMiles || 0);
         // Find the quote for the selected vehicle
         const quote = response.quotes.find((q: any) => q.vehicleName === selectedVehicle);
         if (quote) {
@@ -254,9 +255,17 @@ export default function BookDeliveryScreen() {
         pickupPostcode: pickupPostcode.trim(),
         dropoffPostcode: dropoffPostcode.trim(),
         vehicleType: selectedVehicle,
-        distanceKm: 0, // backend distance overrides anyway in Quote but model requires it
+        distanceKm: distanceMiles * 1.60934, // Convert miles to km for schema
         estimatedCost: estimatedPrice,
         quantity,
+        items: parcels.map(p => ({
+          weightKg: parseFloat(p.weightKg) || 0,
+          lengthCm: parseFloat(p.lengthCm) || 0,
+          widthCm: parseFloat(p.widthCm) || 0,
+          heightCm: parseFloat(p.heightCm) || 0,
+          quantity: parseInt(p.quantity, 10) || 1,
+          description: p.description || ''
+        }))
       };
 
       const res = await apiClient('/quotes', {

@@ -59,8 +59,9 @@ export default function FinancialsScreen() {
         apiClient('/invoices'),
         apiClient('/profile'),
       ]);
-      setInvoices(invRes.invoices || invRes || []);
-      setProfileData(profRes);
+      const invList = Array.isArray(invRes) ? invRes : invRes?.invoices || [];
+      setInvoices(invList);
+      setProfileData(profRes || null);
     } catch (err) {
       console.error('Financials fetch error:', err);
     } finally {
@@ -77,12 +78,12 @@ export default function FinancialsScreen() {
   }, [fetchData]);
 
   const biz = profileData?.businessAccount;
-  const profile = {
-    companyName: biz?.companyName || profileData?.firstName + ' ' + profileData?.lastName || '—',
+  const profile = useMemo(() => ({
+    companyName: biz?.companyName || (profileData?.firstName ? profileData?.firstName + ' ' + (profileData?.lastName || '') : '—'),
     billingTerms: biz?.billingTerms || 'Net 30',
     creditLimit: biz?.creditLimit || 0,
     creditUsed: biz?.currentBalance || 0,
-  };
+  }), [profileData, biz]);
 
   const filteredInvoices = useMemo(() => {
     if (invoiceFilter === 'all') return invoices;
@@ -106,8 +107,12 @@ export default function FinancialsScreen() {
   const statements = useMemo(() => {
     const groups: Record<string, any> = {};
     invoices.forEach(inv => {
-      const date = new Date(inv.createdAt);
-      if (isNaN(date.getTime())) return; // Defensive: skip invalid dates
+      if (!inv) return;
+      const dateRaw = inv.date || inv.createdAt;
+      if (!dateRaw) return;
+
+      const date = new Date(dateRaw);
+      if (isNaN(date.getTime())) return;
 
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const monthLabel = date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
@@ -129,8 +134,8 @@ export default function FinancialsScreen() {
       }
       groups[key].invoiceCount += 1;
       const amt = Number(inv.amount) || 0;
-      groups[key].subtotal += (Number(inv.subtotal) || 0);
-      groups[key].vat += (Number(inv.vatAmount) || 0);
+      groups[key].subtotal += (Number(inv.subtotal) || Number(inv.amount) * 0.8 || 0);
+      groups[key].vat += (Number(inv.vatAmount) || Number(inv.amount) * 0.2 || 0);
       groups[key].total += amt;
       groups[key].totalInvoiced += amt;
       if (inv.status === 'PAID') {

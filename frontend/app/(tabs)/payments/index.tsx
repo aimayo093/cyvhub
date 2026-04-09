@@ -661,10 +661,7 @@ function CustomerPaymentsScreen() {
   const { transactions, cards, paypalAccounts } = usePayments();
   const [refreshing, setRefreshing] = useState(false);
 
-  const customerTxns = useMemo(() =>
-    transactions.filter(t => t.customerName === 'Sian Edwards' || t.customerEmail === 'customer@cyvhub.com'),
-    [transactions]
-  );
+  const customerTxns = transactions;
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

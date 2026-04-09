@@ -24,14 +24,21 @@ export class PaymentController {
                 return;
             }
 
-            // BUG-2: Fetch real customer name instead of hardcoding 'Current User'
+            // BUG-2: Fetch real customer details
             let customerName = 'Unknown Customer';
+            let customerEmail = '';
+            let businessId = undefined;
+
             if (userId) {
                 const user = await prisma.user.findUnique({
                     where: { id: userId },
-                    select: { firstName: true, lastName: true }
+                    select: { firstName: true, lastName: true, email: true, businessAccountId: true }
                 });
-                if (user) customerName = `${user.firstName} ${user.lastName}`;
+                if (user) {
+                    customerName = `${user.firstName} ${user.lastName}`;
+                    customerEmail = user.email;
+                    businessId = user.businessAccountId || undefined;
+                }
             }
 
             // 1) Create the transaction record
@@ -45,6 +52,9 @@ export class PaymentController {
                     deliveryId,
                     trackingNumber,
                     customerName,
+                    customerEmail,
+                    customerId: userId,
+                    businessId,
                     stripePaymentId: method === 'stripe' ? `mock_pi_${Date.now()}` : undefined,
                     completedAt: method === 'stripe' ? null : new Date(),
                 }
@@ -236,7 +246,22 @@ export class PaymentController {
     // GET /api/payments/transactions
     static async getTransactions(req: Request, res: Response): Promise<void> {
         try {
+            const userId = (req as any).user?.userId;
+            const role = (req as any).user?.role;
+
+            let whereClause = {};
+            if (role !== 'admin' && userId) {
+                // If business user, they might want to see all business transactions
+                const user = await prisma.user.findUnique({ where: { id: userId }, select: { businessAccountId: true } });
+                if (user?.businessAccountId) {
+                    whereClause = { OR: [{ customerId: userId }, { businessId: user.businessAccountId }] };
+                } else {
+                    whereClause = { customerId: userId };
+                }
+            }
+
             const transactions = await prisma.paymentTransaction.findMany({
+                where: whereClause,
                 orderBy: { createdAt: 'desc' }
             });
             res.status(200).json({ transactions });

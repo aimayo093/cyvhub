@@ -54,6 +54,9 @@ export default function CompanyProfileScreen() {
   const [editBillingCity, setEditBillingCity] = useState('');
   const [editBillingPostcode, setEditBillingPostcode] = useState('');
   const [editIndustry, setEditIndustry] = useState('');
+  const [editRegistrationNumber, setEditRegistrationNumber] = useState('');
+  const [editVatNumber, setEditVatNumber] = useState('');
+  const [editDirectorName, setEditDirectorName] = useState('');
   const [showIndustryPicker, setShowIndustryPicker] = useState(false);
 
   const fetchProfile = useCallback(async () => {
@@ -69,6 +72,9 @@ export default function CompanyProfileScreen() {
       setEditBillingCity(biz?.billingCity || '');
       setEditBillingPostcode(biz?.billingPostcode || '');
       setEditIndustry(biz?.industryProfile || '');
+      setEditRegistrationNumber(biz?.registrationNumber || '');
+      setEditVatNumber(biz?.vatNumber || '');
+      setEditDirectorName(biz?.directorName || '');
     } catch (err) {
       console.error('CompanyProfile fetch error:', err);
     } finally {
@@ -98,6 +104,7 @@ export default function CompanyProfileScreen() {
     creditLimit: biz?.creditLimit || 0,
     creditUsed: biz?.currentBalance || 0,
     currentBalance: biz?.currentBalance || 0,
+    directorName: biz?.directorName || '—',
     contactName: (userData?.firstName || '') + ' ' + (userData?.lastName || ''),
     contactEmail: userData?.email || '—',
     contactPhone: userData?.phone || biz?.contactPhone || '—',
@@ -128,7 +135,10 @@ export default function CompanyProfileScreen() {
           billingAddress: editBillingAddress,
           billingCity: editBillingCity,
           billingPostcode: editBillingPostcode,
-          industryProfile: editIndustry
+          industryProfile: editIndustry,
+          registrationNumber: editRegistrationNumber,
+          vatNumber: editVatNumber,
+          directorName: editDirectorName
         }),
       });
       await fetchProfile();
@@ -199,8 +209,19 @@ export default function CompanyProfileScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Company Registration</Text>
             <View style={styles.detailCard}>
-              <DetailRow icon={FileText} label="Registration No." value={profile.registrationNumber} />
-              <DetailRow icon={Shield} label="VAT Number" value={profile.vatNumber} />
+              {isEditing ? (
+                <>
+                  <EditableRow label="Registration No." value={editRegistrationNumber} onChange={setEditRegistrationNumber} />
+                  <EditableRow label="VAT Number" value={editVatNumber} onChange={setEditVatNumber} />
+                  <EditableRow label="Director Name" value={editDirectorName} onChange={setEditDirectorName} />
+                </>
+              ) : (
+                <>
+                  <DetailRow icon={FileText} label="Registration No." value={profile.registrationNumber} />
+                  <DetailRow icon={Shield} label="VAT Number" value={profile.vatNumber} />
+                  <DetailRow icon={Users} label="Director Name" value={profile.directorName} />
+                </>
+              )}
               <DetailRow icon={Factory} label="Industry Profile" value={isEditing ? undefined : profile.industryProfile}>
                 {isEditing && (
                   <View style={{ flex: 1 }}>

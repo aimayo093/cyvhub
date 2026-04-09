@@ -63,6 +63,10 @@ export class BusinessController {
                 industryProfile,
                 billingTerms,
                 creditLimit,
+                registrationNumber,
+                vatNumber,
+                directorName,
+                logoUrl,
             } = req.body;
 
             if (!tradingName || !companyName || !contactEmail) {
@@ -82,6 +86,10 @@ export class BusinessController {
                     industryProfile,
                     billingTerms,
                     creditLimit: parseFloat(creditLimit) || 0,
+                    registrationNumber,
+                    vatNumber,
+                    directorName,
+                    logoUrl,
                 }
             });
             res.status(201).json({ business });
@@ -123,6 +131,14 @@ export class BusinessController {
             if (billingTerms !== undefined) dataToUpdate.billingTerms = billingTerms;
             if (creditLimit !== undefined) dataToUpdate.creditLimit = parseFloat(creditLimit);
             if (contractId !== undefined) dataToUpdate.contractId = contractId;
+            
+            // Allow updating core meta if needed
+            if (req.body.tradingName !== undefined) dataToUpdate.tradingName = req.body.tradingName;
+            if (req.body.companyName !== undefined) dataToUpdate.companyName = req.body.companyName;
+            if (req.body.registrationNumber !== undefined) dataToUpdate.registrationNumber = req.body.registrationNumber;
+            if (req.body.vatNumber !== undefined) dataToUpdate.vatNumber = req.body.vatNumber;
+            if (req.body.directorName !== undefined) dataToUpdate.directorName = req.body.directorName;
+            if (req.body.logoUrl !== undefined) dataToUpdate.logoUrl = req.body.logoUrl;
 
             const updated = await prisma.businessAccount.update({
                 where: { id },

@@ -92,6 +92,7 @@ export default function CustomerQuotesScreen() {
   const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
   const [calculationError, setCalculationError] = useState<string>('');
   const [isCalculating, setIsCalculating] = useState(false);
+  const [calculations, setCalculations] = useState<any>(null);
 
   const fetchPrice = useCallback(async () => {
     if (!pickupPostcode || !dropoffPostcode || parcels.length === 0) {
@@ -121,6 +122,7 @@ export default function CustomerQuotesScreen() {
       });
 
       if (response && response.quotes) {
+        setCalculations(response);
         const quote = response.quotes.find((q: any) => q.vehicleName === vehicleType);
         if (quote) {
           setEstimatedPrice(quote.totalExVat);
@@ -265,9 +267,17 @@ export default function CustomerQuotesScreen() {
         pickupPostcode,
         dropoffPostcode,
         vehicleType,
-        distanceKm: 0, 
+        distanceKm: calculations?.distanceMiles * 1.609 || 0, // Convert miles to km for consistency
         estimatedCost: estimatedPrice,
         quantity,
+        parcels: parcels.map(p => ({
+            lengthCm: parseFloat(p.lengthCm) || 0,
+            widthCm: parseFloat(p.widthCm) || 0,
+            heightCm: parseFloat(p.heightCm) || 0,
+            weightKg: parseFloat(p.weightKg) || 0,
+            quantity: parseInt(p.quantity, 10) || 1,
+            description: p.description || ''
+        }))
       };
 
       await apiClient('/quotes', {

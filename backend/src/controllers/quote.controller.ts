@@ -22,13 +22,13 @@ export class QuoteController {
             const customers = await prisma.user.findMany({ where: { id: { in: customerIds } } });
             const customerMap = new Map(customers.map(c => [c.id, `${c.firstName} ${c.lastName}`]));
 
-            const quotes = quotesRaw.map((q) => {
+            const quotes = quotesRaw.map((q: any) => {
                 const businessName = q.businessId ? businessMap.get(q.businessId) : customerMap.get(q.customerId) || 'Guest Customer';
                 return {
                     ...q,
                     businessName,
-                    pickupCity: q.pickupPostcode,
-                    dropoffCity: q.dropoffPostcode
+                    pickupCity: q.pickupPostcode, // Fallback placeholder
+                    dropoffCity: q.dropoffPostcode // Fallback placeholder
                 };
             });
             res.status(200).json({ quotes });
@@ -258,6 +258,7 @@ export class QuoteController {
             }
 
             const normalizedVehicleType = normalizeVehicleType(vehicleType);
+            const items = req.body.items || req.body.parcels || [];
 
             const quote = await prisma.quote.create({
                 data: {
@@ -273,9 +274,33 @@ export class QuoteController {
                     basePrice: basePrice ? parseFloat(basePrice) : null,
                     bulkDiscount: bulkDiscount ? parseFloat(bulkDiscount) : 0,
                     status: 'VALID',
-                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+                    parcels: {
+                        create: items.map((p: any) => ({
+                            weightKg: parseFloat(p.weightKg) || 0,
+                            lengthCm: parseFloat(p.lengthCm) || 0,
+                            widthCm: parseFloat(p.widthCm) || 0,
+                            heightCm: parseFloat(p.heightCm) || 0,
+                            quantity: parseInt(p.quantity, 10) || 1,
+                            description: p.description || ''
+                        }))
+                    }
+                },
+                include: { parcels: true }
+            });
+
+            // LOG ACTIVITY: Record quote creation in the activity feed
+            await prisma.activityLog.create({
+                data: {
+                    userId: customerId,
+                    type: 'quote_created',
+                    title: 'New Quote Saved',
+                    message: `Quote ${quoteNumber} saved for ${pickupPostcode} → ${dropoffPostcode}`,
+                    amount: parseFloat(estimatedCost),
+                    severity: 'info'
                 }
             });
+
             res.status(201).json({ quote });
         } catch (error) {
             console.error('[QuoteController] Error creating quote:', error);

@@ -130,7 +130,7 @@ function CustomerActivityScreen() {
   const renderItem = useCallback(({ item, index }: { item: ActivityItem; index: number }) => {
     const iconConfig = CUSTOMER_ICON_MAP[item.type];
     const IconComponent = iconConfig.Icon;
-    const isLast = index === MOCK_ACTIVITY.length - 1;
+    const isLast = index === activity.length - 1;
 
     return (
       <TouchableOpacity

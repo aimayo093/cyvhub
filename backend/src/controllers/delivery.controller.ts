@@ -204,6 +204,19 @@ export class DeliveryController {
                 console.error('[DeliveryController] Notification Error:', notifErr);
             }
 
+            // LOG ACTIVITY: Record delivery booking in the activity feed
+            await prisma.activityLog.create({
+                data: {
+                    userId: userId || null,
+                    jobId: newDelivery.id,
+                    type: 'delivery_created',
+                    title: 'Delivery Booked',
+                    message: `Shipment ${jobNumber} booked for ${pickupCity} → ${dropoffCity}`,
+                    amount: quoteResult.quote.customerTotal,
+                    severity: 'info'
+                }
+            });
+
             res.status(201).json({ data: newDelivery, commercial_breakdown: quoteResult.quote });
         } catch (error: any) {
             console.error('[DeliveryController] CRITICAL Error creating delivery:', error);
