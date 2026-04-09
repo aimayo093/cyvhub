@@ -35,6 +35,7 @@ import adminCommercialRoutes from './routes/admin.commercial.routes';
 import complianceRoutes from './routes/compliance.routes';
 import paypalRoutes from './routes/paypal.routes';
 import stripeConnectRoutes from './routes/stripe-connect.routes';
+import disputeRoutes from './routes/dispute.routes';
 
 dotenv.config();
 
@@ -267,6 +268,9 @@ app.use('/api/compliance', complianceRoutes);
 
 // Stripe Connect — marketplace payout system
 app.use('/api/stripe-connect', stripeConnectRoutes);
+
+// Disputes & Refunds
+app.use('/api/disputes', disputeRoutes);
 
 console.log('✅ All routes registered.');
 

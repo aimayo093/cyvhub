@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ComplianceService } from '../services/compliance.service';
+import { PayoutService } from '../services/payout.service';
 
 const router = Router();
 
@@ -22,6 +23,27 @@ router.get('/compliance', async (req: Request, res: Response) => {
         res.json({ success: true, message: 'Compliance scan completed', result });
     } catch (error) {
         console.error('Compliance Cron Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * End-of-week cron endpoint to execute Stripe Connect marketplace payouts.
+ */
+router.get('/payouts', async (req: Request, res: Response) => {
+    try {
+        const authHeader = req.headers.authorization;
+        const cronSecret = process.env.CRON_SECRET;
+
+        // Secure endpoint
+        if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+            return res.status(401).json({ error: 'Unauthorized Cron Execution' });
+        }
+
+        const result = await PayoutService.processWeeklyBatches();
+        res.json({ success: true, message: 'Payout workflow completed', result });
+    } catch (error) {
+        console.error('Payout Cron Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

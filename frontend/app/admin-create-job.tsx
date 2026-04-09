@@ -39,6 +39,7 @@ export default function AdminCreateJobScreen() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const [formData, setFormData] = useState({
+    customerEmail: '',
     pickupName: '',
     pickupPhone: '',
     pickupAddress: '',
@@ -78,10 +79,28 @@ export default function AdminCreateJobScreen() {
     b.tradingName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 1 && !selectedBusiness && searchQuery === '') {
        // Allow continuing as guest
     }
+    
+    if (step === 2 && formData.pickupPostcode && formData.dropoffPostcode) {
+        setLoading(true);
+        try {
+            const res = await apiClient('/location/distance', 'POST', {
+                pickupPostcode: formData.pickupPostcode,
+                dropoffPostcode: formData.dropoffPostcode
+            });
+            if (res && res.distanceMiles) {
+                setFormData(prev => ({ ...prev, distanceMiles: res.distanceMiles.toString() }));
+            }
+        } catch (e) {
+            console.warn('Could not auto-calc distance:', e);
+        } finally {
+            setLoading(false);
+        }
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setStep(prev => prev + 1);
   };
@@ -110,6 +129,7 @@ export default function AdminCreateJobScreen() {
       // Map frontend fields to backend refined schema
       const payload = {
         businessId: selectedBusiness?.id,
+        customerEmail: formData.customerEmail,
         pickupContactName: formData.pickupName,
         pickupContactPhone: formData.pickupPhone,
         pickupAddressLine1: formData.pickupAddress,
@@ -216,6 +236,16 @@ export default function AdminCreateJobScreen() {
                 {selectedBusiness?.id === b.id && <CheckCircle2 size={20} color={Colors.primary} />}
               </TouchableOpacity>
             ))}
+
+            <Text style={[styles.label, { marginTop: 24 }]}>Customer Notification Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="customer@example.com (Required for Invoice)"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={formData.customerEmail}
+              onChangeText={val => setFormData({ ...formData, customerEmail: val })}
+            />
           </View>
         )}
 
@@ -415,9 +445,17 @@ export default function AdminCreateJobScreen() {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         {step < 3 ? (
-          <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-            <Text style={styles.nextBtnText}>Continue</Text>
-            <ChevronRight size={20} color="#FFF" />
+          <TouchableOpacity 
+             style={styles.nextBtn} 
+             onPress={handleNext}
+             disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#FFF" /> : (
+                <>
+                  <Text style={styles.nextBtnText}>Continue</Text>
+                  <ChevronRight size={20} color="#FFF" />
+                </>
+            )}
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 

@@ -271,6 +271,14 @@ function AdminProfileSection() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Admin Control</Text>
         <View style={styles.menuCard}>
+          <MenuItem icon={AlertTriangle} label="Disputes Dashboard" accent={Colors.adminPrimary} onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/admin-disputes' as any);
+          }} />
+          <MenuItem icon={Receipt} label="Financial Accounting" accent={Colors.adminPrimary} onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/admin-accounting' as any);
+          }} />
           <MenuItem icon={Brain} label="AI Command Center" accent={Colors.adminPrimary} onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push('/admin-ai' as any);

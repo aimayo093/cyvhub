@@ -57,44 +57,49 @@ model User {
   payslips        Payslip[]
 
   // Compliance documents
-  complianceDocs         DriverComplianceDocument[] @relation("DriverDocs")
-  complianceReviews      DriverComplianceDocument[] @relation("ReviewedByAdmin")
-  carrierComplianceReviews ComplianceDocument[]     @relation("CarrierDocReview")
+  complianceDocs           DriverComplianceDocument[] @relation("DriverDocs")
+  complianceReviews        DriverComplianceDocument[] @relation("ReviewedByAdmin")
+  carrierComplianceReviews ComplianceDocument[]       @relation("CarrierDocReview")
+
+  // Disputes & Messages
+  createdDisputes Dispute[]        @relation("DisputeCreator")
+  targetDisputes  Dispute[]        @relation("DisputeTarget")
+  disputeMessages DisputeMessage[] @relation("MessageAuthor")
 
   // Stripe Connect — marketplace payout fields
-  stripeAccountId          String?  // Connected account ID (acct_xxx)
-  stripeOnboardingComplete Boolean  @default(false)
+  stripeAccountId          String? // Connected account ID (acct_xxx)
+  stripeOnboardingComplete Boolean @default(false)
 }
 
 // ─── Driver Compliance Documents ────────────────────────────────────────────
 // Stores uploaded compliance files (licence, insurance, MOT, etc.) per driver.
 // Files are hosted in Supabase Storage; fileUrl is a signed/public URL.
 model DriverComplianceDocument {
-  id             String    @id @default(uuid())
-  driverId       String
-  driver         User      @relation("DriverDocs", fields: [driverId], references: [id], onDelete: Cascade)
+  id       String @id @default(uuid())
+  driverId String
+  driver   User   @relation("DriverDocs", fields: [driverId], references: [id], onDelete: Cascade)
 
-  documentType   String    // e.g. "driving_licence" | "motor_insurance" | "mot" | ...
-  fileName       String
-  fileUrl        String    // Supabase Storage public/signed URL
-  mimeType       String?
-  fileSize       Int?
+  documentType String // e.g. "driving_licence" | "motor_insurance" | "mot" | ...
+  fileName     String
+  fileUrl      String // Supabase Storage public/signed URL
+  mimeType     String?
+  fileSize     Int?
 
-  issueDate      DateTime?
-  expiryDate     DateTime?
+  issueDate  DateTime?
+  expiryDate DateTime?
 
   // Status: not_submitted | pending_review | verified | rejected | expired
-  status         String    @default("pending_review")
+  status String @default("pending_review")
 
-  adminNote      String?
+  adminNote       String?
   rejectionReason String?
 
   verifiedByAdminId String?
-  verifiedByAdmin   User?   @relation("ReviewedByAdmin", fields: [verifiedByAdminId], references: [id], onDelete: SetNull)
+  verifiedByAdmin   User?     @relation("ReviewedByAdmin", fields: [verifiedByAdminId], references: [id], onDelete: SetNull)
   verifiedAt        DateTime?
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([driverId])
   @@index([status])
@@ -137,11 +142,12 @@ model Job {
   paymentStatus     String?   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
   estimatedDelivery DateTime?
   deliveredAt       DateTime?
+  autoInvoiceSent   Boolean   @default(false)
 
   // Multi-Parcel Analytics
-  quantity          Int       @default(1)
-  basePrice         Float?
-  bulkDiscount      Float     @default(0)
+  quantity     Int    @default(1)
+  basePrice    Float?
+  bulkDiscount Float  @default(0)
 
   // Relationships
   customerId String?
@@ -162,37 +168,41 @@ model Job {
   invoiceId String?
   invoice   Invoice? @relation(fields: [invoiceId], references: [id])
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  completedAt  DateTime?
-  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
   // Epic 2/3: Commercial Engine Quote Linkage
   quoteRequestId String?       @unique
   quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
 
   // New Integration Fields
-  jobType             String?
-  pickupWindow        String?
-  deliveryWindow        String?
-  paymentIntentId     String?
-  
-  parcels      Parcel[]
+  jobType         String?
+  pickupWindow    String?
+  deliveryWindow  String?
+  paymentIntentId String?
+
+  parcels Parcel[]
 
   // Proof of Delivery (POD)
-  podUrl        String?    // URL to delivery photo
-  signatureUrl  String?    // URL to signature image
-  receiverName  String?    // Name of person who accepted delivery
+  podUrl       String? // URL to delivery photo
+  signatureUrl String? // URL to signature image
+  receiverName String? // Name of person who accepted delivery
+
+  // Disputes
+  disputes Dispute[] @relation("DisputeJob")
 
   // Internal Notes (JSON array of { text: string, timestamp: Date, author: string })
-  notes         Json?
+  notes Json?
 
   // Relations
-  activityLogs  ActivityLog[]
+  activityLogs ActivityLog[]
 }
+
 model Parcel {
-  id             String   @id @default(uuid())
+  id             String        @id @default(uuid())
   jobId          String?
-  job            Job?     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job            Job?          @relation(fields: [jobId], references: [id], onDelete: Cascade)
   quoteRequestId String?
   quoteRequest   QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
 
@@ -200,11 +210,11 @@ model Parcel {
   lengthCm    Float
   widthCm     Float
   heightCm    Float
-  quantity    Int      @default(1)
+  quantity    Int     @default(1)
   description String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ==========================================
@@ -256,12 +266,12 @@ model SettlementBatch {
   createdAt   DateTime  @default(now())
 
   // Stripe Connect payout tracking
-  stripeTransferId  String?  // transfer_xxx from Stripe Connect
-  stripePayoutId    String?  // po_xxx if manual payout
-  payoutStatus      String   @default("PENDING") // PENDING | PROCESSING | PAID | FAILED | RETRYING
-  payoutError       String?  // Error message if failed
-  payoutAttempts    Int      @default(0)
-  lastPayoutAt      DateTime?
+  stripeTransferId String? // transfer_xxx from Stripe Connect
+  stripePayoutId   String? // po_xxx if manual payout
+  payoutStatus     String    @default("PENDING") // PENDING | PROCESSING | PAID | FAILED | RETRYING
+  payoutError      String? // Error message if failed
+  payoutAttempts   Int       @default(0)
+  lastPayoutAt     DateTime?
 }
 
 model MediaAsset {
@@ -378,9 +388,9 @@ model Quote {
   distanceKm      Float
 
   // Multi-Parcel Optimization Logs
-  quantity        Int       @default(1)
-  basePrice       Float?
-  bulkDiscount    Float     @default(0)
+  quantity     Int    @default(1)
+  basePrice    Float?
+  bulkDiscount Float  @default(0)
 
   estimatedCost Float
   status        String   @default("VALID") // "VALID" | "ACCEPTED" | "EXPIRED"
@@ -428,24 +438,24 @@ model CarrierProfile {
 }
 
 model CarrierRate {
-  id             String         @id @default(uuid())
-  carrierId      String
-  carrier        CarrierProfile @relation(fields: [carrierId], references: [id], onDelete: Cascade)
-  
-  vehicleType    String // "Small Van", "Medium Van", etc.
-  baseRate       Float
-  perKmRate      Float
-  perStopRate    Float          @default(0)
-  weekendSurcharge Float        @default(0)
-  outOfHoursSurcharge Float      @default(0)
-  heavyGoodsSurcharge Float      @default(0)
-  
-  effectiveFrom  DateTime       @default(now())
-  effectiveTo    DateTime?
-  status         String         @default("ACTIVE") // "ACTIVE", "DRAFT", "EXPIRED"
-  
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id        String         @id @default(uuid())
+  carrierId String
+  carrier   CarrierProfile @relation(fields: [carrierId], references: [id], onDelete: Cascade)
+
+  vehicleType         String // "Small Van", "Medium Van", etc.
+  baseRate            Float
+  perKmRate           Float
+  perStopRate         Float  @default(0)
+  weekendSurcharge    Float  @default(0)
+  outOfHoursSurcharge Float  @default(0)
+  heavyGoodsSurcharge Float  @default(0)
+
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  status        String    @default("ACTIVE") // "ACTIVE", "DRAFT", "EXPIRED"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([carrierId])
 }
@@ -475,25 +485,25 @@ model FleetVehicle {
 }
 
 model ComplianceDocument {
-  id          String    @id @default(uuid())
-  type        String // e.g. "operator_licence" | "goods_in_transit" | "public_liability"
-  
-  fileName    String?
-  fileUrl     String    // Supabase Storage URL
-  mimeType    String?
-  fileSize    Int?
+  id   String @id @default(uuid())
+  type String // e.g. "operator_licence" | "goods_in_transit" | "public_liability"
 
-  status      String    @default("pending_review") // "verified" | "rejected" | "pending_review" | "expired"
-  
-  issueDate   DateTime?
-  expiryDate  DateTime?
-  uploadDate  DateTime  @default(now())
+  fileName String?
+  fileUrl  String // Supabase Storage URL
+  mimeType String?
+  fileSize Int?
+
+  status String @default("pending_review") // "verified" | "rejected" | "pending_review" | "expired"
+
+  issueDate  DateTime?
+  expiryDate DateTime?
+  uploadDate DateTime  @default(now())
 
   rejectionReason String?
-  adminNote      String?
+  adminNote       String?
 
   verifiedByAdminId String?
-  verifiedByAdmin   User?   @relation("CarrierDocReview", fields: [verifiedByAdminId], references: [id], onDelete: SetNull)
+  verifiedByAdmin   User?     @relation("CarrierDocReview", fields: [verifiedByAdminId], references: [id], onDelete: SetNull)
   verifiedAt        DateTime?
 
   carrierId String
@@ -511,18 +521,19 @@ model ComplianceDocument {
 // ==========================================
 
 model Invoice {
-  id            String   @id @default(uuid())
-  invoiceNumber String   @unique
-  status        String   @default("PENDING") // "PAID" | "PENDING" | "OVERDUE" | "DRAFT"
-  amount        Float
-  currency      String   @default("GBP")
-  date          DateTime @default(now())
-  dueDate       DateTime
-  description   String?
+  id              String   @id @default(uuid())
+  invoiceNumber   String   @unique
+  status          String   @default("PENDING") // "PAID" | "PENDING" | "OVERDUE" | "DRAFT"
+  amount          Float
+  currency        String   @default("GBP")
+  date            DateTime @default(now())
+  dueDate         DateTime
+  description     String?
+  autoInvoiceSent Boolean  @default(false)
 
   // Relations
-  businessAccountId String
-  businessAccount   BusinessAccount @relation(fields: [businessAccountId], references: [id])
+  businessAccountId String?
+  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id])
 
   jobs Job[]
 
@@ -793,35 +804,36 @@ model ManualReviewCase {
 
   reviewedBy String?
   resolvedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
 }
+
 // ==========================================
 // CMS & CONFIGURATION
 // ==========================================
 
 model PageContent {
-  id              String   @id @default(uuid())
-  slug            String   @unique
+  id              String  @id @default(uuid())
+  slug            String  @unique
   title           String
   metaDescription String?
-  bodyContent     Json     // Flexible JSON structure for page sections
-  published       Boolean  @default(true)
-  
-  updatedBy       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  bodyContent     Json // Flexible JSON structure for page sections
+  published       Boolean @default(true)
+
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([slug])
 }
 
 model GlobalConfig {
-  id              String   @id @default(uuid())
-  key             String   @unique // e.g. "homepage", "header", "footer"
-  config          Json
-  
-  updatedBy       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id     String @id @default(uuid())
+  key    String @unique // e.g. "homepage", "header", "footer"
+  config Json
+
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([key])
 }
@@ -847,8 +859,8 @@ model TaxNiRecord {
   niAmount       Float
   netPay         Float
 
-  taxCode   String  @default("1257L")
-  niCategory String  @default("A") // Standard rate NI
+  taxCode    String @default("1257L")
+  niCategory String @default("A") // Standard rate NI
 
   periodStart DateTime
   periodEnd   DateTime
@@ -863,14 +875,14 @@ model VatRecord {
   id    String @id @default(uuid())
   jobId String
 
-  customerAmount Float  // Full amount customer paid (ex VAT)
+  customerAmount Float // Full amount customer paid (ex VAT)
   vatRate        Float  @default(20.0)
-  vatAmount      Float  // Calculated VAT
+  vatAmount      Float // Calculated VAT
   vatRegNumber   String @default("GB 384 9210 55")
 
-  reconciled     Boolean  @default(false)
-  reconciledAt   DateTime?
-  reconciledBy   String?
+  reconciled   Boolean   @default(false)
+  reconciledAt DateTime?
+  reconciledBy String?
 
   createdAt DateTime @default(now())
 
@@ -883,13 +895,13 @@ model JobFinancialRecord {
   jobId String @unique
 
   jobNumber      String
-  customerAmount Float  // Full price paid by customer (inc VAT)
+  customerAmount Float // Full price paid by customer (inc VAT)
   driverPayout   Float  @default(0)
   carrierPayout  Float  @default(0)
   vatAmount      Float
   marginAmount   Float
 
-  stripePaymentIntentId String?
+  stripePaymentIntentId   String?
   stripeDriverTransferId  String?
   stripeCarrierTransferId String?
 
@@ -897,4 +909,53 @@ model JobFinancialRecord {
   updatedAt DateTime @updatedAt
 
   @@index([jobId])
+}
+
+// ==========================================
+// DISPUTES & REFUNDS (SECTION C)
+// ==========================================
+
+model Dispute {
+  id    String @id @default(uuid())
+  jobId String
+  job   Job    @relation("DisputeJob", fields: [jobId], references: [id], onDelete: Cascade)
+
+  creatorId String
+  creator   User   @relation("DisputeCreator", fields: [creatorId], references: [id])
+
+  targetId String?
+  target   User?   @relation("DisputeTarget", fields: [targetId], references: [id])
+
+  reason      String
+  description String @db.Text
+  status      String @default("OPEN") // "OPEN" | "REVIEWING" | "RESOLVED" | "REJECTED"
+
+  refundStatus String? // "FULL" | "PARTIAL" | "NONE"
+  refundAmount Float?
+
+  messages DisputeMessage[]
+
+  resolvedBy String?
+  resolvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobId])
+  @@index([creatorId])
+  @@index([status])
+}
+
+model DisputeMessage {
+  id        String  @id @default(uuid())
+  disputeId String
+  dispute   Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation("MessageAuthor", fields: [authorId], references: [id])
+
+  content String  @db.Text
+  fileUrl String? // Optional evidence
+
+  createdAt DateTime @default(now())
 }

@@ -137,6 +137,10 @@ export default function JobDetailScreen() {
   const [slaUrgent, setSlaUrgent] = useState(false);
   const [slaBreach, setSlaBreach] = useState(false);
 
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [disputeDesc, setDisputeDesc] = useState('');
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -247,6 +251,28 @@ export default function JobDetailScreen() {
       ]
     );
   }, [job, failReason, customReason, failJob, router]);
+
+  const handleSubmitDispute = useCallback(async () => {
+    if (!job) return;
+    if (!disputeReason || !disputeDesc) {
+      Alert.alert('Validation Check', 'Please enter a reason and a description.');
+      return;
+    }
+    
+    try {
+        const { apiClient } = require('@/services/api');
+        await apiClient(`/disputes`, 'POST', {
+            jobId: job.id,
+            reason: disputeReason,
+            description: disputeDesc
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setShowDisputeModal(false);
+        Alert.alert('Dispute Raised', 'Our team will review your dispute shortly.');
+    } catch (e: any) {
+        Alert.alert('Error', e.message || 'Failed to raise dispute.');
+    }
+  }, [job, disputeReason, disputeDesc]);
 
   const handleCall = useCallback((phone: string) => {
     Linking.openURL(`tel:${phone}`);
@@ -626,10 +652,53 @@ export default function JobDetailScreen() {
           </View>
         )}
 
+        {/* SECTION: RAISE DISPUTE */}
+        {(job.status === 'DELIVERED' || job.status === 'COMPLETED') && (userRole === 'customer' || userRole === 'admin') && (
+            <TouchableOpacity 
+               style={{ backgroundColor: Colors.dangerLight, borderColor: Colors.danger, borderWidth: 1, padding: 16, borderRadius: 12, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+               onPress={() => setShowDisputeModal(true)}
+            >
+               <AlertTriangle size={18} color={Colors.danger} style={{ marginRight: 8 }} />
+               <Text style={{ fontWeight: '700', color: Colors.danger }}>Raise a Dispute</Text>
+            </TouchableOpacity>
+        )}
+
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {(nextAction || canDecline || canFail) && !showFailModal && (
+      {/* DISPUTE MODAL */}
+      {showDisputeModal && (
+        <View style={styles.failModalCard}>
+          <View style={styles.failModalHeader}>
+            <AlertTriangle size={18} color={Colors.danger} />
+            <Text style={styles.failModalTitle}>Raise Dispute</Text>
+          </View>
+          <Text style={styles.failModalSubtitle}>Why are you disputing this delivery?</Text>
+          <TextInput
+              style={styles.input}
+              placeholder="e.g. Damaged Goods, Extremely Late"
+              value={disputeReason}
+              onChangeText={setDisputeReason}
+          />
+          <TextInput
+              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              placeholder="Provide a detailed description..."
+              multiline
+              value={disputeDesc}
+              onChangeText={setDisputeDesc}
+          />
+          <View style={styles.failModalActions}>
+            <TouchableOpacity style={styles.failCancelBtn} onPress={() => setShowDisputeModal(false)}>
+              <Text style={styles.failCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.failSubmitBtn} onPress={handleSubmitDispute}>
+              <Text style={styles.failSubmitText}>Submit Dispute</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {(nextAction || canDecline || canFail) && !showFailModal && !showDisputeModal && (
         <View style={styles.bottomBar}>
           {canDecline && (
             <View style={styles.dualButtonRow}>
@@ -1350,4 +1419,13 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#0F172A',
   },
+  input: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+    fontSize: 15,
+  }
 });

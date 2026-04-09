@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { updateDriverLocation, getActiveDriverLocations } from '../controllers/location.controller';
+import { updateDriverLocation, getActiveDriverLocations, calculateDistance } from '../controllers/location.controller';
 import { authenticate, requireRole } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -21,5 +21,10 @@ router.patch('/', authenticate, updateDriverLocation);
  * Accessible by admins, customers, and carriers.
  */
 router.get('/drivers', authenticate, requireRole(['admin', 'customer', 'carrier']), getActiveDriverLocations);
+
+/**
+ * POST /api/location/distance
+ */
+router.post('/distance', authenticate, calculateDistance);
 
 export default router;

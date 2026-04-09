@@ -30,7 +30,7 @@ export const getJobs = async (req: AuthenticatedRequest, res: Response) => {
             jobs = rawJobs.map((j: any) => {
                 const payoutAmount = j.quoteRequest?.driverPayoutTotal || (j.calculatedPrice * 0.8);
                 const { calculatedPrice, quoteRequest, ...safeJob } = j;
-                return { ...safeJob, payoutAmount };
+                return { ...safeJob, payoutAmount, calculatedPrice: payoutAmount };
             });
 
         } else if (userRole === 'carrier') {
@@ -49,7 +49,7 @@ export const getJobs = async (req: AuthenticatedRequest, res: Response) => {
             jobs = rawJobs.map((j: any) => {
                 const payoutAmount = j.quoteRequest?.driverPayoutTotal || (j.calculatedPrice * 0.8);
                 const { calculatedPrice, quoteRequest, ...safeJob } = j;
-                return { ...safeJob, payoutAmount };
+                return { ...safeJob, payoutAmount, calculatedPrice: payoutAmount };
             });
         } else if (userRole === 'customer') {
             // Customers see deliveries they requested
@@ -358,48 +358,10 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
                 }
 
                 // ==========================================
-                // STRIPE CONNECT TRANSFER (Automated Payout)
+                // STRIPE CONNECT TRANSFER (DEFERRED TO CRON)
                 // ==========================================
-                // Find the just-created settlement batch and attempt Stripe transfer
-                const newBatch = await prisma.settlementBatch.findFirst({
-                    where: { recipientId: recipient.id, status: 'PENDING_APPROVAL' },
-                    orderBy: { createdAt: 'desc' }
-                });
-
-                if (newBatch) {
-                    // Fire-and-forget: transfer is non-blocking but logged
-                    (async () => {
-                        try {
-                            const recipientUser = await prisma.user.findUnique({
-                                where: { id: recipient.id },
-                                select: { stripeAccountId: true, stripeOnboardingComplete: true }
-                            });
-
-                            if (recipientUser?.stripeAccountId && recipientUser?.stripeOnboardingComplete) {
-                                const { StripeConnectService } = require('../services/stripe-connect.service');
-                                const result = await StripeConnectService.executeTransfer(
-                                    payoutAmount,
-                                    recipientUser.stripeAccountId,
-                                    newBatch.id,
-                                    jobId
-                                );
-
-                                // Update JobFinancialRecord with transfer ID
-                                if (result.success) {
-                                    const transferField = recipientType === 'driver' ? 'stripeDriverTransferId' : 'stripeCarrierTransferId';
-                                    await (prisma as any).jobFinancialRecord.update({
-                                        where: { jobId: jobId },
-                                        data: { [transferField]: result.transferId }
-                                    }).catch(console.error);
-                                }
-                            } else {
-                                console.log(`[PAYOUT] Recipient ${recipient.id} has no Stripe account — batch ${newBatch.id} queued for manual payout`);
-                            }
-                        } catch (transferErr) {
-                            console.error('[PAYOUT] Stripe transfer failed:', transferErr);
-                        }
-                    })();
-                }
+                // Payouts are now handled via Weekly CRON matching business rules.
+                console.log(`[SETTLEMENT] Settlement Batch ${newBatch?.id} marked PENDING_APPROVAL for Cron pickup.`);
             }
         }
 
@@ -462,7 +424,8 @@ export const createJob = async (req: AuthenticatedRequest, res: Response) => {
             pickupWindowStart, pickupWindowEnd,
             dropoffWindowStart, dropoffWindowEnd,
             jobType, pickupWindow, deliveryWindow,
-            businessId, items, distanceMilesOverride
+            businessId, items, distanceMilesOverride,
+            customerEmail
         } = req.body;
 
         console.log(`[ADMIN_JOB_CREATE] Starting job for ${businessId || 'Guest'}. Vehicle: ${vehicleType}`);
@@ -512,11 +475,17 @@ export const createJob = async (req: AuthenticatedRequest, res: Response) => {
             businessId
         );
 
-        const jobNumber = `JOB-${Date.now().toString().slice(-6)}`;
-        const trackingNumber = `CYV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-
         // 3. ATOMIC DB UPSERT
         const job = await prisma.$transaction(async (tx) => {
+            // Get atomic CYV- Job Counter
+            const counter = await tx.jobCounter.upsert({
+                where: { id: 1 },
+                update: { current: { increment: 1 } },
+                create: { id: 1, current: 1 }
+            });
+            const jobNumber = `CYV-${counter.current.toString().padStart(6, '0')}`;
+            const trackingNumber = `CYV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
             // Create Quote Request
             const quoteRequest = await tx.quoteRequest.create({
                 data: {
@@ -543,7 +512,7 @@ export const createJob = async (req: AuthenticatedRequest, res: Response) => {
             });
 
             // Create Job
-            return tx.job.create({
+            const createdJob = await tx.job.create({
                 data: {
                     jobNumber,
                     trackingNumber,
@@ -582,10 +551,46 @@ export const createJob = async (req: AuthenticatedRequest, res: Response) => {
                 },
                 include: {
                     quoteRequest: { include: { lineItems: true } },
-                    parcels: true
+                    parcels: true,
+                    customer: true
                 }
             });
+
+            return createdJob;
         });
+
+        // 4. INVOICE EVENT & EMAIL NOTIFICATION (SECTION J)
+        if (customerEmail) {
+            try {
+                // Generate Invoice
+                const invoice = await prisma.invoice.create({
+                    data: {
+                        invoiceNumber: `INV-${job.jobNumber.split('-')[1]}`,
+                        amount: quoteData.customerTotal,
+                        dueDate: new Date(Date.now() + 7 * 24 * 3600000), // 7 days default
+                        businessAccountId: businessId || null, 
+                        description: `Logistics transport from ${pickupCity} to ${dropoffCity}`,
+                        autoInvoiceSent: true,
+                        jobs: { connect: { id: job.id } }
+                    }
+                });
+                
+                await NotificationService.sendEmail(
+                    customerEmail, 
+                    `Invoice & Confirmation for CYVhub Job ${job.jobNumber}`, 
+                    `<p>Thank you for booking with CYVhub.</p>
+                     <p>Your job reference is: <b>${job.jobNumber}</b></p>
+                     <p>Tracking number: <b>${job.trackingNumber}</b></p>
+                     <p>We have successfully received your request and generated an invoice for £${quoteData.customerTotal.toFixed(2)}.</p>
+                     <br/>
+                     <p>Pickup: ${pickupCity} (${pickupPostcode})</p>
+                     <p>Dropoff: ${dropoffCity} (${dropoffPostcode})</p>
+                     <p>Vehicle: ${vehicleType}</p>`
+                );
+            } catch (invErr) {
+                console.error('[CreateJob] Failed to generate invoice/email:', invErr);
+            }
+        }
 
         res.status(201).json({ message: 'Job created successfully', job });
     } catch (error) {
