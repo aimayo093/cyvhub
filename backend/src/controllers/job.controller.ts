@@ -361,7 +361,7 @@ export const updateJobStatus = async (req: AuthenticatedRequest, res: Response) 
                 // STRIPE CONNECT TRANSFER (DEFERRED TO CRON)
                 // ==========================================
                 // Payouts are now handled via Weekly CRON matching business rules.
-                console.log(`[SETTLEMENT] Settlement Batch ${newBatch?.id} marked PENDING_APPROVAL for Cron pickup.`);
+                console.log(`[SETTLEMENT] Settlement Batch marked PENDING_APPROVAL for Cron pickup.`);
             }
         }
 

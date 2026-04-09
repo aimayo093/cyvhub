@@ -52,8 +52,8 @@ export const getDisputes = async (req: AuthenticatedRequest, res: Response) => {
             disputes = await prisma.dispute.findMany({
                 include: {
                     job: true,
-                    creator: { select: { id: true, firstName: true, lastName: true, companyName: true, role: true } },
-                    target: { select: { id: true, firstName: true, lastName: true, companyName: true, role: true } }
+                    creator: { select: { id: true, firstName: true, lastName: true, role: true } },
+                    target: { select: { id: true, firstName: true, lastName: true, role: true } }
                 },
                 orderBy: { createdAt: 'desc' }
             });
@@ -67,8 +67,8 @@ export const getDisputes = async (req: AuthenticatedRequest, res: Response) => {
                 },
                 include: {
                     job: true,
-                    creator: { select: { id: true, firstName: true, lastName: true, companyName: true, role: true } },
-                    target: { select: { id: true, firstName: true, lastName: true, companyName: true, role: true } }
+                    creator: { select: { id: true, firstName: true, lastName: true, role: true } },
+                    target: { select: { id: true, firstName: true, lastName: true, role: true } }
                 },
                 orderBy: { createdAt: 'desc' }
             });
@@ -83,7 +83,7 @@ export const getDisputes = async (req: AuthenticatedRequest, res: Response) => {
 
 export const getDisputeDetails = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const userId = req.user?.userId;
         const role = req.user?.role;
 
@@ -91,8 +91,8 @@ export const getDisputeDetails = async (req: AuthenticatedRequest, res: Response
             where: { id },
             include: {
                 job: true,
-                creator: { select: { id: true, firstName: true, lastName: true, companyName: true, role: true } },
-                target: { select: { id: true, firstName: true, lastName: true, companyName: true, role: true } },
+                creator: { select: { id: true, firstName: true, lastName: true, role: true } },
+                target: { select: { id: true, firstName: true, lastName: true, role: true } },
                 messages: {
                     include: {
                         author: { select: { id: true, firstName: true, lastName: true, role: true } }
@@ -119,7 +119,7 @@ export const getDisputeDetails = async (req: AuthenticatedRequest, res: Response
 
 export const addDisputeMessage = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { content, fileUrl } = req.body;
         const userId = req.user?.userId;
 
@@ -148,7 +148,7 @@ export const addDisputeMessage = async (req: AuthenticatedRequest, res: Response
 
 export const resolveDispute = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { status, refundStatus, refundAmount } = req.body;
         const userId = req.user?.userId;
 

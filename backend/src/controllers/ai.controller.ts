@@ -314,7 +314,7 @@ export const askAssistant = async (req: AuthenticatedRequest, res: Response) => 
                 const overdueInvoices = await prisma.invoice.findMany({ where: { status: 'OVERDUE' }, include: { businessAccount: true }, take: 5 });
                 const totalOverdue = (await prisma.invoice.aggregate({ where: { status: 'OVERDUE' }, _sum: { amount: true } }))._sum.amount || 0;
                 responseText = `💰 **Platform Financials**\n\nTotal Overdue: £${totalOverdue.toFixed(2)}\n\nRecent overdue items:\n`;
-                overdueInvoices.forEach(inv => responseText += `• ${inv.invoiceNumber} (${inv.businessAccount.tradingName}): £${inv.amount.toFixed(2)}\n`);
+                overdueInvoices.forEach(inv => responseText += `• ${inv.invoiceNumber} (${inv.businessAccount?.tradingName || 'Customer'}): £${inv.amount.toFixed(2)}\n`);
             } else if (role === 'customer') {
                 const user = await prisma.user.findUnique({ where: { id: userId } });
                 const overdue = await prisma.invoice.findMany({ where: { businessAccountId: user?.businessAccountId || undefined, status: 'OVERDUE' } });
