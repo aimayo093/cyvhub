@@ -5,9 +5,56 @@ import { SuitabilityService } from '../services/suitability.service';
 import { AddressService } from '../services/address.service';
 import { RoutingService } from '../services/routing.service';
 import { normalizeVehicleType } from '../utils/vehicleMapping';
+import { CommercialService } from '../services/commercial.service';
 
 export class QuoteController {
-    // ... (getQuotes, getQuote, updateQuoteStatus remain same)
+    static async getQuotes(req: any, res: Response): Promise<void> {
+        try {
+            const quotes = await prisma.quoteRequest.findMany({
+                where: req.user?.role === 'admin' ? {} : { customerId: req.user?.id },
+                include: { vehicle: true, customer: true },
+                orderBy: { createdAt: 'desc' }
+            });
+            res.json(quotes);
+        } catch (error) {
+            console.error('[QUOTE_CONTROLLER] Fetch Quotes Error:', error);
+            res.status(500).json({ error: 'Failed to fetch quotes' });
+        }
+    }
+
+    static async getQuote(req: any, res: Response): Promise<void> {
+        try {
+            const quote = await prisma.quoteRequest.findUnique({
+                where: { id: req.params.id as string },
+                include: { vehicle: true, customer: true, parcels: true, lineItems: true }
+            });
+            if (!quote) {
+                res.status(404).json({ error: 'Quote not found' });
+                return;
+            }
+            res.json(quote);
+        } catch (error) {
+            console.error('[QUOTE_CONTROLLER] Fetch Quote Error:', error);
+            res.status(500).json({ error: 'Failed to fetch quote' });
+        }
+    }
+
+    static async createQuote(req: any, res: Response): Promise<void> {
+        try {
+            const { pickupPostcode, dropoffPostcode, items, flags, businessId } = req.body;
+            const result = await CommercialService.requestQuote({
+                pickupPostcode,
+                dropoffPostcode,
+                items,
+                flags: flags || {},
+                businessId: businessId || req.user?.id
+            });
+            res.json(result);
+        } catch (error) {
+            console.error('[QUOTE_CONTROLLER] Create Quote Error:', error);
+            res.status(500).json({ error: 'Failed to create quote' });
+        }
+    }
 
     static async calculatePrice(req: Request, res: Response): Promise<void> {
         const { pickupPostcode, dropoffPostcode, items, flags } = req.body;
@@ -96,5 +143,16 @@ export class QuoteController {
         }
     }
 
-    // ... (createQuote remains same)
+    static async updateQuoteStatus(req: Request, res: Response): Promise<void> {
+        try {
+            const { status } = req.body;
+            const quote = await prisma.quoteRequest.update({
+                where: { id: req.params.id as string },
+                data: { status }
+            });
+            res.json(quote);
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to update quote status' });
+        }
+    }
 }

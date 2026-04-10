@@ -12,6 +12,8 @@ export class CommercialService {
         dropoffPostcode: string, 
         pickupCoords?: { lat: number, lng: number },
         dropoffCoords?: { lat: number, lng: number },
+        distanceMiles?: number,
+        distance?: number,
         items: any[], 
         flags: any, 
         vehicleType?: string, 

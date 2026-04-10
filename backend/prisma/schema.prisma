@@ -40,6 +40,7 @@ model User {
   jobsAsCustomer Job[] @relation("CustomerJobs")
   jobsAsDriver   Job[] @relation("DriverJobs")
   jobsAsCarrier  Job[] @relation("CarrierJobs")
+  quoteRequests  QuoteRequest[]
 
   businessAccountId String?
   businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id])
@@ -787,6 +788,9 @@ model QuoteRequest {
   marginPercentage  Float
 
   status String @default("AUTO_APPROVED") // 'AUTO_APPROVED', 'PENDING_REVIEW', 'REJECTED'
+
+  customerId String?
+  customer   User?   @relation(fields: [customerId], references: [id])
 
   lineItems QuoteLineItem[]
   parcels   Parcel[]
