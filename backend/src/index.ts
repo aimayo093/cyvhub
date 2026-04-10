@@ -316,3 +316,9 @@ if (process.env.NODE_ENV !== 'test' && process.env.VERCEL !== '1') {
 }
 
 export default app;
+
+// SEC-AUDIT-10: Compatibility hack for Vercel legacy build system
+// Ensures the Express app is recognized as the default export in CommonJS environments.
+if (process.env.VERCEL === '1') {
+    module.exports = app;
+}
