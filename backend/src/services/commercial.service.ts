@@ -2,6 +2,7 @@ import { prisma } from '../index';
 import { PricingService } from './pricing.service';
 import { PayoutService } from './payout.service';
 import { RoutingService } from './routing.service';
+import { AddressService } from './address.service';
 
 export class CommercialService {
     /**
