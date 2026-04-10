@@ -27,7 +27,7 @@ import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
 import { useJobs } from '@/providers/JobsProvider';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
-import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+import StructuredAddressInput from '@/components/StructuredAddressInput';
 
 export default function AdminCreateJobScreen() {
   const insets = useSafeAreaInsets();
@@ -40,20 +40,15 @@ export default function AdminCreateJobScreen() {
   const [selectedBusiness, setSelectedBusiness] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [pickup, setPickup] = useState<any>(null);
+  const [dropoff, setDropoff] = useState<any>(null);
+
   const [formData, setFormData] = useState({
     customerEmail: '',
     pickupName: '',
     pickupPhone: '',
-    pickupAddress: '',
-    pickupCity: '',
-    pickupPostcode: '',
-    pickupCoords: null as {lat: number, lng: number} | null,
     dropoffName: '',
     dropoffPhone: '',
-    dropoffAddress: '',
-    dropoffCity: '',
-    dropoffPostcode: '',
-    dropoffCoords: null as {lat: number, lng: number} | null,
     vehicleType: 'SMALL_VAN',
     goodsDescription: '',
     priority: 'NORMAL' as 'NORMAL' | 'URGENT',
@@ -87,14 +82,14 @@ export default function AdminCreateJobScreen() {
        // Allow continuing as guest
     }
     
-    if (step === 2 && formData.pickupPostcode && formData.dropoffPostcode) {
+    if (step === 2 && pickup?.postcode && dropoff?.postcode) {
         setLoading(true);
         try {
             const res = await apiClient('/location/distance', {
                 method: 'POST',
                 body: JSON.stringify({
-                    pickupPostcode: formData.pickupPostcode,
-                    dropoffPostcode: formData.dropoffPostcode
+                    pickupPostcode: pickup.postcode,
+                    dropoffPostcode: dropoff.postcode
                 })
             });
             if (res && res.distanceMiles) {
@@ -138,14 +133,24 @@ export default function AdminCreateJobScreen() {
         customerEmail: formData.customerEmail,
         pickupContactName: formData.pickupName,
         pickupContactPhone: formData.pickupPhone,
-        pickupAddressLine1: formData.pickupAddress,
-        pickupCity: formData.pickupCity,
-        pickupPostcode: formData.pickupPostcode,
+        pickupAddressLine1: pickup.line1,
+        pickupAddressLine2: pickup.line2,
+        pickupCity: pickup.townCity,
+        pickupCounty: pickup.county,
+        pickupPostcode: pickup.postcode,
+        pickupLatitude: pickup.latitude,
+        pickupLongitude: pickup.longitude,
+
         dropoffContactName: formData.dropoffName,
         dropoffContactPhone: formData.dropoffPhone,
-        dropoffAddressLine1: formData.dropoffAddress,
-        dropoffCity: formData.dropoffCity,
-        dropoffPostcode: formData.dropoffPostcode,
+        dropoffAddressLine1: dropoff.line1,
+        dropoffAddressLine2: dropoff.line2,
+        dropoffCity: dropoff.townCity,
+        dropoffCounty: dropoff.county,
+        dropoffPostcode: dropoff.postcode,
+        dropoffLatitude: dropoff.latitude,
+        dropoffLongitude: dropoff.longitude,
+
         vehicleType: formData.vehicleType,
         goodsDescription: formData.goodsDescription,
         priority: formData.priority,
@@ -160,14 +165,12 @@ export default function AdminCreateJobScreen() {
             description: formData.goodsDescription || 'Standard Parcel'
           }
         ],
-        pickupWindowStart: new Date().toISOString(),
-        pickupWindowEnd: new Date(Date.now() + 4 * 3600000).toISOString(),
-        dropoffWindowStart: new Date(Date.now() + 2 * 3600000).toISOString(),
-        dropoffWindowEnd: new Date(Date.now() + 8 * 3600000).toISOString(),
+        pickupTimeWindow: new Date().toISOString(),
+        deliveryTimeWindow: new Date(Date.now() + 4 * 3600000).toISOString(),
         jobType: 'SAME_DAY',
         distanceMilesOverride: dist,
-        pickupCoords: formData.pickupCoords,
-        dropoffCoords: formData.dropoffCoords,
+        pickupCoords: { lat: pickup.latitude, lng: pickup.longitude },
+        dropoffCoords: { lat: dropoff.latitude, lng: dropoff.longitude },
       };
 
       console.log('[DEBUG] Submitting Job Payload:', payload);
@@ -261,25 +264,12 @@ export default function AdminCreateJobScreen() {
             <Text style={styles.sectionTitle}>Pickup Details</Text>
             
             <View style={{ marginBottom: 12 }}>
-                <AddressAutocomplete 
-                    placeholder="Search or enter pickup postcode"
-                    initialValue={formData.pickupPostcode}
-                    onAddressSelect={(addr) => setFormData({ 
-                        ...formData, 
-                        pickupAddress: addr.line1, 
-                        pickupCity: addr.townCity, 
-                        pickupPostcode: addr.postcode,
-                        pickupCoords: { lat: addr.latitude, lng: addr.longitude }
-                    })}
-                    icon={<MapPin size={16} color={Colors.success} />}
+                <StructuredAddressInput 
+                  label="Pickup Address" 
+                  onAddressChange={setPickup} 
+                  initialValue={pickup} 
                 />
             </View>
-
-            {formData.pickupAddress ? (
-                <View style={styles.addressRefSummary}>
-                    <Text style={styles.addressRefText}>{formData.pickupAddress}, {formData.pickupCity}</Text>
-                </View>
-            ) : null}
 
             <TextInput
               style={styles.input}
@@ -298,25 +288,12 @@ export default function AdminCreateJobScreen() {
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Dropoff Details</Text>
             
             <View style={{ marginBottom: 12 }}>
-                <AddressAutocomplete 
-                    placeholder="Search or enter dropoff postcode"
-                    initialValue={formData.dropoffPostcode}
-                    onAddressSelect={(addr) => setFormData({ 
-                        ...formData, 
-                        dropoffAddress: addr.line1, 
-                        dropoffCity: addr.townCity, 
-                        dropoffPostcode: addr.postcode,
-                        dropoffCoords: { lat: addr.latitude, lng: addr.longitude }
-                    })}
-                    icon={<MapPin size={16} color={Colors.danger} />}
+                <StructuredAddressInput 
+                  label="Dropoff Address" 
+                  onAddressChange={setDropoff} 
+                  initialValue={dropoff} 
                 />
             </View>
-
-            {formData.dropoffAddress ? (
-                <View style={styles.addressRefSummary}>
-                    <Text style={styles.addressRefText}>{formData.dropoffAddress}, {formData.dropoffCity}</Text>
-                </View>
-            ) : null}
 
             <TextInput
               style={styles.input}
@@ -443,10 +420,10 @@ export default function AdminCreateJobScreen() {
                    <Building2 size={14} color={Colors.textMuted} />
                    <Text style={styles.summaryValue}>{selectedBusiness?.companyName || 'Guest Customer'}</Text>
                 </View>
-                <View style={styles.summaryItem}>
-                   <MapPin size={14} color={Colors.textMuted} />
-                   <Text style={styles.summaryValue}>{formData.pickupCity} → {formData.dropoffCity}</Text>
-                </View>
+                 <View style={styles.summaryItem}>
+                    <MapPin size={14} color={Colors.textMuted} />
+                    <Text style={styles.summaryValue}>{pickup?.townCity || 'Pickup City'} → {dropoff?.townCity || 'Dropoff City'}</Text>
+                 </View>
              </View>
           </View>
         )}

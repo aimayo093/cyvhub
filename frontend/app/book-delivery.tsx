@@ -32,7 +32,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/services/api';
 import { Plus } from 'lucide-react-native';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
-import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+import StructuredAddressInput from '@/components/StructuredAddressInput';
 
 const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'HGV'];
 const JOB_TYPES = ['IT Equipment', 'Construction', 'Medical', 'Furniture', 'Office Supplies', 'General Freight', 'Fragile Items', 'Documents'];
@@ -52,18 +52,22 @@ export default function BookDeliveryScreen() {
   const { customer } = useAuth();
 
   const params = useLocalSearchParams();
-  const [pickupAddress, setPickupAddress] = useState<string>('');
-  const [pickupCity, setPickupCity] = useState<string>('');
-  const [pickupPostcode, setPickupPostcode] = useState<string>('');
-  const [pickupCoords, setPickupCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [pickup, setPickup] = useState<any>(null);
   const [pickupContact, setPickupContact] = useState<string>('');
-  const [dropoffAddress, setDropoffAddress] = useState<string>(customer?.defaultAddress ?? '');
-  const [dropoffCity, setDropoffCity] = useState<string>(customer?.defaultCity ?? '');
-  const [dropoffPostcode, setDropoffPostcode] = useState<string>(customer?.defaultPostcode ?? '');
-  const [dropoffCoords, setDropoffCoords] = useState<{lat: number, lng: number} | null>(null);
+  
+  const [dropoff, setDropoff] = useState<any>(customer ? {
+    line1: customer.defaultAddress || '',
+    townCity: customer.defaultCity || '',
+    postcode: customer.defaultPostcode || '',
+    latitude: 0,
+    longitude: 0
+  } : null);
+  
   const [dropoffContact, setDropoffContact] = useState<string>(
     customer ? `${customer.firstName} ${customer.lastName}` : ''
   );
+
+  const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
   
   useEffect(() => {
     if (params.prePickup) setPickupPostcode(params.prePickup as string);
@@ -91,7 +95,7 @@ export default function BookDeliveryScreen() {
   const [calculationError, setCalculationError] = useState<string>('');
 
   const fetchPrice = useCallback(async () => {
-    if (!pickupPostcode || !dropoffPostcode || parcels.length === 0) {
+    if (!pickup?.postcode || !dropoff?.postcode || parcels.length === 0) {
       setCalculationError('');
       setEstimatedPrice(0);
       return;
@@ -103,10 +107,10 @@ export default function BookDeliveryScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pickupPostcode,
-          dropoffPostcode,
-          pickupCoords,
-          dropoffCoords,
+          pickupPostcode: pickup.postcode,
+          dropoffPostcode: dropoff.postcode,
+          pickupCoords: { lat: pickup.latitude, lng: pickup.longitude },
+          dropoffCoords: { lat: dropoff.latitude, lng: dropoff.longitude },
           items: parcels.map(p => ({
             lengthCm: parseFloat(p.lengthCm) || 0,
             widthCm: parseFloat(p.widthCm) || 0,
@@ -192,16 +196,24 @@ export default function BookDeliveryScreen() {
       const price = estimatedPrice;
       // createDelivery returns a Promise — field names must match backend schema
       const delivery = await createDelivery({
-        pickupAddressLine1: pickupAddress.trim(),
-        pickupCity: pickupCity.trim(),
-        pickupPostcode: pickupPostcode.trim(),
+        pickupAddressLine1: pickup.line1,
+        pickupAddressLine2: pickup.line2,
+        pickupCity: pickup.townCity,
+        pickupPostcode: pickup.postcode,
+        pickupLatitude: pickup.latitude,
+        pickupLongitude: pickup.longitude,
         pickupContactName: pickupContact.trim(),
         pickupContactPhone: '0000000000',
-        dropoffAddressLine1: dropoffAddress.trim(),
-        dropoffCity: dropoffCity.trim(),
-        dropoffPostcode: dropoffPostcode.trim(),
+
+        dropoffAddressLine1: dropoff.line1,
+        dropoffAddressLine2: dropoff.line2,
+        dropoffCity: dropoff.townCity,
+        dropoffPostcode: dropoff.postcode,
+        dropoffLatitude: dropoff.latitude,
+        dropoffLongitude: dropoff.longitude,
         dropoffContactName: dropoffContact.trim(),
         dropoffContactPhone: '0000000000',
+
         parcels: parcels.map(p => ({
             lengthCm: parseFloat(p.lengthCm),
             widthCm: parseFloat(p.widthCm),
@@ -333,31 +345,17 @@ export default function BookDeliveryScreen() {
             {showSavedLocations === 'pickup' && renderQuickFill('pickup')}
 
             <View style={styles.inputGroup}>
-              <View style={{ marginBottom: 12 }}>
-                <AddressAutocomplete 
-                  placeholder="Enter pickup postcode or address"
-                  initialValue={pickupPostcode}
-                  onAddressSelect={(addr) => {
-                    setPickupAddress(addr.line1);
-                    setPickupCity(addr.townCity);
-                    setPickupPostcode(addr.postcode);
-                    setPickupCoords({ lat: addr.latitude, lng: addr.longitude });
-                  }}
-                  icon={<MapPin size={16} color={Colors.success} />}
-                />
-              </View>
-
-              {pickupAddress ? (
-                <View style={styles.addressSummary}>
-                  <Text style={styles.addressSummaryText}>{pickupAddress}, {pickupCity}</Text>
-                </View>
-              ) : null}
+              <StructuredAddressInput 
+                label="Pickup Address" 
+                onAddressChange={setPickup} 
+                initialValue={pickup} 
+              />
 
               <View style={styles.inputRow}>
                 <User size={16} color={Colors.textMuted} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Contact name"
+                  placeholder="Contact name at pickup"
                   placeholderTextColor={Colors.textMuted}
                   value={pickupContact}
                   onChangeText={setPickupContact}
@@ -381,31 +379,17 @@ export default function BookDeliveryScreen() {
             {showSavedLocations === 'dropoff' && renderQuickFill('dropoff')}
 
             <View style={styles.inputGroup}>
-              <View style={{ marginBottom: 12 }}>
-                <AddressAutocomplete 
-                  placeholder="Enter dropoff postcode or address"
-                  initialValue={dropoffPostcode}
-                  onAddressSelect={(addr) => {
-                    setDropoffAddress(addr.line1);
-                    setDropoffCity(addr.townCity);
-                    setDropoffPostcode(addr.postcode);
-                    setDropoffCoords({ lat: addr.latitude, lng: addr.longitude });
-                  }}
-                  icon={<MapPin size={16} color={Colors.danger} />}
-                />
-              </View>
-
-              {dropoffAddress ? (
-                <View style={styles.addressSummary}>
-                  <Text style={styles.addressSummaryText}>{dropoffAddress}, {dropoffCity}</Text>
-                </View>
-              ) : null}
+              <StructuredAddressInput 
+                label="Dropoff Address" 
+                onAddressChange={setDropoff} 
+                initialValue={dropoff} 
+              />
 
               <View style={styles.inputRow}>
                 <User size={16} color={Colors.textMuted} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Contact name"
+                  placeholder="Contact name at dropoff"
                   placeholderTextColor={Colors.textMuted}
                   value={dropoffContact}
                   onChangeText={setDropoffContact}

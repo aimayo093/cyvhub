@@ -10,6 +10,8 @@ export class CommercialService {
     static async requestQuote(payload: { 
         pickupPostcode: string, 
         dropoffPostcode: string, 
+        pickupAddress?: { line1: string, line2?: string, townCity: string, county?: string, formatted?: string },
+        dropoffAddress?: { line1: string, line2?: string, townCity: string, county?: string, formatted?: string },
         pickupCoords?: { lat: number, lng: number },
         dropoffCoords?: { lat: number, lng: number },
         distanceMiles?: number,
@@ -52,9 +54,7 @@ export class CommercialService {
         }
 
         // 2. Resolve Road Routing & Distance
-        // If coords weren't provided (legacy/simple calls), we might need to resolve them, 
-        // but typically the frontend/controller will provide them.
-        let distanceMiles = 0;
+        let distanceMiles = payload.distanceMiles || 0;
         let durationMinutes = 0;
 
         if (payload.pickupCoords && payload.dropoffCoords) {
@@ -62,8 +62,16 @@ export class CommercialService {
             distanceMiles = route.distanceMiles;
             durationMinutes = route.durationMinutes;
         } else {
-            // Fallback for missing coords (using legacy postcode distance tool if available)
-            distanceMiles = 10; // Dummy fallback to prevent crash
+            // Fallback for missing coords (using postal resolution if needed)
+            const [pAddrs, dAddrs] = await Promise.all([
+                AddressService.findAddresses(payload.pickupPostcode),
+                AddressService.findAddresses(payload.dropoffPostcode)
+            ]);
+            const pCoords = { lat: pAddrs[0].latitude, lng: pAddrs[0].longitude };
+            const dCoords = { lat: dAddrs[0].latitude, lng: dAddrs[0].longitude };
+            const route = await RoutingService.calculateRoadRoute(pCoords, dCoords);
+            distanceMiles = route.distanceMiles;
+            durationMinutes = route.durationMinutes;
         }
 
         if (payload.flags?.isReturnTrip) {
@@ -71,8 +79,8 @@ export class CommercialService {
         }
 
         // 3. Remote Area Detection
-        const globalConfig = await (prisma as any).globalConfig.findUnique({ where: { key: 'pricing_engine_config' } });
-        const config = globalConfig?.config as any || {};
+        const configRecord = await (prisma as any).globalConfig.findUnique({ where: { key: 'pricing_engine_config' } });
+        const config = configRecord?.config as any || {};
         const remotePrefixes = config.remote_postcode_prefixes || [];
         
         const isPickupRemote = remotePrefixes.some((p: string) => payload.pickupPostcode.toUpperCase().startsWith(p));
@@ -117,7 +125,23 @@ export class CommercialService {
         const quoteRequest = await (prisma as any).quoteRequest.create({
             data: {
                 pickupPostcode: payload.pickupPostcode,
+                pickupAddressLine1: payload.pickupAddress?.line1,
+                pickupAddressLine2: payload.pickupAddress?.line2,
+                pickupCity: payload.pickupAddress?.townCity,
+                pickupCounty: payload.pickupAddress?.county,
+                pickupLatitude: payload.pickupCoords?.lat,
+                pickupLongitude: payload.pickupCoords?.lng,
+                pickupFormattedAddress: payload.pickupAddress?.formatted,
+
                 dropoffPostcode: payload.dropoffPostcode,
+                dropoffAddressLine1: payload.dropoffAddress?.line1,
+                dropoffAddressLine2: payload.dropoffAddress?.line2,
+                dropoffCity: payload.dropoffAddress?.townCity,
+                dropoffCounty: payload.dropoffAddress?.county,
+                dropoffLatitude: payload.dropoffCoords?.lat,
+                dropoffLongitude: payload.dropoffCoords?.lng,
+                dropoffFormattedAddress: payload.dropoffAddress?.formatted,
+
                 distanceMiles,
                 actualWeightKg,
                 volumetricWeightKg,

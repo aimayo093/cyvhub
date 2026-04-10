@@ -6,6 +6,7 @@ import Head from 'expo-router/head';
 import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import StructuredAddressInput from '@/components/StructuredAddressInput';
 
 import {
     initialHero,
@@ -23,8 +24,8 @@ import {
 export default function PublicHome() {
     const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
     const router = useRouter();
-    const [collection, setCollection] = useState('');
-    const [delivery, setDelivery] = useState('');
+    const [collection, setCollection] = useState<any>(null);
+    const [delivery, setDelivery] = useState<any>(null);
     const [isReadyNow, setIsReadyNow] = useState(true);
     const [vehicleType, setVehicleType] = useState('Medium Van');
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -121,8 +122,8 @@ export default function PublicHome() {
     };
 
     const handleContinue = async () => {
-        if (!collection.trim() || !delivery.trim()) {
-            alert('Please enter both collection and delivery postcodes.');
+        if (!collection || !delivery) {
+            alert('Please select both collection and delivery addresses.');
             return;
         }
 
@@ -140,8 +141,12 @@ export default function PublicHome() {
         router.push({
             pathname: '/quote-details' as any,
             params: {
-                collection,
-                delivery,
+                pickupPostcode: collection.postcode,
+                pickupAddress: JSON.stringify(collection),
+                dropoffPostcode: delivery.postcode,
+                dropoffAddress: JSON.stringify(delivery),
+                pickupCoords: JSON.stringify({ lat: collection.latitude, lng: collection.longitude }),
+                dropoffCoords: JSON.stringify({ lat: delivery.latitude, lng: delivery.longitude }),
                 ready: isReadyNow.toString(),
                 vehicle: vehicleType
             }
@@ -224,19 +229,19 @@ export default function PublicHome() {
                                         <View style={styles.formContainer}>
                                             <View style={styles.postcodeRow}>
                                                 <View style={styles.gridField}>
-                                                    <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Collection postcode: <Text style={styles.required}>*</Text></Text>
-                                                    <View style={styles.inputIconWrapper}>
-                                                        <MapPin size={18} color={Colors.textMuted} style={styles.inputIcon as any} />
-                                                        <TextInput style={styles.inputWithIcon} value={collection} onChangeText={setCollection} placeholder="e.g. EC1A 1BB" />
-                                                    </View>
+                                                    <StructuredAddressInput 
+                                                        label="Collection address:" 
+                                                        onAddressChange={setCollection} 
+                                                        initialValue={collection} 
+                                                    />
                                                 </View>
 
                                                 <View style={styles.gridField}>
-                                                    <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Delivery postcode: <Text style={styles.required}>*</Text></Text>
-                                                    <View style={styles.inputIconWrapper}>
-                                                        <MapPin size={18} color={Colors.textMuted} style={styles.inputIcon as any} />
-                                                        <TextInput style={styles.inputWithIcon} value={delivery} onChangeText={setDelivery} placeholder="e.g. M1 1AE" />
-                                                    </View>
+                                                    <StructuredAddressInput 
+                                                        label="Delivery address:" 
+                                                        onAddressChange={setDelivery} 
+                                                        initialValue={delivery} 
+                                                    />
                                                 </View>
                                             </View>
 
@@ -636,10 +641,10 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     bookingTitle: {
-        fontSize: 20,
-        color: '#1a237e',
+        fontSize: 22,
+        color: '#1e293b',
         marginBottom: 16,
-        fontWeight: '600',
+        fontWeight: '800',
     },
     formRow: {
         flexDirection: 'column',

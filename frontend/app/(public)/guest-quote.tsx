@@ -129,8 +129,10 @@ export default function GuestQuotePage() {
                 const response = await apiClient('/quotes/calculate', {
                     method: 'POST',
                     body: JSON.stringify({
-                        pickupPostcode: activeCollection,
-                        dropoffPostcode: activeDelivery,
+                        pickupPostcode: typeof activeCollection === 'object' ? activeCollection.postcode : activeCollection,
+                        dropoffPostcode: typeof activeDelivery === 'object' ? activeDelivery.postcode : activeDelivery,
+                        pickupCoords: typeof activeCollection === 'object' ? { lat: activeCollection.latitude, lng: activeCollection.longitude } : undefined,
+                        dropoffCoords: typeof activeDelivery === 'object' ? { lat: activeDelivery.latitude, lng: activeDelivery.longitude } : undefined,
                         items: activeParcels.map((p: any) => ({
                             lengthCm: Number(p.length),
                             widthCm: Number(p.width),
@@ -230,7 +232,9 @@ export default function GuestQuotePage() {
                     <View style={styles.summaryRow}>
                         <MapPin size={16} color={Colors.primary} style={{ marginRight: 8 }} />
                         <Text style={styles.summaryLabel}>Route:</Text>
-                        <Text style={styles.summaryValue}>{finalCollection} → {finalDelivery} ({distance} miles)</Text>
+                        <Text style={styles.summaryValue}>
+                            {typeof finalCollection === 'object' ? `${finalCollection.line1}, ${finalCollection.townCity}` : finalCollection} → {typeof finalDelivery === 'object' ? `${finalDelivery.line1}, ${finalDelivery.townCity}` : finalDelivery} ({distance} miles)
+                        </Text>
                     </View>
                     <View style={styles.summaryRow}>
                         <Package size={16} color={Colors.primary} style={{ marginRight: 8 }} />

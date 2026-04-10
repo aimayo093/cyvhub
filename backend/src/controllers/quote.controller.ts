@@ -41,10 +41,25 @@ export class QuoteController {
 
     static async createQuote(req: any, res: Response): Promise<void> {
         try {
-            const { pickupPostcode, dropoffPostcode, items, flags, businessId } = req.body;
+            const { 
+                pickupPostcode, 
+                dropoffPostcode, 
+                pickupAddress,
+                dropoffAddress,
+                pickupCoords,
+                dropoffCoords,
+                items, 
+                flags, 
+                businessId 
+            } = req.body;
+
             const result = await CommercialService.requestQuote({
                 pickupPostcode,
                 dropoffPostcode,
+                pickupAddress,
+                dropoffAddress,
+                pickupCoords,
+                dropoffCoords,
                 items,
                 flags: flags || {},
                 businessId: businessId || req.user?.id
@@ -57,7 +72,15 @@ export class QuoteController {
     }
 
     static async calculatePrice(req: Request, res: Response): Promise<void> {
-        const { pickupPostcode, dropoffPostcode, items, flags } = req.body;
+        const { 
+            pickupPostcode, 
+            dropoffPostcode, 
+            pickupCoords, 
+            dropoffCoords,
+            items, 
+            flags 
+        } = req.body;
+        
         console.log(`[QUOTE_CONTROLLER] New UK-Wide Calculation: ${pickupPostcode} -> ${dropoffPostcode}`);
 
         try {
@@ -66,13 +89,18 @@ export class QuoteController {
                 return;
             }
 
-            // 1. Resolve Street-Level Locations (Coords)
-            const [pAddrs, dAddrs] = await Promise.all([
-                AddressService.findAddresses(pickupPostcode),
-                AddressService.findAddresses(dropoffPostcode)
-            ]);
-            const pickup = { lat: pAddrs[0].latitude, lng: pAddrs[0].longitude };
-            const dropoff = { lat: dAddrs[0].latitude, lng: dAddrs[0].longitude };
+            // 1. Resolve Street-Level Locations (Coords) if not provided
+            let pickup = pickupCoords;
+            let dropoff = dropoffCoords;
+
+            if (!pickup || !dropoff) {
+                const [pAddrs, dAddrs] = await Promise.all([
+                    AddressService.findAddresses(pickupPostcode),
+                    AddressService.findAddresses(dropoffPostcode)
+                ]);
+                if (!pickup) pickup = { lat: pAddrs[0].latitude, lng: pAddrs[0].longitude };
+                if (!dropoff) dropoff = { lat: dAddrs[0].latitude, lng: dAddrs[0].longitude };
+            }
 
             // 2. Road Routing
             const route = await RoutingService.calculateRoadRoute(pickup, dropoff);

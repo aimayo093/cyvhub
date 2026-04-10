@@ -145,11 +145,15 @@ export default function QuoteDetailsPage() {
                     <View style={styles.summaryBox}>
                         <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>From:</Text>
-                            <Text style={styles.summaryValue}>{collection as string}</Text>
+                            <Text style={styles.summaryValue}>
+                                {typeof collection === 'object' ? `${collection.line1}, ${collection.townCity}` : (collection as string)}
+                            </Text>
                         </View>
                         <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>To:</Text>
-                            <Text style={styles.summaryValue}>{delivery as string}</Text>
+                            <Text style={styles.summaryValue}>
+                                {typeof delivery === 'object' ? `${delivery.line1}, ${delivery.townCity}` : (delivery as string)}
+                            </Text>
                         </View>
                     </View>
 

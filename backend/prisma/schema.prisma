@@ -393,10 +393,26 @@ model Quote {
   customerId  String
   businessId  String?
 
-  pickupPostcode  String
-  dropoffPostcode String
-  vehicleType     String
-  distanceKm      Float
+  pickupPostcode         String
+  pickupAddressLine1     String?
+  pickupAddressLine2     String?
+  pickupCity             String?
+  pickupCounty           String?
+  pickupLatitude         Float?
+  pickupLongitude        Float?
+  pickupFormattedAddress String?
+
+  dropoffPostcode         String
+  dropoffAddressLine1     String?
+  dropoffAddressLine2     String?
+  dropoffCity             String?
+  dropoffCounty           String?
+  dropoffLatitude         Float?
+  dropoffLongitude        Float?
+  dropoffFormattedAddress String?
+
+  vehicleType String
+  distanceKm  Float
 
   // Multi-Parcel Optimization Logs
   quantity     Int    @default(1)
@@ -771,7 +787,23 @@ model PayoutRule {
 model QuoteRequest {
   id              String @id @default(uuid())
   pickupPostcode  String
+  pickupAddressLine1 String?
+  pickupAddressLine2 String?
+  pickupCity         String?
+  pickupCounty       String?
+  pickupLatitude     Float?
+  pickupLongitude    Float?
+  pickupFormattedAddress String?
+
   dropoffPostcode String
+  dropoffAddressLine1 String?
+  dropoffAddressLine2 String?
+  dropoffCity         String?
+  dropoffCounty       String?
+  dropoffLatitude     Float?
+  dropoffLongitude    Float?
+  dropoffFormattedAddress String?
+
   distanceMiles   Float
 
   // Imputed Metrics
