@@ -9,3 +9,7 @@ dev.db
 public/uploads/
 
 .vercel
+
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
