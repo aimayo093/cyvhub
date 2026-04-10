@@ -8,6 +8,7 @@ import { Lock, Eye, EyeOff, CheckCircle, ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 export default function ResetPasswordScreen() {
     const router = useRouter();
@@ -64,8 +65,8 @@ export default function ResetPasswordScreen() {
                 <Text style={styles.backBtnText}>Back to Login</Text>
             </TouchableOpacity>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.inner}>
-                <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ResponsiveContainer scrollable={true} backgroundColor={Colors.background} maxWidth={600} contentContainerStyle={{ borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
+                <View style={styles.content}>
                     {success ? (
                         <View style={styles.successWrap}>
                             <View style={styles.successIcon}>
@@ -141,8 +142,8 @@ export default function ResetPasswordScreen() {
                             </TouchableOpacity>
                         </View>
                     )}
-                </ScrollView>
-            </KeyboardAvoidingView>
+                </View>
+            </ResponsiveContainer>
         </View>
     );
 }
@@ -151,7 +152,6 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.navy },
     backBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12 },
     backBtnText: { color: Colors.textInverse, fontSize: 14, fontWeight: '600' },
-    inner: { flex: 1, backgroundColor: Colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
     content: { padding: 28, paddingTop: 40, minHeight: 500 },
     formWrap: { alignItems: 'center' },
     iconWrap: {

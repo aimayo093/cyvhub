@@ -26,6 +26,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
 import { useJobs } from '@/providers/JobsProvider';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 export default function AdminCreateJobScreen() {
   const insets = useSafeAreaInsets();
@@ -203,9 +204,8 @@ export default function AdminCreateJobScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
-        {step === 1 && (
-          <View style={styles.stepContainer}>
+      <ResponsiveContainer scrollable={true} backgroundColor="#F8FAFC">
+        <View style={styles.stepContainer}>
             <Text style={styles.label}>Select Client Account</Text>
             <View style={styles.searchBox}>
               <Search size={18} color={Colors.textMuted} />
@@ -444,7 +444,7 @@ export default function AdminCreateJobScreen() {
              </View>
           </View>
         )}
-      </ScrollView>
+      </ResponsiveContainer>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         {step < 3 ? (
@@ -484,10 +484,10 @@ export default function AdminCreateJobScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { backgroundColor: Colors.navy, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1000, alignSelf: 'center', width: '100%' },
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 20, fontWeight: '800' as const, color: '#FFFFFF' },
-  stepIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24 },
+  stepIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24, maxWidth: 1000, alignSelf: 'center', width: '100%' },
   stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   stepDotActive: { backgroundColor: Colors.adminPrimary },
   stepNum: { fontSize: 12, fontWeight: '700' as const, color: 'rgba(255,255,255,0.5)' },
@@ -495,7 +495,9 @@ const styles = StyleSheet.create({
   stepLine: { width: 40, height: 2, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 8 },
   stepLineActive: { backgroundColor: Colors.adminPrimary },
   content: { flex: 1 },
-  contentInner: { padding: 20 },
+  contentInner: { paddingVertical: 20, paddingHorizontal: 0 },
+  footer: { backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  footerContent: { padding: 20, maxWidth: 1000, alignSelf: 'center', width: '100%' },
   stepContainer: { animationDuration: '0.3s' },
   sectionTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.text, marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '600' as const, color: Colors.textSecondary, marginBottom: 8, marginTop: 12 },

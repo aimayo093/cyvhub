@@ -27,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 // Internal type definition to replace the mock library
 export interface TeamMember {
@@ -213,41 +214,47 @@ export default function UserManagementScreen() {
         }}
       />
 
-      <View style={styles.summary}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{members.length}</Text>
-          <Text style={styles.summaryLabel}>Total Members</Text>
+      <ResponsiveContainer scrollable={false} backgroundColor="transparent">
+        <View style={styles.summary}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{members.length}</Text>
+            <Text style={styles.summaryLabel}>Total Members</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{members.filter(m => m.status === 'ACTIVE').length}</Text>
+            <Text style={styles.summaryLabel}>Active</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{members.filter(m => m.status === 'INVITED').length}</Text>
+            <Text style={styles.summaryLabel}>Invited</Text>
+          </View>
         </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{members.filter(m => m.status === 'ACTIVE').length}</Text>
-          <Text style={styles.summaryLabel}>Active</Text>
-        </View>
-        <View style={styles.summaryDivider} />
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{members.filter(m => m.status === 'INVITED').length}</Text>
-          <Text style={styles.summaryLabel}>Invited</Text>
-        </View>
-      </View>
+      </ResponsiveContainer>
 
-      <FlatList
-        data={members}
-        renderItem={renderMember}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
+      <ResponsiveContainer scrollable={false} backgroundColor="transparent">
+        <FlatList
+          data={members}
+          renderItem={renderMember}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        />
+      </ResponsiveContainer>
 
       <Modal visible={showInvite} animationType="slide" presentationStyle="pageSheet">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHeaderContent}>
               <Text style={styles.modalTitle}>Invite Team Member</Text>
               <TouchableOpacity onPress={() => setShowInvite(false)}>
                 <X size={24} color={Colors.text} />
               </TouchableOpacity>
             </View>
+          </View>
 
+          <ResponsiveContainer scrollable={true} backgroundColor={Colors.background}>
             <View style={styles.modalBody}>
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Full Name</Text>
@@ -304,8 +311,8 @@ export default function UserManagementScreen() {
                 <Text style={styles.inviteBtnText}>Send Invitation</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </ResponsiveContainer>
+        </View>
       </Modal>
     </View>
   );
@@ -314,12 +321,12 @@ export default function UserManagementScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   headerBtn: { padding: 8 },
-  summary: { flexDirection: 'row', backgroundColor: Colors.surface, paddingVertical: 16, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  summary: { flexDirection: 'row', backgroundColor: Colors.surface, paddingVertical: 16, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: Colors.border, width: '100%' },
   summaryItem: { flex: 1, alignItems: 'center' },
   summaryValue: { fontSize: 20, fontWeight: '800' as const, color: Colors.text },
   summaryLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
   summaryDivider: { width: 1, height: 32, backgroundColor: Colors.border },
-  list: { padding: 16, paddingBottom: 24 },
+  list: { paddingVertical: 16, paddingHorizontal: 0 },
   memberCard: { backgroundColor: Colors.surface, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: Colors.border },
   memberMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   memberAvatar: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
@@ -346,9 +353,10 @@ const styles = StyleSheet.create({
   removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
   removeBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.danger },
   modalContainer: { flex: 1, backgroundColor: Colors.background },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalHeader: { backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalHeaderContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, maxWidth: 1000, alignSelf: 'center', width: '100%' },
   modalTitle: { fontSize: 20, fontWeight: '800' as const, color: Colors.text },
-  modalBody: { padding: 20 },
+  modalBody: { paddingVertical: 20, paddingHorizontal: 0 },
   formGroup: { marginBottom: 20 },
   formLabel: { fontSize: 14, fontWeight: '700' as const, color: Colors.text, marginBottom: 8 },
   formInput: { backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, minHeight: 48 },

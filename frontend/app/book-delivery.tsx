@@ -31,6 +31,7 @@ import { useDeliveries } from '@/providers/DeliveriesProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/services/api';
 import { Plus } from 'lucide-react-native';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'HGV'];
 const JOB_TYPES = ['IT Equipment', 'Construction', 'Medical', 'Furniture', 'Office Supplies', 'General Freight', 'Fragile Items', 'Documents'];
@@ -310,16 +311,8 @@ export default function BookDeliveryScreen() {
         }}
       />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+      <ResponsiveContainer scrollable={true} backgroundColor={Colors.background}>
+        <View style={styles.contentInner}>
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionDot, { backgroundColor: Colors.success }]} />
@@ -769,8 +762,8 @@ export default function BookDeliveryScreen() {
           </View>
 
           <View style={{ height: 40 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -783,11 +776,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 16,
-    maxWidth: Platform.OS === 'web' ? 800 : '100%',
-    width: '100%',
-    alignSelf: 'center',
+  contentInner: {
+    paddingVertical: 16,
+    paddingHorizontal: 0,
   },
   sectionCard: {
     backgroundColor: Colors.surface,

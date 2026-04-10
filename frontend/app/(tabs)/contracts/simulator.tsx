@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Switch, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Switch, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Calculator, MapPin, Truck, Target, Info, CheckCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 const VEHICLES = [
     { id: 'small', name: 'Small Van', multiplier: 1.0 },
@@ -100,168 +101,178 @@ export default function PricingSimulatorScreen() {
     return (
         <View style={styles.container}>
             <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <ChevronLeft size={24} color={Colors.textInverse} />
-                </TouchableOpacity>
-                <View style={styles.headerTitleWrap}>
-                    <Calculator size={20} color={Colors.textInverse} />
-                    <Text style={styles.headerTitle}>Pricing Engine Simulator</Text>
+                <View style={styles.headerContent}>
+                    <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                        <ChevronLeft size={24} color={Colors.textInverse} />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleWrap}>
+                        <Calculator size={20} color={Colors.textInverse} />
+                        <Text style={styles.headerTitle}>Pricing Engine Simulator</Text>
+                    </View>
                 </View>
             </View>
 
-            <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-
-                {/* Toggle Pricing Type */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Client Type</Text>
-                    <View style={styles.segmentControl}>
-                        <TouchableOpacity
-                            style={[styles.segmentBtn, pricingType === 'ADHOC' && styles.segmentBtnActive]}
-                            onPress={() => { setPricingType('ADHOC'); Haptics.selectionAsync(); }}
-                        >
-                            <Text style={[styles.segmentText, pricingType === 'ADHOC' && styles.segmentTextActive]}>Ad-hoc Quote</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.segmentBtn, pricingType === 'CONTRACT' && styles.segmentBtnActive]}
-                            onPress={() => { setPricingType('CONTRACT'); Haptics.selectionAsync(); }}
-                        >
-                            <Text style={[styles.segmentText, pricingType === 'CONTRACT' && styles.segmentTextActive]}>Contracted Client</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {pricingType === 'CONTRACT' && (
+            <ResponsiveContainer scrollable={true} backgroundColor={Colors.background}>
+                <View style={styles.bodyContent}>
+                    {/* Toggle Pricing Type */}
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Select Contract</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-                            {loading ? (
-                                <ActivityIndicator size="small" color={Colors.adminPrimary} />
-                            ) : contracts.length === 0 ? (
-                                <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No active contracts found.</Text>
-                            ) : contracts.map((c: any) => (
+                        <Text style={styles.sectionTitle}>Client Type</Text>
+                        <View style={styles.segmentControl}>
+                            <TouchableOpacity
+                                style={[styles.segmentBtn, pricingType === 'ADHOC' && styles.segmentBtnActive]}
+                                onPress={() => { setPricingType('ADHOC'); Haptics.selectionAsync(); }}
+                            >
+                                <Text style={[styles.segmentText, pricingType === 'ADHOC' && styles.segmentTextActive]}>Ad-hoc Quote</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.segmentBtn, pricingType === 'CONTRACT' && styles.segmentBtnActive]}
+                                onPress={() => { setPricingType('CONTRACT'); Haptics.selectionAsync(); }}
+                            >
+                                <Text style={[styles.segmentText, pricingType === 'CONTRACT' && styles.segmentTextActive]}>Contracted Client</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {pricingType === 'CONTRACT' && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Select Contract</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                                {loading ? (
+                                    <ActivityIndicator size="small" color={Colors.adminPrimary} />
+                                ) : contracts.length === 0 ? (
+                                    <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No active contracts found.</Text>
+                                ) : contracts.map((c: any) => (
+                                    <TouchableOpacity
+                                        key={c.id}
+                                        style={[styles.contractChip, selectedContractId === c.id && styles.contractChipActive]}
+                                        onPress={() => { setSelectedContractId(c.id); Haptics.selectionAsync(); }}
+                                    >
+                                        <Text style={[styles.contractChipText, selectedContractId === c.id && styles.contractChipTextActive]}>
+                                            {c.businessAccount?.tradingName || c.businessAccount?.companyName || 'Business'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    <View style={styles.gridRow}>
+                        <View style={styles.gridCol}>
+                            <Text style={styles.inputLabel}>Distance (km)</Text>
+                            <View style={styles.inputWrap}>
+                                <MapPin size={16} color={Colors.textMuted} />
+                                <TextInput style={styles.input} value={distance} onChangeText={setDistance} keyboardType="numeric" />
+                            </View>
+                        </View>
+                        <View style={styles.gridCol}>
+                            <Text style={styles.inputLabel}>Extra Stops</Text>
+                            <View style={styles.inputWrap}>
+                                <Target size={16} color={Colors.textMuted} />
+                                <TextInput style={styles.input} value={stops} onChangeText={setStops} keyboardType="numeric" />
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Vehicle Type</Text>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            {VEHICLES.map(v => (
                                 <TouchableOpacity
-                                    key={c.id}
-                                    style={[styles.contractChip, selectedContractId === c.id && styles.contractChipActive]}
-                                    onPress={() => { setSelectedContractId(c.id); Haptics.selectionAsync(); }}
+                                    key={v.id}
+                                    style={[styles.vehicleBtn, selectedVehicle === v.id && styles.vehicleBtnActive]}
+                                    onPress={() => { setSelectedVehicle(v.id); Haptics.selectionAsync(); }}
                                 >
-                                    <Text style={[styles.contractChipText, selectedContractId === c.id && styles.contractChipTextActive]}>
-                                        {c.businessAccount?.tradingName || c.businessAccount?.companyName || 'Business'}
-                                    </Text>
+                                    <Truck size={16} color={selectedVehicle === v.id ? Colors.adminPrimary : Colors.textMuted} />
+                                    <Text style={[styles.vehicleBtnText, selectedVehicle === v.id && styles.vehicleBtnTextActive]}>{v.name}</Text>
                                 </TouchableOpacity>
                             ))}
-                        </ScrollView>
-                    </View>
-                )}
-
-                <View style={styles.gridRow}>
-                    <View style={styles.gridCol}>
-                        <Text style={styles.inputLabel}>Distance (km)</Text>
-                        <View style={styles.inputWrap}>
-                            <MapPin size={16} color={Colors.textMuted} />
-                            <TextInput style={styles.input} value={distance} onChangeText={setDistance} keyboardType="numeric" />
                         </View>
                     </View>
-                    <View style={styles.gridCol}>
-                        <Text style={styles.inputLabel}>Extra Stops</Text>
-                        <View style={styles.inputWrap}>
-                            <Target size={16} color={Colors.textMuted} />
-                            <TextInput style={styles.input} value={stops} onChangeText={setStops} keyboardType="numeric" />
-                        </View>
-                    </View>
-                </View>
 
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Vehicle Type</Text>
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                        {VEHICLES.map(v => (
-                            <TouchableOpacity
-                                key={v.id}
-                                style={[styles.vehicleBtn, selectedVehicle === v.id && styles.vehicleBtnActive]}
-                                onPress={() => { setSelectedVehicle(v.id); Haptics.selectionAsync(); }}
-                            >
-                                <Truck size={16} color={selectedVehicle === v.id ? Colors.adminPrimary : Colors.textMuted} />
-                                <Text style={[styles.vehicleBtnText, selectedVehicle === v.id && styles.vehicleBtnTextActive]}>{v.name}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Condition Surcharges</Text>
-                    <View style={styles.toggleGrid}>
-                        <View style={styles.toggleRow}>
-                            <Text style={styles.toggleLabel}>Weekend Delivery</Text>
-                            <Switch value={isWeekend} onValueChange={v => { setIsWeekend(v); Haptics.selectionAsync(); }} />
-                        </View>
-                        <View style={styles.toggleRow}>
-                            <Text style={styles.toggleLabel}>Out of Hours (OOH)</Text>
-                            <Switch value={isOOH} onValueChange={v => { setIsOOH(v); Haptics.selectionAsync(); }} />
-                        </View>
-                        <View style={styles.toggleRow}>
-                            <Text style={styles.toggleLabel}>Heavy / Bulky Goods</Text>
-                            <Switch value={isHeavy} onValueChange={v => { setIsHeavy(v); Haptics.selectionAsync(); }} />
-                        </View>
-                        <View style={styles.toggleRow}>
-                            <Text style={styles.toggleLabel}>Urgent SLA (1 hour)</Text>
-                            <Switch value={isUrgent} onValueChange={v => { setIsUrgent(v); Haptics.selectionAsync(); }} />
-                        </View>
-                    </View>
-                </View>
-
-                <View style={styles.breakdownCard}>
-                    <View style={styles.breakdownHeader}>
-                        <CheckCircle size={18} color={Colors.success} />
-                        <Text style={styles.breakdownTitle}>Calculated Price Breakdown</Text>
-                    </View>
-
-                    <View style={styles.breakdownBody}>
-                        <View style={styles.bRow}>
-                            <Text style={styles.bLabel}>Base Rate</Text>
-                            <Text style={styles.bValue}>£{pricingResult.baseCost.toFixed(2)}</Text>
-                        </View>
-                        <View style={styles.bRow}>
-                            <Text style={styles.bLabel}>Distance ({distance}km @ £{pricingResult.rates.perKm.toFixed(2)}/km)</Text>
-                            <Text style={styles.bValue}>£{pricingResult.distanceCost.toFixed(2)}</Text>
-                        </View>
-                        <View style={styles.bRow}>
-                            <Text style={styles.bLabel}>Stops ({stops} @ £{pricingResult.rates.perStop.toFixed(2)}/stop)</Text>
-                            <Text style={styles.bValue}>£{pricingResult.stopsCost.toFixed(2)}</Text>
-                        </View>
-
-                        <View style={styles.bDivider} />
-
-                        <View style={styles.bRow}>
-                            <Text style={styles.bLabel}>Vehicle Multiplier (x{pricingResult.rates.multiplier})</Text>
-                            <Text style={styles.bValue}>£{pricingResult.subtotal.toFixed(2)}</Text>
-                        </View>
-
-                        {pricingResult.rates.totalSurchargePct > 0 && (
-                            <View style={styles.bRow}>
-                                <Text style={styles.bLabel}>Surcharges (+{pricingResult.rates.totalSurchargePct}%)</Text>
-                                <Text style={styles.bValue}>£{pricingResult.surchargeAmount.toFixed(2)}</Text>
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Condition Surcharges</Text>
+                        <View style={styles.toggleGrid}>
+                            <View style={styles.toggleRow}>
+                                <Text style={styles.toggleLabel}>Weekend Delivery</Text>
+                                <Switch value={isWeekend} onValueChange={v => { setIsWeekend(v); Haptics.selectionAsync(); }} />
                             </View>
-                        )}
-
-                        <View style={styles.bTotalRow}>
-                            <Text style={styles.bTotalLabel}>Final Estimated Price</Text>
-                            <Text style={styles.bTotalValue}>£{pricingResult.finalTotal.toFixed(2)}</Text>
+                            <View style={styles.toggleRow}>
+                                <Text style={styles.toggleLabel}>Out of Hours (OOH)</Text>
+                                <Switch value={isOOH} onValueChange={v => { setIsOOH(v); Haptics.selectionAsync(); }} />
+                            </View>
+                            <View style={styles.toggleRow}>
+                                <Text style={styles.toggleLabel}>Heavy / Bulky Goods</Text>
+                                <Switch value={isHeavy} onValueChange={v => { setIsHeavy(v); Haptics.selectionAsync(); }} />
+                            </View>
+                            <View style={styles.toggleRow}>
+                                <Text style={styles.toggleLabel}>Urgent SLA (1 hour)</Text>
+                                <Switch value={isUrgent} onValueChange={v => { setIsUrgent(v); Haptics.selectionAsync(); }} />
+                            </View>
                         </View>
                     </View>
+
+                    <View style={styles.breakdownCard}>
+                        <View style={styles.breakdownHeader}>
+                            <CheckCircle size={18} color={Colors.success} />
+                            <Text style={styles.breakdownTitle}>Calculated Price Breakdown</Text>
+                        </View>
+
+                        <View style={styles.breakdownBody}>
+                            <View style={styles.bRow}>
+                                <Text style={styles.bLabel}>Base Rate</Text>
+                                <Text style={styles.bValue}>£{pricingResult.baseCost.toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.bRow}>
+                                <Text style={styles.bLabel}>Distance ({distance}km @ £{pricingResult.rates.perKm.toFixed(2)}/km)</Text>
+                                <Text style={styles.bValue}>£{pricingResult.distanceCost.toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.bRow}>
+                                <Text style={styles.bLabel}>Stops ({stops} @ £{pricingResult.rates.perStop.toFixed(2)}/stop)</Text>
+                                <Text style={styles.bValue}>£{pricingResult.stopsCost.toFixed(2)}</Text>
+                            </View>
+
+                            <View style={styles.bDivider} />
+
+                            <View style={styles.bRow}>
+                                <Text style={styles.bLabel}>Vehicle Multiplier (x{pricingResult.rates.multiplier})</Text>
+                                <Text style={styles.bValue}>£{pricingResult.subtotal.toFixed(2)}</Text>
+                            </View>
+
+                            {pricingResult.rates.totalSurchargePct > 0 && (
+                                <View style={styles.bRow}>
+                                    <Text style={styles.bLabel}>Surcharges (+{pricingResult.rates.totalSurchargePct}%)</Text>
+                                    <Text style={styles.bValue}>£{pricingResult.surchargeAmount.toFixed(2)}</Text>
+                                </View>
+                            )}
+
+                            <View style={styles.bTotalRow}>
+                                <Text style={styles.bTotalLabel}>Final Estimated Price</Text>
+                                <Text style={styles.bTotalValue}>£{pricingResult.finalTotal.toFixed(2)}</Text>
+                            </View>
+                        </View>
+                    </View>
+                    <View style={{ height: 40 }} />
                 </View>
-                <View style={{ height: 40 }} />
-            </ScrollView>
+            </ResponsiveContainer>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
-    header: { backgroundColor: Colors.navy, paddingHorizontal: 20, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+    header: { backgroundColor: Colors.navy, paddingHorizontal: 20, paddingBottom: 16 },
+    headerContent: {
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        gap: 12,
+        maxWidth: 1000,
+        alignSelf: 'center',
+        width: '100%',
+    },
     backBtn: { padding: 4, marginLeft: -4 },
     headerTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.textInverse },
-    body: { flex: 1 },
-    bodyContent: { padding: 20 },
+    bodyContent: { paddingVertical: 20, paddingHorizontal: 0 },
     section: { marginBottom: 24 },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 12 },
     segmentControl: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: Colors.border },

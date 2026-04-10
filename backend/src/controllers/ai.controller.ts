@@ -3,6 +3,7 @@ import { prisma } from '../index';
 import axios from 'axios';
 import { sanitizeUserInput } from '../utils/sanitize';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { AiService, ChatMessage } from '../services/ai.service';
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
@@ -249,9 +250,7 @@ export const askAssistant = async (req: AuthenticatedRequest, res: Response) => 
         if (!sanitized.ok) {
             return res.status(sanitized.status!).json({ error: sanitized.error });
         }
-        const q = sanitized.value!.toLowerCase().trim();
-
-        let responseText = '';
+        const q = sanitized.value!.trim();
 
         // ── Role-Based Data Fetching ─────────────────────────────────────────────
         
@@ -263,7 +262,7 @@ export const askAssistant = async (req: AuthenticatedRequest, res: Response) => 
                     prisma.invoice.count({ where: { status: 'OVERDUE' } }),
                     prisma.carrierProfile.count({ where: { status: 'APPROVED' } }),
                 ]);
-                return { jobCount, overdueCount, carrierCount, type: 'PLATFORM' };
+                return { jobCount, overdueCount, carrierCount, type: 'PLATFORM_OVERVIEW' };
             } else if (role === 'carrier') {
                 const carrier = await prisma.user.findUnique({ 
                     where: { id: userId },
@@ -273,13 +272,13 @@ export const askAssistant = async (req: AuthenticatedRequest, res: Response) => 
                     prisma.job.count({ where: { assignedCarrierId: userId, status: { notIn: ['DELIVERED', 'CANCELLED', 'FAILED'] } } }),
                     prisma.job.count({ where: { assignedCarrierId: userId, status: 'DELIVERED' } }),
                 ]);
-                return { activeJobs, completedJobs, rating: carrier?.carrierProfile?.rating || 0, type: 'CARRIER' };
+                return { activeJobs, completedJobs, rating: carrier?.carrierProfile?.rating || 0, type: 'CARRIER_PERFORMANCE' };
             } else if (role === 'driver') {
                 const [activeJobs, completedJobs] = await Promise.all([
                     prisma.job.count({ where: { assignedDriverId: userId, status: { notIn: ['DELIVERED', 'CANCELLED', 'FAILED'] } } }),
                     prisma.job.count({ where: { assignedDriverId: userId, status: 'DELIVERED' } }),
                 ]);
-                return { activeJobs, completedJobs, type: 'DRIVER' };
+                return { activeJobs, completedJobs, type: 'DRIVER_STATUS' };
             } else { // customer
                 const user = await prisma.user.findUnique({ where: { id: userId }, include: { businessAccount: true } });
                 const bizId = user?.businessAccountId;
@@ -287,48 +286,12 @@ export const askAssistant = async (req: AuthenticatedRequest, res: Response) => 
                     prisma.job.count({ where: { businessAccountId: bizId || undefined, status: { notIn: ['DELIVERED', 'CANCELLED', 'FAILED'] } } }),
                     prisma.invoice.count({ where: { businessAccountId: bizId || undefined, status: 'OVERDUE' } }),
                 ]);
-                return { activeJobs, overdueInvoices, company: user?.businessAccount?.tradingName, type: 'CUSTOMER' };
+                return { activeJobs, overdueInvoices, company: user?.businessAccount?.tradingName, type: 'CUSTOMER_ACCOUNT' };
             }
         };
 
-        const stats = await getStats();
-
-        // ── Greetings ────────────────────────────────────────────────────────────
-        const greetings = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'howdy'];
-        if (greetings.some(g => q === g || q.startsWith(g + ' ') || q.startsWith(g + '!'))) {
-            responseText = `👋 Hello! I'm your CYVHUB Intelligence Assistant.\n\n`;
-            if (role === 'admin') {
-                responseText += `**Command Center Status:**\n• 📦 ${stats.jobCount} active deliveries being monitored.\n• ⚠️ ${stats.overdueCount} invoices require attention.\n• 🚚 ${stats.carrierCount} carriers online.\n\nHow can I assist with platform oversight?`;
-            } else if (role === 'carrier') {
-                responseText += `**Fleet Optimization:**\n• 📦 ${stats.activeJobs} jobs in progress.\n• ✅ ${stats.completedJobs} successful deliveries.\n• ⭐ Your current rating is ${stats.rating}/5.\n\nI can suggest route optimizations or help manage your fleet.`;
-            } else if (role === 'driver') {
-                responseText += `**Driver Hub:**\n• 📦 You have ${stats.activeJobs} active jobs today.\n• ✅ Great job on ${stats.completedJobs} deliveries so far!\n\nI can help with route details, delivery tips, or schedule changes.`;
-            } else {
-                responseText += `**Customer Portal:**\n• 📦 ${stats.activeJobs} of your shipments are move.\n• ${(stats.overdueInvoices ?? 0) > 0 ? `⚠️ You have ${stats.overdueInvoices} overdue invoices.` : '✅ Your account is fully up to date.'}\n\nAsk me about your delivery status or cost analysis.`;
-            }
-        }
-
-        // ── Invoices / Payments ───────────────────────────────────────────────
-        else if (q.includes('invoice') || q.includes('overdue') || q.includes('unpaid') || q.includes('payment') || q.includes('balance') || q.includes('earning')) {
-            if (role === 'admin') {
-                const overdueInvoices = await prisma.invoice.findMany({ where: { status: 'OVERDUE' }, include: { businessAccount: true }, take: 5 });
-                const totalOverdue = (await prisma.invoice.aggregate({ where: { status: 'OVERDUE' }, _sum: { amount: true } }))._sum.amount || 0;
-                responseText = `💰 **Platform Financials**\n\nTotal Overdue: £${totalOverdue.toFixed(2)}\n\nRecent overdue items:\n`;
-                overdueInvoices.forEach(inv => responseText += `• ${inv.invoiceNumber} (${inv.businessAccount?.tradingName || 'Customer'}): £${inv.amount.toFixed(2)}\n`);
-            } else if (role === 'customer') {
-                const user = await prisma.user.findUnique({ where: { id: userId } });
-                const overdue = await prisma.invoice.findMany({ where: { businessAccountId: user?.businessAccountId || undefined, status: 'OVERDUE' } });
-                const total = overdue.reduce((sum, inv) => sum + inv.amount, 0);
-                responseText = overdue.length > 0 ? `💰 You have ${overdue.length} overdue invoices totalling £${total.toFixed(2)}.` : '✅ You have no overdue invoices.';
-            } else if (role === 'driver' || role === 'carrier') {
-                const completedJobs = await prisma.job.findMany({ where: { [role === 'driver' ? 'assignedDriverId' : 'assignedCarrierId']: userId, status: 'DELIVERED' } });
-                const total = completedJobs.reduce((sum, j) => sum + j.calculatedPrice, 0);
-                responseText = `💷 **Earnings Summary**\n\nTotal Earnings to date: £${total.toFixed(2)}\nCompleted deliveries: ${completedJobs.length}\n\nVisit your Financials tab for a detailed breakdown.`;
-            }
-        }
-
-        // ── Jobs / Deliveries ───────────────────────────────────────────────────
-        else if (q.includes('job') || q.includes('deliver') || q.includes('active') || q.includes('shipment') || q.includes('status')) {
+        // Helper to fetch recent relevant jobs/activity
+        const getRecentActivity = async () => {
             const user = await prisma.user.findUnique({ where: { id: userId } });
             const filterMap: Record<string, any> = {
                 admin: {},
@@ -337,33 +300,65 @@ export const askAssistant = async (req: AuthenticatedRequest, res: Response) => 
                 customer: { businessAccountId: user?.businessAccountId || undefined }
             };
             const filter = filterMap[role] || {};
-            const jobs = await prisma.job.findMany({ where: { ...filter, status: { notIn: ['DELIVERED', 'CANCELLED', 'FAILED'] } }, take: 3 });
-            responseText = `📦 **Active Jobs** (${jobs.length})\n\n`;
-            if (jobs.length === 0) responseText = 'You have no active jobs at the moment.';
-            else jobs.forEach(j => responseText += `• ${j.jobNumber}: ${j.pickupCity} → ${j.dropoffCity} (${j.status})\n`);
-        }
+            
+            return await prisma.job.findMany({ 
+                where: { ...filter }, 
+                orderBy: { updatedAt: 'desc' },
+                take: 5,
+                select: {
+                    jobNumber: true,
+                    status: true,
+                    pickupCity: true,
+                    dropoffCity: true,
+                    calculatedPrice: true,
+                    updatedAt: true
+                }
+            });
+        };
 
-        // ── SLA / Performance ────────────────────────────────────────────────────
-        else if (q.includes('sla') || q.includes('performance') || q.includes('compliance')) {
-            if (role === 'admin' || role === 'customer') {
-                const user = await prisma.user.findUnique({ where: { id: userId } });
-                const bizId = role === 'admin' ? undefined : user?.businessAccountId;
-                const businesses = await prisma.businessAccount.findMany({ where: bizId ? { id: bizId } : {}, select: { tradingName: true, slaCompliance: true } });
-                responseText = `📊 **SLA Compliance**\n\n`;
-                businesses.forEach(b => responseText += `• ${b.tradingName}: ${b.slaCompliance.toFixed(1)}%\n`);
-            } else {
-                responseText = `📊 Your service reliability is currently high. We monitor on-time arrivals and departures to ensure top-tier performance.`;
-            }
-        }
+        const [stats, activity, userDetails] = await Promise.all([
+            getStats(),
+            getRecentActivity(),
+            prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, email: true } })
+        ]);
 
-        // ── Generic Fallback ────────────────────────────────────────────────────
-        else {
-            responseText = `🤖 How can I assist you with your CYVHUB ${role} account?\n\nTry asking about:\n• Recent deliveries\n• Payments or earnings\n• Performance and SLA\n• Sustainability metrics`;
-        }
+        // ── LLM Integration ──────────────────────────────────────────────────────
 
-        res.json({ response: responseText });
+        const systemPrompt = `
+You are the CYVhub Intelligence Assistant, a professional AI helper for a logistics and courier platform.
+Current User: ${userDetails?.firstName || 'User'} (${role})
+
+PLATFORM CONTEXT:
+- Role Definition: ${role}
+- Real-time Stats: ${JSON.stringify(stats)}
+- Recent Activity: ${JSON.stringify(activity)}
+
+INSTRUCTIONS:
+1. Provide professional, concise, and helpful responses.
+2. Use the provided context to answer questions about jobs, earnings, or platform status.
+3. If you don't have enough data to answer a specific operational question, suggest the user checks the relevant tab in their dashboard.
+4. Format your response with clean Markdown (bolding, lists) for readability.
+5. If the user greets you, welcome them back and mention a relevant stat from their context (e.g., "Welcome! You have 3 active jobs today").
+6. Keep the tone sophisticated but accessible.
+`;
+
+        const messages: ChatMessage[] = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: q }
+        ];
+
+        try {
+            const responseText = await AiService.chatCompletion(messages);
+            res.json({ response: responseText });
+        } catch (aiError) {
+            console.error('AI Service Error (Fallback Mode):', aiError);
+            // Graceful fallback to basic greetings if LLM is unavailable
+            res.json({ 
+                response: `I'm currently having trouble reaching my brain, but I can see you have ${stats.activeJobs || stats.jobCount || 0} active items. Please try again in a moment!` 
+            });
+        }
     } catch (error) {
-        console.error('Error in assistant:', error);
-        res.status(500).json({ error: 'Failed to process AI query' });
+        console.error('Error in assistant controller:', error);
+        res.status(500).json({ error: 'Failed to process assistant query' });
     }
 };

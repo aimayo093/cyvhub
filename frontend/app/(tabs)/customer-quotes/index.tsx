@@ -36,6 +36,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { Quote, QuoteStatus } from '@/types';
 import { useAuth } from '@/providers/AuthProvider';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 const MOCK_SAVED_LOCATIONS = [
   { id: '1', label: 'London HQ', city: 'London', postcode: 'EC1A 1BB' },
@@ -459,16 +460,18 @@ export default function CustomerQuotesScreen() {
       />
 
       <Modal visible={showNewQuote} animationType="slide" presentationStyle="pageSheet">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHeaderContent}>
               <Text style={styles.modalTitle}>Request a Quote</Text>
               <TouchableOpacity onPress={() => setShowNewQuote(false)}>
                 <X size={24} color={Colors.text} />
               </TouchableOpacity>
             </View>
+          </View>
 
-            <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ResponsiveContainer scrollable={true} backgroundColor={Colors.background}>
+            <View style={styles.modalContent}>
               <View style={styles.formSection}>
                 <Text style={styles.formSectionLabel}>Pickup Location</Text>
                 <View style={styles.formRow}>
@@ -712,9 +715,9 @@ export default function CustomerQuotesScreen() {
               </TouchableOpacity>
 
               <View style={{ height: 40 }} />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+            </View>
+          </ResponsiveContainer>
+        </View>
       </Modal>
     </View>
   );
@@ -761,10 +764,11 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 17, fontWeight: '700' as const, color: Colors.text },
   emptySubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' as const },
   modalContainer: { flex: 1, backgroundColor: Colors.background },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 16, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalHeader: { backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalHeaderContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 16, maxWidth: 1000, alignSelf: 'center', width: '100%' },
   modalTitle: { fontSize: 20, fontWeight: '800' as const, color: Colors.text },
   modalBody: { flex: 1 },
-  modalContent: { padding: 16 },
+  modalContent: { paddingVertical: 16 },
   formSection: { marginBottom: 20 },
   formSectionLabel: { fontSize: 14, fontWeight: '700' as const, color: Colors.text, marginBottom: 8 },
   formRow: { flexDirection: 'row', gap: 10 },

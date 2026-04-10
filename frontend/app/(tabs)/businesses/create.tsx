@@ -3,7 +3,6 @@ import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
     TouchableOpacity,
     TextInput,
     Alert,
@@ -15,6 +14,7 @@ import { ChevronLeft, Building2, Mail, Phone, MapPin, Check } from 'lucide-react
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 export default function CreateBusinessScreen() {
     const router = useRouter();
@@ -50,7 +50,6 @@ export default function CreateBusinessScreen() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
             // Create business via admin route or direct business route
-            // We use the direct business route which already has validation
             const response = await apiClient('/businesses', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -76,160 +75,163 @@ export default function CreateBusinessScreen() {
     return (
         <View style={styles.container}>
             <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <ChevronLeft size={24} color={Colors.textInverse} />
-                </TouchableOpacity>
-                <View style={styles.headerTitleWrap}>
-                    <Text style={styles.headerTitle}>New Business Account</Text>
+                <View style={styles.headerContent}>
+                    <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                        <ChevronLeft size={24} color={Colors.textInverse} />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleWrap}>
+                        <Text style={styles.headerTitle}>New Business Account</Text>
+                    </View>
+                    <TouchableOpacity 
+                        style={[styles.saveBtn, (!form.tradingName || !form.companyName || !form.contactEmail) && styles.saveBtnDisabled]} 
+                        onPress={handleCreate}
+                        disabled={submitting || !form.tradingName || !form.companyName || !form.contactEmail}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                            <Check size={20} color="#FFF" />
+                        )}
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
-                    style={[styles.saveBtn, (!form.tradingName || !form.companyName || !form.contactEmail) && styles.saveBtnDisabled]} 
-                    onPress={handleCreate}
-                    disabled={submitting || !form.tradingName || !form.companyName || !form.contactEmail}
-                >
-                    {submitting ? (
-                        <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                        <Check size={20} color="#FFF" />
-                    )}
-                </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-                
-                <View style={styles.sectionHeader}>
-                    <Building2 size={18} color={Colors.adminPrimary} />
-                    <Text style={styles.sectionTitle}>Company Identity</Text>
-                </View>
+            <ResponsiveContainer scrollable={true} backgroundColor={Colors.background}>
+                <View style={styles.bodyContent}>
+                    <View style={styles.sectionHeader}>
+                        <Building2 size={18} color={Colors.adminPrimary} />
+                        <Text style={styles.sectionTitle}>Company Identity</Text>
+                    </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Trading Name *</Text>
-                    <TextInput 
-                        style={styles.input} 
-                        value={form.tradingName} 
-                        onChangeText={t => setForm({ ...form, tradingName: t })}
-                        placeholder="e.g. Acme Logistics SE"
-                    />
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Registered Company Name *</Text>
-                    <TextInput 
-                        style={styles.input} 
-                        value={form.companyName} 
-                        onChangeText={t => setForm({ ...form, companyName: t })}
-                        placeholder="e.g. Acme Services Limited"
-                    />
-                </View>
-
-                <View style={styles.sectionHeader}>
-                    <Mail size={18} color={Colors.adminPrimary} />
-                    <Text style={styles.sectionTitle}>Primary Contact</Text>
-                </View>
-
-                <View style={styles.row}>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>Email Address *</Text>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Trading Name *</Text>
                         <TextInput 
                             style={styles.input} 
-                            value={form.contactEmail} 
-                            onChangeText={t => setForm({ ...form, contactEmail: t })}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            placeholder="admin@acme.com"
+                            value={form.tradingName} 
+                            onChangeText={t => setForm({ ...form, tradingName: t })}
+                            placeholder="e.g. Acme Logistics SE"
                         />
                     </View>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>Phone Number</Text>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Registered Company Name *</Text>
                         <TextInput 
                             style={styles.input} 
-                            value={form.contactPhone} 
-                            onChangeText={t => setForm({ ...form, contactPhone: t })}
-                            keyboardType="phone-pad"
-                            placeholder="020 7123 4567"
+                            value={form.companyName} 
+                            onChangeText={t => setForm({ ...form, companyName: t })}
+                            placeholder="e.g. Acme Services Limited"
                         />
                     </View>
-                </View>
 
-                <View style={styles.sectionHeader}>
-                    <MapPin size={18} color={Colors.adminPrimary} />
-                    <Text style={styles.sectionTitle}>Billing Address</Text>
-                </View>
+                    <View style={styles.sectionHeader}>
+                        <Mail size={18} color={Colors.adminPrimary} />
+                        <Text style={styles.sectionTitle}>Primary Contact</Text>
+                    </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Street Address</Text>
-                    <TextInput 
-                        style={styles.input} 
-                        value={form.billingAddress} 
-                        onChangeText={t => setForm({ ...form, billingAddress: t })}
-                        placeholder="123 Business Park"
-                    />
-                </View>
+                    <View style={styles.row}>
+                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                            <Text style={styles.label}>Email Address *</Text>
+                            <TextInput 
+                                style={styles.input} 
+                                value={form.contactEmail} 
+                                onChangeText={t => setForm({ ...form, contactEmail: t })}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                placeholder="admin@acme.com"
+                            />
+                        </View>
+                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                            <Text style={styles.label}>Phone Number</Text>
+                            <TextInput 
+                                style={styles.input} 
+                                value={form.contactPhone} 
+                                onChangeText={t => setForm({ ...form, contactPhone: t })}
+                                keyboardType="phone-pad"
+                                placeholder="020 7123 4567"
+                            />
+                        </View>
+                    </View>
 
-                <View style={styles.row}>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>City</Text>
+                    <View style={styles.sectionHeader}>
+                        <MapPin size={18} color={Colors.adminPrimary} />
+                        <Text style={styles.sectionTitle}>Billing Address</Text>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Street Address</Text>
                         <TextInput 
                             style={styles.input} 
-                            value={form.billingCity} 
-                            onChangeText={t => setForm({ ...form, billingCity: t })}
-                            placeholder="London"
+                            value={form.billingAddress} 
+                            onChangeText={t => setForm({ ...form, billingAddress: t })}
+                            placeholder="123 Business Park"
                         />
                     </View>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>Postcode</Text>
-                        <TextInput 
-                            style={styles.input} 
-                            value={form.billingPostcode} 
-                            onChangeText={t => setForm({ ...form, billingPostcode: t })}
-                            autoCapitalize="characters"
-                            placeholder="EC1A 1BB"
-                        />
-                    </View>
-                </View>
 
-                <View style={styles.sectionHeader}>
-                    <Building2 size={18} color={Colors.adminPrimary} />
-                    <Text style={styles.sectionTitle}>Account Configuration</Text>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Industry Profile</Text>
-                    <View style={styles.chipRow}>
-                        {industries.map(ind => (
-                            <TouchableOpacity 
-                                key={ind} 
-                                style={[styles.chip, form.industryProfile === ind && styles.chipActive]}
-                                onPress={() => setForm({ ...form, industryProfile: ind })}
-                            >
-                                <Text style={[styles.chipText, form.industryProfile === ind && styles.chipTextActive]}>{ind}</Text>
-                            </TouchableOpacity>
-                        ))}
+                    <View style={styles.row}>
+                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                            <Text style={styles.label}>City</Text>
+                            <TextInput 
+                                style={styles.input} 
+                                value={form.billingCity} 
+                                onChangeText={t => setForm({ ...form, billingCity: t })}
+                                placeholder="London"
+                            />
+                        </View>
+                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                            <Text style={styles.label}>Postcode</Text>
+                            <TextInput 
+                                style={styles.input} 
+                                value={form.billingPostcode} 
+                                onChangeText={t => setForm({ ...form, billingPostcode: t })}
+                                autoCapitalize="characters"
+                                placeholder="EC1A 1BB"
+                            />
+                        </View>
                     </View>
-                </View>
 
-                <View style={styles.row}>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>Credit Limit (£)</Text>
-                        <TextInput 
-                            style={styles.input} 
-                            value={form.creditLimit} 
-                            onChangeText={t => setForm({ ...form, creditLimit: t })}
-                            keyboardType="numeric"
-                        />
+                    <View style={styles.sectionHeader}>
+                        <Building2 size={18} color={Colors.adminPrimary} />
+                        <Text style={styles.sectionTitle}>Account Configuration</Text>
                     </View>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>Invoicing Terms</Text>
-                        <TextInput 
-                            style={styles.input} 
-                            value={form.billingTerms} 
-                            onChangeText={t => setForm({ ...form, billingTerms: t })}
-                        />
-                    </View>
-                </View>
 
-                <View style={{ height: 40 }} />
-            </ScrollView>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Industry Profile</Text>
+                        <View style={styles.chipRow}>
+                            {industries.map(ind => (
+                                <TouchableOpacity 
+                                    key={ind} 
+                                    style={[styles.chip, form.industryProfile === ind && styles.chipActive]}
+                                    onPress={() => setForm({ ...form, industryProfile: ind })}
+                                >
+                                    <Text style={[styles.chipText, form.industryProfile === ind && styles.chipTextActive]}>{ind}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <View style={styles.row}>
+                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                            <Text style={styles.label}>Credit Limit (£)</Text>
+                            <TextInput 
+                                style={styles.input} 
+                                value={form.creditLimit} 
+                                onChangeText={t => setForm({ ...form, creditLimit: t })}
+                                keyboardType="numeric"
+                            />
+                        </View>
+                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                            <Text style={styles.label}>Invoicing Terms</Text>
+                            <TextInput 
+                                style={styles.input} 
+                                value={form.billingTerms} 
+                                onChangeText={t => setForm({ ...form, billingTerms: t })}
+                            />
+                        </View>
+                    </View>
+
+                    <View style={{ height: 40 }} />
+                </View>
+            </ResponsiveContainer>
         </View>
     );
 }
@@ -240,9 +242,14 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.navy, 
         paddingHorizontal: 20, 
         paddingBottom: 16, 
+    },
+    headerContent: {
         flexDirection: 'row', 
         alignItems: 'center', 
-        justifyContent: 'space-between' 
+        justifyContent: 'space-between',
+        maxWidth: 1000,
+        alignSelf: 'center',
+        width: '100%',
     },
     backBtn: { padding: 4, marginLeft: -4 },
     headerTitleWrap: { flex: 1, marginLeft: 12 },
@@ -256,13 +263,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center' 
     },
     saveBtnDisabled: { opacity: 0.5 },
-
-    body: { flex: 1 },
-    bodyContent: { padding: 20, gap: 20 },
-
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+    bodyContent: { paddingVertical: 20, paddingHorizontal: 0, gap: 20 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
-
     inputGroup: { gap: 8 },
     label: { fontSize: 14, fontWeight: '600', color: Colors.text },
     input: { 
@@ -275,7 +278,6 @@ const styles = StyleSheet.create({
         borderColor: Colors.border 
     },
     row: { flexDirection: 'row', gap: 12 },
-
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { 
         paddingHorizontal: 12, 

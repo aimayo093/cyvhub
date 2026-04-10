@@ -7,6 +7,7 @@ interface ResponsiveContainerProps {
   maxWidth?: number;
   backgroundColor?: string;
   scrollable?: boolean;
+  contentContainerStyle?: any;
 }
 
 /**
@@ -17,9 +18,10 @@ interface ResponsiveContainerProps {
  */
 export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({ 
   children, 
-  maxWidth = 800, 
+  maxWidth = 1000, 
   backgroundColor = Colors.background,
-  scrollable = true 
+  scrollable = true,
+  contentContainerStyle
 }) => {
   const { width } = useWindowDimensions();
   const isLargeScreen = width > maxWidth;
@@ -27,7 +29,8 @@ export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
   const content = (
     <View style={[
       styles.internalContent,
-      isLargeScreen && { maxWidth, alignSelf: 'center', width: '100%' }
+      isLargeScreen && { maxWidth, alignSelf: 'center', width: '100%' },
+      contentContainerStyle
     ]}>
       {children}
     </View>
@@ -35,16 +38,18 @@ export const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
 
   if (scrollable) {
     return (
-      <ScrollView 
-        style={[styles.container, { backgroundColor }]}
-        contentContainerStyle={[
-          styles.scrollContent,
-          isLargeScreen && styles.largeScreenPadding
-        ]}
-        showsVerticalScrollIndicator={Platform.OS === 'web'}
-      >
-        {content}
-      </ScrollView>
+      <View style={[styles.container, { backgroundColor }]}>
+        <ScrollView 
+          style={styles.container}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isLargeScreen && styles.largeScreenPadding
+          ]}
+          showsVerticalScrollIndicator={Platform.OS === 'web'}
+        >
+          {content}
+        </ScrollView>
+      </View>
     );
   }
 
@@ -62,15 +67,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingVertical: Platform.OS === 'web' ? 40 : 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
   },
   largeScreenPadding: {
     paddingHorizontal: 20,
   },
   internalContent: {
     flex: 1,
+    paddingHorizontal: 16,
   },
   nonScrollableContent: {
-    padding: 16,
+    padding: 0,
   }
 });

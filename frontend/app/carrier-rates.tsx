@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   Alert,
@@ -17,10 +16,8 @@ import {
   Plus,
   Clock,
   Truck,
-  TrendingUp,
   Calendar,
   CheckCircle,
-  AlertTriangle,
   X,
   ChevronDown,
   History,
@@ -29,6 +26,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useCarrier } from '@/providers/CarrierProvider';
 import { CarrierRateCard, Job } from '@/types';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 type ViewTab = 'active' | 'history';
 
@@ -155,142 +153,142 @@ export default function CarrierRatesScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Rate Management' }} />
 
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'active' && styles.tabActive]}
-          onPress={() => { setActiveTab('active'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-        >
-          <DollarSign size={14} color={activeTab === 'active' ? '#FFF' : Colors.textSecondary} />
-          <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>Rate Cards</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'history' && styles.tabActive]}
-          onPress={() => { setActiveTab('history'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-        >
-          <History size={14} color={activeTab === 'history' ? '#FFF' : Colors.textSecondary} />
-          <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>Usage History</Text>
-        </TouchableOpacity>
-      </View>
+      <ResponsiveContainer scrollable={false} backgroundColor="transparent">
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'active' && styles.tabActive]}
+            onPress={() => { setActiveTab('active'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          >
+            <DollarSign size={14} color={activeTab === 'active' ? '#FFF' : Colors.textSecondary} />
+            <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>Rate Cards</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'history' && styles.tabActive]}
+            onPress={() => { setActiveTab('history'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          >
+            <History size={14} color={activeTab === 'history' ? '#FFF' : Colors.textSecondary} />
+            <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>Usage History</Text>
+          </TouchableOpacity>
+        </View>
+      </ResponsiveContainer>
 
-      <ScrollView
-        style={styles.body}
-        contentContainerStyle={styles.bodyContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {activeTab === 'active' ? (
-          <>
-            <View style={styles.summaryRow}>
-              <View style={[styles.summaryCard, { borderLeftColor: Colors.success }]}>
-                <Text style={styles.summaryValue}>{activeCards.length}</Text>
-                <Text style={styles.summaryLabel}>Active Cards</Text>
+      <ResponsiveContainer scrollable={true} backgroundColor={Colors.background}>
+        <View style={styles.bodyContent}>
+          {activeTab === 'active' ? (
+            <>
+              <View style={styles.summaryRow}>
+                <View style={[styles.summaryCard, { borderLeftColor: Colors.success }]}>
+                  <Text style={styles.summaryValue}>{activeCards.length}</Text>
+                  <Text style={styles.summaryLabel}>Active Cards</Text>
+                </View>
+                <View style={[styles.summaryCard, { borderLeftColor: Colors.textMuted }]}>
+                  <Text style={styles.summaryValue}>{expiredCards.length}</Text>
+                  <Text style={styles.summaryLabel}>Expired</Text>
+                </View>
+                <View style={[styles.summaryCard, { borderLeftColor: Colors.carrierPrimary }]}>
+                  <Text style={styles.summaryValue}>{VEHICLE_TYPES.length}</Text>
+                  <Text style={styles.summaryLabel}>Vehicle Types</Text>
+                </View>
               </View>
-              <View style={[styles.summaryCard, { borderLeftColor: Colors.textMuted }]}>
-                <Text style={styles.summaryValue}>{expiredCards.length}</Text>
-                <Text style={styles.summaryLabel}>Expired</Text>
-              </View>
-              <View style={[styles.summaryCard, { borderLeftColor: Colors.carrierPrimary }]}>
-                <Text style={styles.summaryValue}>{VEHICLE_TYPES.length}</Text>
-                <Text style={styles.summaryLabel}>Vehicle Types</Text>
-              </View>
-            </View>
 
-            {rateCards.map((card) => {
-              const statusColor = getStatusColor(card.status);
-              const statusBg = getStatusBg(card.status);
-              return (
-                <TouchableOpacity
-                  key={card.id}
-                  style={styles.rateCard}
-                  onPress={() => card.status === 'ACTIVE' ? handleEdit(card) : null}
-                  activeOpacity={card.status === 'ACTIVE' ? 0.7 : 1}
-                >
-                  <View style={styles.rateCardHeader}>
-                    <View style={styles.rateCardLeft}>
-                      <View style={[styles.vehicleIcon, { backgroundColor: Colors.carrierPrimary + '12' }]}>
-                        <Truck size={18} color={Colors.carrierPrimary} />
-                      </View>
-                      <View>
-                        <Text style={styles.rateVehicle}>{card.vehicleType}</Text>
-                        <View style={[styles.rateStatusBadge, { backgroundColor: statusBg }]}>
-                          <Text style={[styles.rateStatusText, { color: statusColor }]}>{card.status}</Text>
+              {rateCards.map((card) => {
+                const statusColor = getStatusColor(card.status);
+                const statusBg = getStatusBg(card.status);
+                return (
+                  <TouchableOpacity
+                    key={card.id}
+                    style={styles.rateCard}
+                    onPress={() => card.status === 'ACTIVE' ? handleEdit(card) : null}
+                    activeOpacity={card.status === 'ACTIVE' ? 0.7 : 1}
+                  >
+                    <View style={styles.rateCardHeader}>
+                      <View style={styles.rateCardLeft}>
+                        <View style={[styles.vehicleIcon, { backgroundColor: Colors.carrierPrimary + '12' }]}>
+                          <Truck size={18} color={Colors.carrierPrimary} />
+                        </View>
+                        <View>
+                          <Text style={styles.rateVehicle}>{card.vehicleType}</Text>
+                          <View style={[styles.rateStatusBadge, { backgroundColor: statusBg }]}>
+                            <Text style={[styles.rateStatusText, { color: statusColor }]}>{card.status}</Text>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                    <View style={styles.rateCardRight}>
-                      <Text style={styles.rateBaseLabel}>Base</Text>
-                      <Text style={styles.rateBaseValue}>£{card.baseRate.toFixed(2)}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.rateGrid}>
-                    <RateItem label="Per Km" value={`£${card.perKmRate.toFixed(2)}`} />
-                    <RateItem label="Per Stop" value={`£${card.perStopRate.toFixed(2)}`} />
-                    <RateItem label="Weekend" value={`+${card.weekendSurcharge}%`} />
-                    <RateItem label="Out of Hours" value={`+${card.outOfHoursSurcharge}%`} />
-                    <RateItem label="Heavy Goods" value={`+${card.heavyGoodsSurcharge}%`} />
-                    <RateItem label="From" value={card.effectiveFrom} />
-                  </View>
-
-                  {card.effectiveTo && (
-                    <View style={styles.rateExpiry}>
-                      <Calendar size={11} color={Colors.textMuted} />
-                      <Text style={styles.rateExpiryText}>Expired: {card.effectiveTo}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-
-            <TouchableOpacity style={styles.addButton} onPress={handleAdd} activeOpacity={0.7}>
-              <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.addButtonText}>Add Rate Card</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <Text style={styles.historyTitle}>Rate Usage by Period</Text>
-            {getHistoryFromJobs(completedJobs).map((item: any, index: number) => {
-              const avgPerJob = item.jobsUsed > 0 ? (item.totalRevenue / item.jobsUsed) : 0;
-              return (
-                <View key={`${item.vehicleType}-${item.period}`} style={styles.historyCard}>
-                  <View style={styles.historyTop}>
-                    <View style={styles.historyLeft}>
-                      <Truck size={16} color={Colors.carrierPrimary} />
-                      <View>
-                        <Text style={styles.historyVehicle}>{item.vehicleType}</Text>
-                        <Text style={styles.historyPeriod}>{item.period}</Text>
+                      <View style={styles.rateCardRight}>
+                        <Text style={styles.rateBaseLabel}>Base</Text>
+                        <Text style={styles.rateBaseValue}>£{card.baseRate.toFixed(2)}</Text>
                       </View>
                     </View>
-                    <Text style={styles.historyRevenue}>£{item.totalRevenue.toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.historyMeta}>
-                    <View style={styles.historyMetaItem}>
-                      <Text style={styles.historyMetaValue}>{item.jobsUsed}</Text>
-                      <Text style={styles.historyMetaLabel}>Jobs</Text>
-                    </View>
-                    <View style={styles.historyMetaItem}>
-                      <Text style={styles.historyMetaValue}>£{avgPerJob.toFixed(2)}</Text>
-                      <Text style={styles.historyMetaLabel}>Avg/Job</Text>
-                    </View>
-                    <View style={styles.historyMetaItem}>
-                      <Text style={styles.historyMetaValue}>£{item.totalRevenue.toLocaleString()}</Text>
-                      <Text style={styles.historyMetaLabel}>Revenue</Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-            {completedJobs.length === 0 && (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Clock size={40} color={Colors.textMuted} strokeWidth={1} />
-                <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 13 }}>No history available yet.</Text>
-              </View>
-            )}
-          </>
-        )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+                    <View style={styles.rateGrid}>
+                      <RateItem label="Per Km" value={`£${card.perKmRate.toFixed(2)}`} />
+                      <RateItem label="Per Stop" value={`£${card.perStopRate.toFixed(2)}`} />
+                      <RateItem label="Weekend" value={`+${card.weekendSurcharge}%`} />
+                      <RateItem label="Out of Hours" value={`+${card.outOfHoursSurcharge}%`} />
+                      <RateItem label="Heavy Goods" value={`+${card.heavyGoodsSurcharge}%`} />
+                      <RateItem label="From" value={card.effectiveFrom} />
+                    </View>
+
+                    {card.effectiveTo && (
+                      <View style={styles.rateExpiry}>
+                        <Calendar size={11} color={Colors.textMuted} />
+                        <Text style={styles.rateExpiryText}>Expired: {card.effectiveTo}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+
+              <TouchableOpacity style={styles.addButton} onPress={handleAdd} activeOpacity={0.7}>
+                <Plus size={20} color="#FFFFFF" />
+                <Text style={styles.addButtonText}>Add Rate Card</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.historyTitle}>Rate Usage by Period</Text>
+              {getHistoryFromJobs(completedJobs).map((item: any, index: number) => {
+                const avgPerJob = item.jobsUsed > 0 ? (item.totalRevenue / item.jobsUsed) : 0;
+                return (
+                  <View key={`${item.vehicleType}-${item.period}`} style={styles.historyCard}>
+                    <View style={styles.historyTop}>
+                      <View style={styles.historyLeft}>
+                        <Truck size={16} color={Colors.carrierPrimary} />
+                        <View>
+                          <Text style={styles.historyVehicle}>{item.vehicleType}</Text>
+                          <Text style={styles.historyPeriod}>{item.period}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.historyRevenue}>£{item.totalRevenue.toLocaleString()}</Text>
+                    </View>
+                    <View style={styles.historyMeta}>
+                      <View style={styles.historyMetaItem}>
+                        <Text style={styles.historyMetaValue}>{item.jobsUsed}</Text>
+                        <Text style={styles.historyMetaLabel}>Jobs</Text>
+                      </View>
+                      <View style={styles.historyMetaItem}>
+                        <Text style={styles.historyMetaValue}>£{avgPerJob.toFixed(2)}</Text>
+                        <Text style={styles.historyMetaLabel}>Avg/Job</Text>
+                      </View>
+                      <View style={styles.historyMetaItem}>
+                        <Text style={styles.historyMetaValue}>£{item.totalRevenue.toLocaleString()}</Text>
+                        <Text style={styles.historyMetaLabel}>Revenue</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+              {completedJobs.length === 0 && (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <Clock size={40} color={Colors.textMuted} strokeWidth={1} />
+                  <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 13 }}>No history available yet.</Text>
+                </View>
+              )}
+            </>
+          )}
+
+          <View style={{ height: 40 }} />
+        </View>
+      </ResponsiveContainer>
 
       <Modal visible={showAddModal} animationType="slide" transparent>
         <KeyboardAvoidingView
@@ -308,113 +306,115 @@ export default function CarrierRatesScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Text style={styles.formLabel}>Vehicle Type</Text>
-              <TouchableOpacity
-                style={styles.pickerBtn}
-                onPress={() => setShowVehiclePicker(!showVehiclePicker)}
-              >
-                <Text style={styles.pickerBtnText}>{formVehicleType}</Text>
-                <ChevronDown size={18} color={Colors.textSecondary} />
-              </TouchableOpacity>
-              {showVehiclePicker && (
-                <View style={styles.pickerOptions}>
-                  {VEHICLE_TYPES.map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={[styles.pickerOption, formVehicleType === type && styles.pickerOptionActive]}
-                      onPress={() => { setFormVehicleType(type); setShowVehiclePicker(false); }}
-                    >
-                      <Text style={[styles.pickerOptionText, formVehicleType === type && styles.pickerOptionTextActive]}>{type}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+            <ResponsiveContainer scrollable={true} backgroundColor={Colors.surface}>
+              <View style={styles.modalBody}>
+                <Text style={styles.formLabel}>Vehicle Type</Text>
+                <TouchableOpacity
+                  style={styles.pickerBtn}
+                  onPress={() => setShowVehiclePicker(!showVehiclePicker)}
+                >
+                  <Text style={styles.pickerBtnText}>{formVehicleType}</Text>
+                  <ChevronDown size={18} color={Colors.textSecondary} />
+                </TouchableOpacity>
+                {showVehiclePicker && (
+                  <View style={styles.pickerOptions}>
+                    {VEHICLE_TYPES.map((type) => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[styles.pickerOption, formVehicleType === type && styles.pickerOptionActive]}
+                        onPress={() => { setFormVehicleType(type); setShowVehiclePicker(false); }}
+                      >
+                        <Text style={[styles.pickerOptionText, formVehicleType === type && styles.pickerOptionTextActive]}>{type}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
 
-              <View style={styles.formRow}>
-                <View style={styles.formHalf}>
-                  <Text style={styles.formLabel}>Base Rate (£)</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={formBaseRate}
-                    onChangeText={setFormBaseRate}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                  />
+                <View style={styles.formRow}>
+                  <View style={styles.formHalf}>
+                    <Text style={styles.formLabel}>Base Rate (£)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={formBaseRate}
+                      onChangeText={setFormBaseRate}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
+                  <View style={styles.formHalf}>
+                    <Text style={styles.formLabel}>Per Km (£)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={formPerKm}
+                      onChangeText={setFormPerKm}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
                 </View>
-                <View style={styles.formHalf}>
-                  <Text style={styles.formLabel}>Per Km (£)</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={formPerKm}
-                    onChangeText={setFormPerKm}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                  />
+
+                <View style={styles.formRow}>
+                  <View style={styles.formHalf}>
+                    <Text style={styles.formLabel}>Per Stop (£)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={formPerStop}
+                      onChangeText={setFormPerStop}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
+                  <View style={styles.formHalf}>
+                    <Text style={styles.formLabel}>Weekend (%)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={formWeekend}
+                      onChangeText={setFormWeekend}
+                      keyboardType="decimal-pad"
+                      placeholder="0"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
                 </View>
+
+                <View style={styles.formRow}>
+                  <View style={styles.formHalf}>
+                    <Text style={styles.formLabel}>Out of Hours (%)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={formOOH}
+                      onChangeText={setFormOOH}
+                      keyboardType="decimal-pad"
+                      placeholder="0"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
+                  <View style={styles.formHalf}>
+                    <Text style={styles.formLabel}>Heavy Goods (%)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={formHeavy}
+                      onChangeText={setFormHeavy}
+                      keyboardType="decimal-pad"
+                      placeholder="0"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} activeOpacity={0.7}>
+                  <CheckCircle size={18} color="#FFF" />
+                  <Text style={styles.submitBtnText}>
+                    {editingCard ? 'Update Rate Card' : 'Create Rate Card'}
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={{ height: 40 }} />
               </View>
-
-              <View style={styles.formRow}>
-                <View style={styles.formHalf}>
-                  <Text style={styles.formLabel}>Per Stop (£)</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={formPerStop}
-                    onChangeText={setFormPerStop}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-                <View style={styles.formHalf}>
-                  <Text style={styles.formLabel}>Weekend (%)</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={formWeekend}
-                    onChangeText={setFormWeekend}
-                    keyboardType="decimal-pad"
-                    placeholder="0"
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.formRow}>
-                <View style={styles.formHalf}>
-                  <Text style={styles.formLabel}>Out of Hours (%)</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={formOOH}
-                    onChangeText={setFormOOH}
-                    keyboardType="decimal-pad"
-                    placeholder="0"
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-                <View style={styles.formHalf}>
-                  <Text style={styles.formLabel}>Heavy Goods (%)</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={formHeavy}
-                    onChangeText={setFormHeavy}
-                    keyboardType="decimal-pad"
-                    placeholder="0"
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} activeOpacity={0.7}>
-                <CheckCircle size={18} color="#FFF" />
-                <Text style={styles.submitBtnText}>
-                  {editingCard ? 'Update Rate Card' : 'Create Rate Card'}
-                </Text>
-              </TouchableOpacity>
-
-              <View style={{ height: 40 }} />
-            </ScrollView>
+            </ResponsiveContainer>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -443,6 +443,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    width: '100%',
   },
   tab: {
     flex: 1,
@@ -465,11 +466,9 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#FFFFFF',
   },
-  body: {
-    flex: 1,
-  },
   bodyContent: {
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 0,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -674,9 +673,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 20,
     paddingTop: 12,
     maxHeight: '85%',
+    width: '100%',
+    maxWidth: 1000,
+    alignSelf: 'center',
   },
   modalHandle: {
     width: 36,
@@ -691,11 +692,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    paddingHorizontal: 20,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '800' as const,
     color: Colors.text,
+  },
+  modalBody: {
+    paddingVertical: 10,
+    paddingHorizontal: 0,
   },
   formLabel: {
     fontSize: 12,

@@ -3,11 +3,9 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
@@ -22,6 +20,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/providers/AuthProvider';
+import { ResponsiveContainer } from '@/components/ResponsiveContainer';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -114,16 +113,8 @@ export default function EditProfileScreen() {
         }}
       />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+      <ResponsiveContainer scrollable={true} backgroundColor={Colors.background}>
+        <View style={styles.contentInner}>
           <View style={styles.avatarSection}>
             <View style={[styles.avatar, { backgroundColor: accent }]}>
               <Text style={styles.avatarText}>
@@ -288,8 +279,8 @@ export default function EditProfileScreen() {
           </TouchableOpacity>
 
           <View style={{ height: 40 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -299,11 +290,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
+  contentInner: {
+    paddingVertical: 16,
+    paddingHorizontal: 0,
   },
   avatarSection: {
     alignItems: 'center',
