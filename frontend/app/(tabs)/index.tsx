@@ -348,14 +348,18 @@ function CustomerHome() {
       });
 
       if (res && res.quotes && res.quotes.length > 0) {
-        // Find best price or just the first one
-        const price = res.quotes[0].totalExVat;
+        // Normalize strings for matching
+        const normalize = (s: string) => (s || '').toUpperCase().replace(/\s/g, '_');
+        const targetVehicle = 'Small Van';
+        const quote = res.quotes.find((q: any) => normalize(q.vehicleName) === normalize(targetVehicle)) || res.quotes[0];
+        
+        const price = quote.totalExVat;
         setInstantQuote(prev => ({ ...prev, price, loading: false }));
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else if (res && res.error) {
         setInstantQuote(prev => ({ ...prev, error: res.error, loading: false }));
       } else {
-        setInstantQuote(prev => ({ ...prev, error: 'Route not supported', loading: false }));
+        setInstantQuote(prev => ({ ...prev, error: 'Route or vehicle not available', loading: false }));
       }
     } catch (e: any) {
       console.error('[InstantQuote] Failed:', e);

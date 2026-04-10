@@ -77,10 +77,10 @@ export default function FinancialsScreen() {
     fetchData();
   }, [fetchData]);
 
-  const biz = profileData?.businessAccount;
+  const biz = profileData?.businessAccount || profileData?.business_account;
   const profile = useMemo(() => ({
-    companyName: biz?.companyName || (profileData?.firstName ? profileData?.firstName + ' ' + (profileData?.lastName || '') : '—'),
-    billingTerms: biz?.billingTerms || 'Net 30',
+    companyName: biz?.companyName || (profileData?.firstName ? profileData?.firstName + ' ' + (profileData?.lastName || '') : 'Individual Account'),
+    billingTerms: biz?.billingTerms || 'Pay-as-you-go',
     creditLimit: biz?.creditLimit || 0,
     creditUsed: biz?.currentBalance || 0,
   }), [profileData, biz]);

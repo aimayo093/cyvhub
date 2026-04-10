@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware/auth.middleware';
 const router = Router();
 
 // Transactions & Ledger
-router.get('/transactions', authenticate, requireRole(['admin']), PaymentController.getTransactions);
+router.get('/transactions', authenticate, requireRole(['admin', 'customer', 'carrier', 'driver']), PaymentController.getTransactions);
 router.get('/ledger', authenticate, requireRole(['admin']), PaymentController.getLedger);
 
 // Payments & Refunds

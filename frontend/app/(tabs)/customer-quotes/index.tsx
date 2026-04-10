@@ -123,7 +123,10 @@ export default function CustomerQuotesScreen() {
 
       if (response && response.quotes) {
         setCalculations(response);
-        const quote = response.quotes.find((q: any) => q.vehicleName === vehicleType);
+        // Normalize strings for matching (e.g., "SMALL_VAN" vs "Small Van")
+        const normalize = (s: string) => s.toUpperCase().replace(/\s/g, '_');
+        const quote = response.quotes.find((q: any) => normalize(q.vehicleName) === normalize(vehicleType));
+
         if (quote) {
           setEstimatedPrice(quote.totalExVat);
           setCalculationError('');

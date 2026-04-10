@@ -113,18 +113,20 @@ export default function BookDeliveryScreen() {
 
       if (response && response.quotes) {
         setDistanceMiles(response.distanceMiles || 0);
-        // Find the quote for the selected vehicle
-        const quote = response.quotes.find((q: any) => q.vehicleName === selectedVehicle);
+        // Normalize strings for matching (e.g., "SMALL_VAN" vs "Small Van")
+        const normalize = (s: string) => (s || '').toUpperCase().replace(/\s/g, '_');
+        const quote = response.quotes.find((q: any) => normalize(q.vehicleName) === normalize(selectedVehicle));
+
         if (quote) {
-            setEstimatedPrice(quote.totalExVat);
-            setCalculationError('');
+          setEstimatedPrice(quote.totalExVat);
+          setCalculationError('');
         } else if (response.error) {
-            // This happens when no vehicles are suitable
-            setCalculationError(response.error);
-            setEstimatedPrice(0);
+          // This happens when no vehicles are suitable
+          setCalculationError(response.error);
+          setEstimatedPrice(0);
         } else {
-            setCalculationError(`No pricing found for ${selectedVehicle}.`);
-            setEstimatedPrice(0);
+          setCalculationError(`No pricing found for ${selectedVehicle}.`);
+          setEstimatedPrice(0);
         }
       }
     } catch (e: any) {
