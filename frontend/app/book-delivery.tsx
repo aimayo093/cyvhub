@@ -32,6 +32,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/services/api';
 import { Plus } from 'lucide-react-native';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'HGV'];
 const JOB_TYPES = ['IT Equipment', 'Construction', 'Medical', 'Furniture', 'Office Supplies', 'General Freight', 'Fragile Items', 'Documents'];
@@ -54,10 +55,12 @@ export default function BookDeliveryScreen() {
   const [pickupAddress, setPickupAddress] = useState<string>('');
   const [pickupCity, setPickupCity] = useState<string>('');
   const [pickupPostcode, setPickupPostcode] = useState<string>('');
+  const [pickupCoords, setPickupCoords] = useState<{lat: number, lng: number} | null>(null);
   const [pickupContact, setPickupContact] = useState<string>('');
   const [dropoffAddress, setDropoffAddress] = useState<string>(customer?.defaultAddress ?? '');
   const [dropoffCity, setDropoffCity] = useState<string>(customer?.defaultCity ?? '');
   const [dropoffPostcode, setDropoffPostcode] = useState<string>(customer?.defaultPostcode ?? '');
+  const [dropoffCoords, setDropoffCoords] = useState<{lat: number, lng: number} | null>(null);
   const [dropoffContact, setDropoffContact] = useState<string>(
     customer ? `${customer.firstName} ${customer.lastName}` : ''
   );
@@ -102,6 +105,8 @@ export default function BookDeliveryScreen() {
         body: JSON.stringify({
           pickupPostcode,
           dropoffPostcode,
+          pickupCoords,
+          dropoffCoords,
           items: parcels.map(p => ({
             lengthCm: parseFloat(p.lengthCm) || 0,
             widthCm: parseFloat(p.widthCm) || 0,
@@ -328,38 +333,26 @@ export default function BookDeliveryScreen() {
             {showSavedLocations === 'pickup' && renderQuickFill('pickup')}
 
             <View style={styles.inputGroup}>
-              <View style={styles.inputRow}>
-                <MapPin size={16} color={Colors.textMuted} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Pickup address"
-                  placeholderTextColor={Colors.textMuted}
-                  value={pickupAddress}
-                  onChangeText={setPickupAddress}
-                  testID="pickup-address"
+              <View style={{ marginBottom: 12 }}>
+                <AddressAutocomplete 
+                  placeholder="Enter pickup postcode or address"
+                  initialValue={pickupPostcode}
+                  onAddressSelect={(addr) => {
+                    setPickupAddress(addr.line1);
+                    setPickupCity(addr.townCity);
+                    setPickupPostcode(addr.postcode);
+                    setPickupCoords({ lat: addr.latitude, lng: addr.longitude });
+                  }}
+                  icon={<MapPin size={16} color={Colors.success} />}
                 />
               </View>
-              <View style={styles.inputSplit}>
-                <View style={[styles.inputRow, { flex: 1 }]}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="City"
-                    placeholderTextColor={Colors.textMuted}
-                    value={pickupCity}
-                    onChangeText={setPickupCity}
-                  />
+
+              {pickupAddress ? (
+                <View style={styles.addressSummary}>
+                  <Text style={styles.addressSummaryText}>{pickupAddress}, {pickupCity}</Text>
                 </View>
-                <View style={[styles.inputRow, { flex: 0.6 }]}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Postcode"
-                    placeholderTextColor={Colors.textMuted}
-                    value={pickupPostcode}
-                    onChangeText={setPickupPostcode}
-                    autoCapitalize="characters"
-                  />
-                </View>
-              </View>
+              ) : null}
+
               <View style={styles.inputRow}>
                 <User size={16} color={Colors.textMuted} />
                 <TextInput
@@ -388,38 +381,26 @@ export default function BookDeliveryScreen() {
             {showSavedLocations === 'dropoff' && renderQuickFill('dropoff')}
 
             <View style={styles.inputGroup}>
-              <View style={styles.inputRow}>
-                <MapPin size={16} color={Colors.textMuted} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Dropoff address"
-                  placeholderTextColor={Colors.textMuted}
-                  value={dropoffAddress}
-                  onChangeText={setDropoffAddress}
-                  testID="dropoff-address"
+              <View style={{ marginBottom: 12 }}>
+                <AddressAutocomplete 
+                  placeholder="Enter dropoff postcode or address"
+                  initialValue={dropoffPostcode}
+                  onAddressSelect={(addr) => {
+                    setDropoffAddress(addr.line1);
+                    setDropoffCity(addr.townCity);
+                    setDropoffPostcode(addr.postcode);
+                    setDropoffCoords({ lat: addr.latitude, lng: addr.longitude });
+                  }}
+                  icon={<MapPin size={16} color={Colors.danger} />}
                 />
               </View>
-              <View style={styles.inputSplit}>
-                <View style={[styles.inputRow, { flex: 1 }]}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="City"
-                    placeholderTextColor={Colors.textMuted}
-                    value={dropoffCity}
-                    onChangeText={setDropoffCity}
-                  />
+
+              {dropoffAddress ? (
+                <View style={styles.addressSummary}>
+                  <Text style={styles.addressSummaryText}>{dropoffAddress}, {dropoffCity}</Text>
                 </View>
-                <View style={[styles.inputRow, { flex: 0.6 }]}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Postcode"
-                    placeholderTextColor={Colors.textMuted}
-                    value={dropoffPostcode}
-                    onChangeText={setDropoffPostcode}
-                    autoCapitalize="characters"
-                  />
-                </View>
-              </View>
+              ) : null}
+
               <View style={styles.inputRow}>
                 <User size={16} color={Colors.textMuted} />
                 <TextInput
@@ -966,6 +947,7 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 8,
   },
   saveQuoteButton: {
     flex: 1,

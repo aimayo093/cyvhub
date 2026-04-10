@@ -6,7 +6,17 @@ This document outlines the approach for remediating five critical security areas
 
 > [!IMPORTANT]
 > **RLS Policies in Prisma Migration**
-> We are adding a raw SQL migration to enable Row-Level Security (RLS) on all tables because the Supabase Anon Key is exposed in the frontend for real-time## Active Phase: Phase 3 (Commercial Rules Engine)
+> We are adding a raw SQL migration to enable Row-Level Security (RLS) on all tables because the Supabase Anon Key is exposed in the frontend for real-time
+
+## Current Status: [IN PROGRESS]
+- [x] Phase 1: Infrastructure (Services) - [DONE]
+- [x] Phase 2: Database Initialization - [DONE]
+- [x] Phase 3: Core Pricing Engine Refactor - [DONE]
+- [/] Phase 4: Frontend Integration - [IN PROGRESS]
+- [ ] Phase 5: Admin Controls & Multi-Quote Support
+- [ ] Phase 6: Verification & Polish
+
+## Active Phase: Phase 3 (Commercial Rules Engine)
 
 ### Section G: Quotes & Booking Rules
 *   **Quote Generator Logic**:
@@ -112,8 +122,34 @@ Current tokens are set to expire in `24h` without a refresh mechanism, creating 
 #### [MODIFY] [backend/src/routes/auth.routes.ts](file:///c:/Users/paula/Desktop/CYVHUB-main/backend/src/routes/auth.routes.ts)
 - Register `POST /api/auth/refresh`.
 
-#### [MODIFY] [frontend/services/api.ts](file:///c:/Users/paula/Desktop/CYVHUB-main/frontend/services/api.ts)
-- Add Axios/Fetch interceptor logic to handle API 401s, request `/api/auth/refresh`, and seamlessly retry.
+### Phase 4: Frontend Integration (Continued)
+#### [MODIFY] [book-delivery.tsx](file:///c:/Users/paula/Desktop/CYVHUB-main/frontend/app/book-delivery.tsx)
+#### [MODIFY] [index.tsx](file:///c:/Users/paula/Desktop/CYVHUB-main/frontend/app/(tabs)/customer-quotes/index.tsx)
+Integrated `AddressAutocomplete` and updated pricing calls to use coordinates.
+
+#### [NEW] [admin-create-job.tsx](file:///c:/Users/paula/Desktop/CYVHUB-main/frontend/app/admin-create-job.tsx) [IN PROGRESS]
+Integrate `AddressAutocomplete` for admin manual bookings.
+
+---
+
+### Phase 5: Admin Controls (Redesign)
+#### [MODIFY] [admin-pricing.tsx](file:///c:/Users/paula/Desktop/CYVHUB-main/frontend/app/admin-pricing.tsx)
+Refactor this screen to provide a full UI for the `pricing_engine_config` GlobalConfig:
+- **Vehicle Matrix**: Base Fees and Mileage Rates for all 5 vehicle classes.
+- **Handling Rules**: Tiered parcel pricing (1st free, others paid).
+- **Service Levels**: Edit SLA multipliers (Economy, Standard, Priority, Urgent).
+- **Surcharges**: Edit VAT (20%), Remote Area Flat, and OOH Flat fees.
+- **Postcode Lists**: View/Edit remote area prefixes.
+
+---
+
+### Phase 6: Verification & Polish
+- **Test Case 1**: Neath SA11 2AY to Cardiff CF5 4TF (Medium Van). 
+  - Expected: ~35 miles. Base (£39) + Mileage (£47.25) = ~£86 + VAT. Commercially reasonable.
+- **Test Case 2**: Multi-Parcel Job (10 items).
+  - Expected: Base + Mileage + Handling fees for 9 extra items.
+- **Test Case 3**: Remote Area (Highlands IV postcode).
+  - Expected: Remote surcharge applied automatically.
 
 ## Verification Plan
 

@@ -1,94 +1,35 @@
-/**
- * location.controller.ts — Driver location updates via REST + Supabase Realtime.
- *
- * HOW IT WORKS (replaces the old Socket.IO implementation):
- *
- *  1. Driver calls:  PATCH /api/location
- *     Body:  { lat: number, lng: number, heading?: number, speed?: number }
- *     Header: Authorization: Bearer <jwt>
- *
- *  2. Backend writes lastKnownLat/lastKnownLng to the `User` row in Supabase.
- *
- *  3. Supabase Postgres Realtime automatically detects the UPDATE and broadcasts
- *     the changed row to all subscribed front-end clients in real-time.
- *
- *  4. Admin/customer clients subscribe using the Supabase JS SDK:
- *
- *     const channel = supabase
- *       .channel('driver-locations')
- *       .on('postgres_changes', {
- *           event: 'UPDATE',
- *           schema: 'public',
- *           table: 'User',
- *           filter: `role=eq.driver`,
- *       }, (payload) => {
- *           // payload.new contains { id, lastKnownLat, lastKnownLng, ... }
- *           updateDriverMarker(payload.new);
- *       })
- *       .subscribe();
- *
- * IMPORTANT: Supabase Realtime must be enabled for the `User` table in your
- * Supabase project. Go to: Database → Replication → Enable Realtime for `User`.
- */
-
 import { Response } from 'express';
 import { prisma } from '../index';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { AddressService } from '../services/address.service';
+import { RoutingService } from '../services/routing.service';
 
 /**
- * PATCH /api/location
- * 
- * Authenticated drivers call this endpoint periodically (e.g. every 5–10 seconds)
- * to update their current GPS coordinates. The DB write triggers Supabase Realtime
- * which broadcasts the change to all subscribed tracking consumers.
+ * Driver location updates (Supabase Realtime)
  */
 export const updateDriverLocation = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const driverId = req.user?.userId;
         const role = req.user?.role;
-
         if (!driverId || (role !== 'driver' && role !== 'carrier')) {
             return res.status(403).json({ error: 'Only drivers and carriers can update location.' });
         }
-
-        const { lat, lng, heading, speed } = req.body;
-
+        const { lat, lng } = req.body;
         if (typeof lat !== 'number' || typeof lng !== 'number') {
             return res.status(400).json({ error: 'lat and lng must be numbers.' });
         }
-
-        // Basic coordinate bounds validation
-        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            return res.status(400).json({ error: 'Invalid coordinate values.' });
-        }
-
-        // Write to DB — Supabase Realtime picks this up and broadcasts automatically
         await prisma.user.update({
             where: { id: driverId },
-            data: {
-                lastKnownLat: lat,
-                lastKnownLng: lng,
-            },
+            data: { lastKnownLat: lat, lastKnownLng: lng },
         });
-
-        return res.json({
-            success: true,
-            message: 'Location updated.',
-            data: { driverId, lat, lng, heading, speed, timestamp: new Date().toISOString() },
-        });
-
+        return res.json({ success: true, message: 'Location updated.' });
     } catch (error) {
-        console.error('[Location] Update error:', error);
         return res.status(500).json({ error: 'Failed to update location.' });
     }
 };
 
 /**
- * GET /api/location/drivers
- * 
- * Returns the last known location of all active drivers.
- * Used for initial map population before Realtime subscription kicks in.
- * Restricted to admin/carrier/customer roles.
+ * Fetch active driver locations
  */
 export const getActiveDriverLocations = async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -99,80 +40,77 @@ export const getActiveDriverLocations = async (req: AuthenticatedRequest, res: R
                 lastKnownLat: { not: null },
                 lastKnownLng: { not: null },
             },
-            select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-                status: true,
-                lastKnownLat: true,
-                lastKnownLng: true,
-            },
+            select: { id: true, firstName: true, lastName: true, role: true, lastKnownLat: true, lastKnownLng: true },
         });
-
         return res.json({ drivers });
-
     } catch (error) {
-        console.error('[Location] Fetch drivers error:', error);
         return res.status(500).json({ error: 'Failed to fetch driver locations.' });
     }
 };
 
 /**
+ * NEW: Resolve UK Postcode to Address List
+ * GET /api/location/addresses?postcode=...
+ */
+export const getAddressesByPostcode = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const postcode = req.query.postcode as string;
+        if (!postcode) return res.status(400).json({ error: 'Postcode is required.' });
+        const addresses = await AddressService.findAddresses(postcode);
+        return res.json({ addresses });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message });
+    }
+};
+
+/**
+ * NEW: UK Address Autocomplete
+ * GET /api/location/autocomplete?query=...
+ */
+export const autocompleteAddress = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const query = req.query.query as string;
+        if (!query) return res.status(400).json({ error: 'Query string is required.' });
+        const suggestions = await AddressService.autocomplete(query);
+        return res.json({ suggestions });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * REFACTORED: Calculate ROAD Distance
  * POST /api/location/distance
- * Calculates the Haversine distance (in miles) between two UK postcodes.
- * Uses the free, unauthenticated postcodes.io API for lat/lng lookups.
+ * Body: { pickupPostcode, dropoffPostcode, pickupCoords?, dropoffCoords? }
  */
 export const calculateDistance = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const { pickupPostcode, dropoffPostcode } = req.body;
+        const { pickupPostcode, dropoffPostcode, pickupCoords, dropoffCoords } = req.body;
         
-        if (!pickupPostcode || !dropoffPostcode) {
-             return res.status(400).json({ error: 'pickupPostcode and dropoffPostcode are required' });
+        let pCoords = pickupCoords;
+        let dCoords = dropoffCoords;
+
+        // If coords weren't provided, resolve them via getAddress or fall back (legacy support)
+        if (!pCoords || !dCoords) {
+             const [pRes, dRes] = await Promise.all([
+                 AddressService.findAddresses(pickupPostcode),
+                 AddressService.findAddresses(dropoffPostcode)
+             ]);
+             pCoords = { lat: pRes[0].latitude, lng: pRes[0].longitude };
+             dCoords = { lat: dRes[0].latitude, lng: dRes[0].longitude };
         }
 
-        // Fetch coordinates
-        async function getCoordinates(postcode: string) {
-            const resp = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`);
-            if (!resp.ok) return null;
-            const data = await resp.json();
-            return { lat: data.result.latitude, lng: data.result.longitude };
-        }
-
-        const [pickupCoords, dropoffCoords] = await Promise.all([
-             getCoordinates(pickupPostcode),
-             getCoordinates(dropoffPostcode)
-        ]);
-
-        if (!pickupCoords || !dropoffCoords) {
-             return res.status(400).json({ error: 'One or both postcodes are invalid or could not be found' });
-        }
-
-        // Haversine formula
-        const R = 3958.8; // Radius of Earth in Miles
-        const dLat = (dropoffCoords.lat - pickupCoords.lat) * Math.PI / 180;
-        const dLon = (dropoffCoords.lng - pickupCoords.lng) * Math.PI / 180;
-        
-        const lat1 = pickupCoords.lat * Math.PI / 180;
-        const lat2 = dropoffCoords.lat * Math.PI / 180;
-
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        let distanceMiles = R * c;
-
-        // Apply a routing detour factor (straight line -> road distance approx)
-        distanceMiles = distanceMiles * 1.3;
+        const route = await RoutingService.calculateRoadRoute(pCoords, dCoords);
 
         return res.json({
-             distanceMiles: parseFloat(distanceMiles.toFixed(1)),
-             distanceKm: parseFloat((distanceMiles * 1.60934).toFixed(1)),
-             pickup: pickupCoords,
-             dropoff: dropoffCoords
+             distanceMiles: route.distanceMiles,
+             durationMinutes: route.durationMinutes,
+             pickup: pCoords,
+             dropoff: dCoords
         });
 
-    } catch (error) {
-        console.error('[Location] Distance calculate error:', error);
-        return res.status(500).json({ error: 'Internal server error during routing calculation' });
+    } catch (error: any) {
+        console.error('[Location] Distance Error:', error.message);
+        return res.status(400).json({ error: error.message || 'Failed to calculate road route.' });
     }
 };

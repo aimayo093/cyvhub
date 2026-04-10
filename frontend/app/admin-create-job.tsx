@@ -27,6 +27,7 @@ import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
 import { useJobs } from '@/providers/JobsProvider';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 export default function AdminCreateJobScreen() {
   const insets = useSafeAreaInsets();
@@ -46,15 +47,16 @@ export default function AdminCreateJobScreen() {
     pickupAddress: '',
     pickupCity: '',
     pickupPostcode: '',
+    pickupCoords: null as {lat: number, lng: number} | null,
     dropoffName: '',
     dropoffPhone: '',
     dropoffAddress: '',
     dropoffCity: '',
     dropoffPostcode: '',
+    dropoffCoords: null as {lat: number, lng: number} | null,
     vehicleType: 'SMALL_VAN',
     goodsDescription: '',
     priority: 'NORMAL' as 'NORMAL' | 'URGENT',
-    // New parcel data for pricing engine
     weightKg: '10',
     lengthCm: '30',
     widthCm: '30',
@@ -163,7 +165,9 @@ export default function AdminCreateJobScreen() {
         dropoffWindowStart: new Date(Date.now() + 2 * 3600000).toISOString(),
         dropoffWindowEnd: new Date(Date.now() + 8 * 3600000).toISOString(),
         jobType: 'SAME_DAY',
-        distanceMilesOverride: dist, 
+        distanceMilesOverride: dist,
+        pickupCoords: formData.pickupCoords,
+        dropoffCoords: formData.dropoffCoords,
       };
 
       console.log('[DEBUG] Submitting Job Payload:', payload);
@@ -255,6 +259,28 @@ export default function AdminCreateJobScreen() {
         {step === 2 && (
           <View style={styles.stepContainer}>
             <Text style={styles.sectionTitle}>Pickup Details</Text>
+            
+            <View style={{ marginBottom: 12 }}>
+                <AddressAutocomplete 
+                    placeholder="Search or enter pickup postcode"
+                    initialValue={formData.pickupPostcode}
+                    onAddressSelect={(addr) => setFormData({ 
+                        ...formData, 
+                        pickupAddress: addr.line1, 
+                        pickupCity: addr.townCity, 
+                        pickupPostcode: addr.postcode,
+                        pickupCoords: { lat: addr.latitude, lng: addr.longitude }
+                    })}
+                    icon={<MapPin size={16} color={Colors.success} />}
+                />
+            </View>
+
+            {formData.pickupAddress ? (
+                <View style={styles.addressRefSummary}>
+                    <Text style={styles.addressRefText}>{formData.pickupAddress}, {formData.pickupCity}</Text>
+                </View>
+            ) : null}
+
             <TextInput
               style={styles.input}
               placeholder="Contact Name"
@@ -268,29 +294,30 @@ export default function AdminCreateJobScreen() {
               value={formData.pickupPhone}
               onChangeText={val => setFormData({ ...formData, pickupPhone: val })}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Address Line 1"
-              value={formData.pickupAddress}
-              onChangeText={val => setFormData({ ...formData, pickupAddress: val })}
-            />
-            <View style={styles.row}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder="City"
-                value={formData.pickupCity}
-                onChangeText={val => setFormData({ ...formData, pickupCity: val })}
-              />
-              <TextInput
-                style={[styles.input, { width: 120, marginLeft: 10 }]}
-                placeholder="Postcode"
-                autoCapitalize="characters"
-                value={formData.pickupPostcode}
-                onChangeText={val => setFormData({ ...formData, pickupPostcode: val })}
-              />
+
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Dropoff Details</Text>
+            
+            <View style={{ marginBottom: 12 }}>
+                <AddressAutocomplete 
+                    placeholder="Search or enter dropoff postcode"
+                    initialValue={formData.dropoffPostcode}
+                    onAddressSelect={(addr) => setFormData({ 
+                        ...formData, 
+                        dropoffAddress: addr.line1, 
+                        dropoffCity: addr.townCity, 
+                        dropoffPostcode: addr.postcode,
+                        dropoffCoords: { lat: addr.latitude, lng: addr.longitude }
+                    })}
+                    icon={<MapPin size={16} color={Colors.danger} />}
+                />
             </View>
 
-            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Dropoff Details</Text>
+            {formData.dropoffAddress ? (
+                <View style={styles.addressRefSummary}>
+                    <Text style={styles.addressRefText}>{formData.dropoffAddress}, {formData.dropoffCity}</Text>
+                </View>
+            ) : null}
+
             <TextInput
               style={styles.input}
               placeholder="Contact Name"
@@ -304,27 +331,6 @@ export default function AdminCreateJobScreen() {
               value={formData.dropoffPhone}
               onChangeText={val => setFormData({ ...formData, dropoffPhone: val })}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Address Line 1"
-              value={formData.dropoffAddress}
-              onChangeText={val => setFormData({ ...formData, dropoffAddress: val })}
-            />
-            <View style={styles.row}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder="City"
-                value={formData.dropoffCity}
-                onChangeText={val => setFormData({ ...formData, dropoffCity: val })}
-              />
-              <TextInput
-                style={[styles.input, { width: 120, marginLeft: 10 }]}
-                placeholder="Postcode"
-                autoCapitalize="characters"
-                value={formData.dropoffPostcode}
-                onChangeText={val => setFormData({ ...formData, dropoffPostcode: val })}
-              />
-            </View>
           </View>
         )}
 
@@ -528,4 +534,17 @@ const styles = StyleSheet.create({
   footer: { padding: 20, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
   nextBtn: { backgroundColor: Colors.adminPrimary, borderRadius: 14, height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   nextBtnText: { fontSize: 16, fontWeight: '700' as const, color: '#FFF' },
+  addressRefSummary: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
+  addressRefText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '600',
+  },
 });

@@ -37,6 +37,7 @@ import Colors from '@/constants/colors';
 import { Quote, QuoteStatus } from '@/types';
 import { useAuth } from '@/providers/AuthProvider';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 const MOCK_SAVED_LOCATIONS = [
   { id: '1', label: 'London HQ', city: 'London', postcode: 'EC1A 1BB' },
@@ -75,10 +76,12 @@ export default function CustomerQuotesScreen() {
   const [showNewQuote, setShowNewQuote] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [pickupCity, setPickupCity] = useState('London');
+  const [pickupCity, setPickupCity] = useState('');
   const [pickupPostcode, setPickupPostcode] = useState('');
+  const [pickupCoords, setPickupCoords] = useState<{lat: number, lng: number} | null>(null);
   const [dropoffCity, setDropoffCity] = useState('');
   const [dropoffPostcode, setDropoffPostcode] = useState('');
+  const [dropoffCoords, setDropoffCoords] = useState<{lat: number, lng: number} | null>(null);
   const [vehicleType, setVehicleType] = useState('Small Van');
   const [jobType, setJobType] = useState('General Freight');
   const [slaRequirement, setSlaRequirement] = useState('Standard 24h');
@@ -111,6 +114,8 @@ export default function CustomerQuotesScreen() {
         body: JSON.stringify({
           pickupPostcode,
           dropoffPostcode,
+          pickupCoords,
+          dropoffCoords,
           items: parcels.map(p => ({
             lengthCm: parseFloat(p.lengthCm) || 0,
             widthCm: parseFloat(p.widthCm) || 0,
@@ -140,7 +145,7 @@ export default function CustomerQuotesScreen() {
         }
       }
     } catch (e: any) {
-      setCalculationError('Route/Pricing unavailable');
+      setCalculationError(e.message || 'Route/Pricing unavailable');
       setEstimatedPrice(0);
     } finally {
       setIsCalculating(false);
@@ -474,27 +479,23 @@ export default function CustomerQuotesScreen() {
             <View style={styles.modalContent}>
               <View style={styles.formSection}>
                 <Text style={styles.formSectionLabel}>Pickup Location</Text>
-                <View style={styles.formRow}>
-                  <View style={[styles.formInput, { flex: 1 }]}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="City"
-                      placeholderTextColor={Colors.textMuted}
-                      value={pickupCity}
-                      onChangeText={setPickupCity}
-                    />
+                
+                <AddressAutocomplete 
+                  placeholder="Enter pickup postcode or address"
+                  initialValue={pickupPostcode}
+                  onAddressSelect={(addr) => {
+                    setPickupCity(addr.townCity);
+                    setPickupPostcode(addr.postcode);
+                    setPickupCoords({ lat: addr.latitude, lng: addr.longitude });
+                  }}
+                  icon={<MapPin size={16} color={Colors.success} />}
+                />
+
+                {pickupPostcode ? (
+                  <View style={[styles.addressSummary, { marginTop: 10 }]}>
+                    <Text style={styles.addressSummaryText}>{pickupCity}, {pickupPostcode}</Text>
                   </View>
-                  <View style={[styles.formInput, { flex: 0.6 }]}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Postcode"
-                      placeholderTextColor={Colors.textMuted}
-                      value={pickupPostcode}
-                      onChangeText={setPickupPostcode}
-                      autoCapitalize="characters"
-                    />
-                  </View>
-                </View>
+                ) : null}
 
                 <Text style={styles.savedLabel}>Quick select:</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.savedScroll}>
@@ -512,27 +513,23 @@ export default function CustomerQuotesScreen() {
 
               <View style={styles.formSection}>
                 <Text style={styles.formSectionLabel}>Dropoff Location</Text>
-                <View style={styles.formRow}>
-                  <View style={[styles.formInput, { flex: 1 }]}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="City"
-                      placeholderTextColor={Colors.textMuted}
-                      value={dropoffCity}
-                      onChangeText={setDropoffCity}
-                    />
+                
+                <AddressAutocomplete 
+                  placeholder="Enter dropoff postcode or address"
+                  initialValue={dropoffPostcode}
+                  onAddressSelect={(addr) => {
+                    setDropoffCity(addr.townCity);
+                    setDropoffPostcode(addr.postcode);
+                    setDropoffCoords({ lat: addr.latitude, lng: addr.longitude });
+                  }}
+                  icon={<MapPin size={16} color={Colors.danger} />}
+                />
+
+                {dropoffPostcode ? (
+                  <View style={[styles.addressSummary, { marginTop: 10 }]}>
+                    <Text style={styles.addressSummaryText}>{dropoffCity}, {dropoffPostcode}</Text>
                   </View>
-                  <View style={[styles.formInput, { flex: 0.6 }]}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Postcode"
-                      placeholderTextColor={Colors.textMuted}
-                      value={dropoffPostcode}
-                      onChangeText={setDropoffPostcode}
-                      autoCapitalize="characters"
-                    />
-                  </View>
-                </View>
+                ) : null}
               </View>
 
               <View style={styles.formSection}>
@@ -798,6 +795,18 @@ const styles = StyleSheet.create({
   addParcelBtnText: { fontSize: 13, fontWeight: '600' as const, color: Colors.customerPrimary },
   estimateCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.customerPrimary + '10', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: Colors.customerPrimary + '30' },
   estimateCardError: { backgroundColor: Colors.danger + '05', borderColor: Colors.danger + '20' },
+  addressSummary: {
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 12,
+    padding: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.customerPrimary,
+  },
+  addressSummaryText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '600',
+  },
   estimateLabel: { fontSize: 12, fontWeight: '700' as const, color: Colors.textMuted, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
   estimateSubLabel: { fontSize: 13, color: Colors.text, fontWeight: '600' as const, marginTop: 2 },
   estimatePrice: { fontSize: 24, fontWeight: '800' as const, color: Colors.customerPrimary },

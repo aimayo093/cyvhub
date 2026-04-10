@@ -23,6 +23,16 @@ router.patch('/', authenticate, updateDriverLocation);
 router.get('/drivers', authenticate, requireRole(['admin', 'customer', 'carrier']), getActiveDriverLocations);
 
 /**
+ * GET /api/location/addresses?postcode=...
+ */
+router.get('/addresses', authenticate, require('../controllers/location.controller').getAddressesByPostcode);
+
+/**
+ * GET /api/location/autocomplete?query=...
+ */
+router.get('/autocomplete', authenticate, require('../controllers/location.controller').autocompleteAddress);
+
+/**
  * POST /api/location/distance
  */
 router.post('/distance', authenticate, calculateDistance);
