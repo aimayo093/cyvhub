@@ -212,7 +212,8 @@ export default function AdminCreateJobScreen() {
       </View>
 
       <ResponsiveContainer scrollable={true} backgroundColor="#F8FAFC">
-        <View style={styles.stepContainer}>
+        {step === 1 && (
+          <View style={styles.stepContainer}>
             <Text style={styles.label}>Select Client Account</Text>
             <View style={styles.searchBox}>
               <Search size={18} color={Colors.textMuted} />
@@ -479,7 +480,6 @@ const styles = StyleSheet.create({
   stepLineActive: { backgroundColor: Colors.adminPrimary },
   content: { flex: 1 },
   contentInner: { paddingVertical: 20, paddingHorizontal: 0 },
-  footer: { backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
   footerContent: { padding: 20, maxWidth: 1000, alignSelf: 'center', width: '100%' },
   stepContainer: { animationDuration: '0.3s' },
   sectionTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.text, marginBottom: 16 },

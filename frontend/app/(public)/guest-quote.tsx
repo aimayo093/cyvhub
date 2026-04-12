@@ -129,10 +129,10 @@ export default function GuestQuotePage() {
                 const response = await apiClient('/quotes/calculate', {
                     method: 'POST',
                     body: JSON.stringify({
-                        pickupPostcode: typeof activeCollection === 'object' ? activeCollection.postcode : activeCollection,
-                        dropoffPostcode: typeof activeDelivery === 'object' ? activeDelivery.postcode : activeDelivery,
-                        pickupCoords: typeof activeCollection === 'object' ? { lat: activeCollection.latitude, lng: activeCollection.longitude } : undefined,
-                        dropoffCoords: typeof activeDelivery === 'object' ? { lat: activeDelivery.latitude, lng: activeDelivery.longitude } : undefined,
+                        pickupPostcode: typeof activeCollection === 'object' ? (activeCollection as any).postcode : activeCollection,
+                        dropoffPostcode: typeof activeDelivery === 'object' ? (activeDelivery as any).postcode : activeDelivery,
+                        pickupCoords: typeof activeCollection === 'object' ? { lat: (activeCollection as any).latitude, lng: (activeCollection as any).longitude } : undefined,
+                        dropoffCoords: typeof activeDelivery === 'object' ? { lat: (activeDelivery as any).latitude, lng: (activeDelivery as any).longitude } : undefined,
                         items: activeParcels.map((p: any) => ({
                             lengthCm: Number(p.length),
                             widthCm: Number(p.width),

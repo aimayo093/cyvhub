@@ -136,7 +136,7 @@ const StructuredAddressInput: React.FC<StructuredAddressInputProps> = ({
       {/* STEP 1: Postcode Input */}
       {!selectedAddress || isManual ? (
         <View style={[styles.inputContainer, warning ? styles.inputWarning : null]}>
-          <MapPin size={18} color={warning ? Colors.error : Colors.textMuted} />
+          <MapPin size={18} color={warning ? Colors.danger : Colors.textMuted} />
           <TextInput
             style={styles.textInput}
             placeholder="Enter Postcode (e.g. CF5 4TF)"
@@ -176,7 +176,7 @@ const StructuredAddressInput: React.FC<StructuredAddressInputProps> = ({
 
       {warning && (
         <View style={styles.warningContainer}>
-          <AlertTriangle size={14} color={Colors.error} />
+          <AlertTriangle size={14} color={Colors.danger} />
           <Text style={styles.warningText}>{warning}</Text>
         </View>
       )}
@@ -285,8 +285,8 @@ const styles = StyleSheet.create({
     height: 54,
   },
   inputWarning: {
-    borderColor: Colors.error + '40',
-    backgroundColor: Colors.error + '08',
+    borderColor: Colors.danger + '40',
+    backgroundColor: Colors.danger + '08',
   },
   textInput: {
     flex: 1,
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 12,
-    color: Colors.error,
+    color: Colors.danger,
     fontWeight: '500',
   },
   dropdown: {
