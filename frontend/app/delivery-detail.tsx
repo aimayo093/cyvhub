@@ -115,6 +115,8 @@ export default function DeliveryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getDelivery, cancelDelivery } = useDeliveries();
+  // ── IMPORTANT: ALL hooks must be called unconditionally before any conditional returns ──
+  const { transactions } = usePayments();
 
   const delivery = useMemo(() => getDelivery(id ?? ''), [id, getDelivery]);
 
@@ -150,6 +152,16 @@ export default function DeliveryDetailScreen() {
     if (!delivery) return { eta: '', confidence: 0, message: '' };
     return getAIEta(delivery.status, delivery.estimatedDelivery);
   }, [delivery]);
+
+  // Compute payment status from delivery field or from transactions (must be before any conditional return)
+  const paymentStatus = useMemo(() => {
+    if (!delivery) return 'PENDING';
+    if (delivery.paymentStatus) return delivery.paymentStatus;
+    const txn = transactions.find(
+      t => t.deliveryId === delivery.id && t.type === 'charge'
+    );
+    return txn?.status ?? 'PENDING';
+  }, [delivery, transactions]);
 
   const handleCall = useCallback((phone: string) => {
     Linking.openURL(`tel:${phone}`);
@@ -198,16 +210,7 @@ export default function DeliveryDetailScreen() {
   const currentStepIndex = STATUS_STEPS.indexOf(delivery.status);
   const canCancel = ['PENDING_PAYMENT', 'PENDING', 'CONFIRMED'].includes(delivery.status);
   const isActiveDelivery = !['DELIVERED', 'CANCELLED'].includes(delivery.status);
-
-  // Compute payment status from delivery field or from transactions
-  const { transactions } = usePayments();
-  const paymentStatus = useMemo(() => {
-    if (delivery.paymentStatus) return delivery.paymentStatus;
-    const txn = transactions.find(
-      t => t.deliveryId === delivery.id && t.type === 'charge'
-    );
-    return txn?.status ?? 'PENDING';
-  }, [delivery, transactions]);
+  // paymentStatus is computed above (moved before conditional returns to comply with Rules of Hooks)
 
   return (
     <View style={styles.container}>

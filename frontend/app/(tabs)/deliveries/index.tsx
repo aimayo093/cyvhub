@@ -6,10 +6,11 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Package, Clock, MapPin, ChevronRight, Truck, Navigation } from 'lucide-react-native';
+import { Package, Clock, ChevronRight, Truck, Navigation, AlertCircle, CreditCard } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDeliveries } from '@/providers/DeliveriesProvider';
@@ -39,7 +40,7 @@ function formatTime(dateStr: string): string {
 export default function DeliveriesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { deliveries, activeDeliveries, completedDeliveries } = useDeliveries();
+  const { deliveries, activeDeliveries, completedDeliveries, isLoading, error, refreshDeliveries } = useDeliveries();
   const [filter, setFilter] = useState<FilterTab>('active');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -51,10 +52,11 @@ export default function DeliveriesScreen() {
     }
   }, [filter, deliveries, activeDeliveries, completedDeliveries]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    await refreshDeliveries();
+    setRefreshing(false);
+  }, [refreshDeliveries]);
 
   const handleDeliveryPress = useCallback((id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -76,9 +78,13 @@ export default function DeliveriesScreen() {
 
   const renderDelivery = useCallback(({ item }: { item: Delivery }) => {
     const statusConfig = DELIVERY_STATUS_CONFIG[item.status as DeliveryStatus] || DELIVERY_STATUS_CONFIG.PENDING;
+    const isPendingPayment = item.status === 'PENDING_PAYMENT';
+    const priceDisplay = typeof item.estimatedPrice === 'number'
+      ? `£${item.estimatedPrice.toFixed(2)}`
+      : '—';
     return (
       <TouchableOpacity
-        style={styles.deliveryCard}
+        style={[styles.deliveryCard, isPendingPayment && styles.deliveryCardPendingPayment]}
         onPress={() => handleDeliveryPress(item.id)}
         activeOpacity={0.7}
         testID={`delivery-card-${item.id}`}
@@ -88,9 +94,11 @@ export default function DeliveriesScreen() {
             <Text style={styles.trackingNumber}>{item.trackingNumber}</Text>
             <Text style={styles.packageDesc} numberOfLines={1}>{item.packageDescription}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+          <View style={styles.statusBadgeRow}>
+            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+              <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+              <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+            </View>
           </View>
         </View>
 
@@ -121,9 +129,33 @@ export default function DeliveriesScreen() {
               </Text>
             </View>
           )}
-          <Text style={styles.price}>£{item.estimatedPrice.toFixed(2)}</Text>
+          <Text style={styles.price}>{priceDisplay}</Text>
           <ChevronRight size={16} color={Colors.textMuted} />
         </View>
+
+        {/* Pay Now indicator for PENDING_PAYMENT items */}
+        {isPendingPayment && (
+          <TouchableOpacity
+            style={styles.payNowBanner}
+            onPress={(e) => {
+              e.stopPropagation();
+              router.push({
+                pathname: '/payment-checkout' as any,
+                params: {
+                  amount: typeof item.estimatedPrice === 'number' ? item.estimatedPrice.toFixed(2) : '0',
+                  description: `Delivery ${item.trackingNumber}`,
+                  deliveryId: item.id,
+                  trackingNumber: item.trackingNumber,
+                },
+              });
+            }}
+            activeOpacity={0.7}
+          >
+            <CreditCard size={14} color="#fff" />
+            <Text style={styles.payNowBannerText}>Pay Now to Confirm</Text>
+            <ChevronRight size={14} color="#fff" />
+          </TouchableOpacity>
+        )}
 
         {item.driverName && ['DRIVER_ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'].includes(item.status) && (
           <TouchableOpacity
@@ -138,7 +170,31 @@ export default function DeliveriesScreen() {
         )}
       </TouchableOpacity>
     );
-  }, [handleDeliveryPress]);
+  }, [handleDeliveryPress, handleTrackLive, router]);
+
+  // ── Loading state ──
+  if (isLoading && deliveries.length === 0) {
+    return (
+      <View style={styles.centeredState}>
+        <ActivityIndicator size="large" color={Colors.customerPrimary} />
+        <Text style={styles.centeredText}>Loading deliveries...</Text>
+      </View>
+    );
+  }
+
+  // ── Error state ──
+  if (error && deliveries.length === 0) {
+    return (
+      <View style={styles.centeredState}>
+        <AlertCircle size={44} color={Colors.danger} />
+        <Text style={styles.centeredTitle}>Failed to load deliveries</Text>
+        <Text style={styles.centeredText}>{error}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={refreshDeliveries} activeOpacity={0.7}>
+          <Text style={styles.retryBtnText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -248,6 +304,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  deliveryCardPendingPayment: {
+    borderColor: Colors.warning,
+    borderWidth: 1.5,
+  },
   cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -267,6 +327,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  statusBadgeRow: {
+    alignItems: 'flex-end',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -378,5 +441,53 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 32,
+  },
+  payNowBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.warning,
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginTop: 12,
+    gap: 6,
+  },
+  payNowBannerText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+  },
+  centeredState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+    gap: 14,
+    paddingHorizontal: 32,
+  },
+  centeredTitle: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  centeredText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: 8,
+    backgroundColor: Colors.customerPrimary,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700' as const,
   },
 });

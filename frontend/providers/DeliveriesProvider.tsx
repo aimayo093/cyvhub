@@ -6,18 +6,26 @@ import { Delivery, DeliveryStatus, PaymentStatus } from '@/types';
 
 export const [DeliveriesProvider, useDeliveries] = createContextHook(() => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
 
   const loadDeliveries = useCallback(async () => {
     if (!isAuthenticated) {
       setDeliveries([]);
+      setIsLoading(false);
       return;
     }
+    setIsLoading(true);
+    setError(null);
     try {
       const response = await apiClient('/deliveries');
-      setDeliveries(response.data || []);
-    } catch (e) {
+      setDeliveries(response.data || response || []);
+    } catch (e: any) {
       console.error('Failed to load deliveries:', e);
+      setError(e?.message || 'Failed to load deliveries');
+    } finally {
+      setIsLoading(false);
     }
   }, [isAuthenticated]);
 
@@ -75,6 +83,8 @@ export const [DeliveriesProvider, useDeliveries] = createContextHook(() => {
 
   return {
     deliveries,
+    isLoading,
+    error,
     activeDeliveries,
     completedDeliveries,
     getDelivery,
