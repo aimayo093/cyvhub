@@ -6,7 +6,7 @@ import Head from 'expo-router/head';
 import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import StructuredAddressInput from '@/components/StructuredAddressInput';
+import { PostcodeAutocomplete } from '@/components/shared/PostcodeAutocomplete';
 
 import {
     initialHero,
@@ -229,17 +229,17 @@ export default function PublicHome() {
                                         <View style={styles.formContainer}>
                                             <View style={styles.postcodeRow}>
                                                 <View style={styles.gridField}>
-                                                    <StructuredAddressInput 
+                                                    <PostcodeAutocomplete 
                                                         label="Collection address:" 
-                                                        onAddressChange={setCollection} 
+                                                        onAddressSelect={setCollection} 
                                                         initialValue={collection} 
                                                     />
                                                 </View>
 
                                                 <View style={styles.gridField}>
-                                                    <StructuredAddressInput 
+                                                    <PostcodeAutocomplete 
                                                         label="Delivery address:" 
-                                                        onAddressChange={setDelivery} 
+                                                        onAddressSelect={setDelivery} 
                                                         initialValue={delivery} 
                                                     />
                                                 </View>

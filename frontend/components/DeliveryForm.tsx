@@ -29,7 +29,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/services/api';
-import StructuredAddressInput from '@/components/StructuredAddressInput';
+import { PostcodeAutocompleteMobile } from '@/components/shared/PostcodeAutocompleteMobile';
 
 const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'HGV'];
 const JOB_TYPES = ['IT Equipment', 'Construction', 'Medical', 'Furniture', 'Office Supplies', 'General Freight', 'Fragile Items', 'Documents'];
@@ -251,9 +251,9 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
         {showSavedLocations === 'pickup' && renderQuickFill('pickup')}
 
         <View style={styles.inputGroup}>
-          <StructuredAddressInput 
+          <PostcodeAutocompleteMobile 
             label="Pickup Address" 
-            onAddressChange={setPickup} 
+            onAddressSelect={setPickup} 
             initialValue={pickup} 
           />
 
@@ -286,9 +286,9 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
         {showSavedLocations === 'dropoff' && renderQuickFill('dropoff')}
 
         <View style={styles.inputGroup}>
-          <StructuredAddressInput 
+          <PostcodeAutocompleteMobile 
             label="Dropoff Address" 
-            onAddressChange={setDropoff} 
+            onAddressSelect={setDropoff} 
             initialValue={dropoff} 
           />
 

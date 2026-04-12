@@ -27,7 +27,7 @@ import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
 import { useJobs } from '@/providers/JobsProvider';
 import { ResponsiveContainer } from '@/components/ResponsiveContainer';
-import StructuredAddressInput from '@/components/StructuredAddressInput';
+import { PostcodeAutocompleteMobile } from '@/components/shared/PostcodeAutocompleteMobile';
 
 export default function AdminCreateJobScreen() {
   const insets = useSafeAreaInsets();
@@ -265,9 +265,9 @@ export default function AdminCreateJobScreen() {
             <Text style={styles.sectionTitle}>Pickup Details</Text>
             
             <View style={{ marginBottom: 12 }}>
-                <StructuredAddressInput 
+                <PostcodeAutocompleteMobile 
                   label="Pickup Address" 
-                  onAddressChange={setPickup} 
+                  onAddressSelect={setPickup} 
                   initialValue={pickup} 
                 />
             </View>
@@ -289,9 +289,9 @@ export default function AdminCreateJobScreen() {
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Dropoff Details</Text>
             
             <View style={{ marginBottom: 12 }}>
-                <StructuredAddressInput 
+                <PostcodeAutocompleteMobile 
                   label="Dropoff Address" 
-                  onAddressChange={setDropoff} 
+                  onAddressSelect={setDropoff} 
                   initialValue={dropoff} 
                 />
             </View>
