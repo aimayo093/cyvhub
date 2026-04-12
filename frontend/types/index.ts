@@ -18,6 +18,7 @@ export type JobStatus =
 export type JobPriority = 'NORMAL' | 'URGENT';
 
 export type DeliveryStatus =
+  | 'PENDING_PAYMENT'
   | 'PENDING'
   | 'CONFIRMED'
   | 'DRIVER_ASSIGNED'

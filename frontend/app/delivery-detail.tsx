@@ -38,6 +38,7 @@ import { usePayments } from '@/providers/PaymentProvider';
 import { DeliveryStatus, SLAStatus } from '@/types';
 
 const STATUS_CONFIG: Record<DeliveryStatus, { label: string; color: string; bg: string }> = {
+  PENDING_PAYMENT: { label: 'Pending Payment', color: Colors.warning, bg: '#FEF3C7' },
   PENDING: { label: 'Pending', color: Colors.deliveryPending, bg: '#FEF3C7' },
   CONFIRMED: { label: 'Confirmed', color: Colors.deliveryConfirmed, bg: '#DBEAFE' },
   DRIVER_ASSIGNED: { label: 'Driver Assigned', color: Colors.deliveryAssigned, bg: '#EDE9FE' },
@@ -55,6 +56,7 @@ const SLA_CONFIG: Record<SLAStatus, { label: string; color: string; bg: string; 
 };
 
 const STATUS_STEPS: DeliveryStatus[] = [
+  'PENDING_PAYMENT',
   'PENDING',
   'CONFIRMED',
   'DRIVER_ASSIGNED',
@@ -79,7 +81,8 @@ function getSLAForDelivery(status: DeliveryStatus): SLAStatus {
     case 'PICKED_UP': return 'ON_TRACK';
     case 'DRIVER_ASSIGNED': return 'ON_TRACK';
     case 'CONFIRMED': return 'ON_TRACK';
-    case 'PENDING': return 'AT_RISK';
+    case 'PENDING': return 'ON_TRACK';
+    case 'PENDING_PAYMENT': return 'AT_RISK';
     default: return 'ON_TRACK';
   }
 }
@@ -180,7 +183,7 @@ export default function DeliveryDetailScreen() {
 
   const statusConfig = STATUS_CONFIG[delivery.status];
   const currentStepIndex = STATUS_STEPS.indexOf(delivery.status);
-  const canCancel = ['PENDING', 'CONFIRMED'].includes(delivery.status);
+  const canCancel = ['PENDING_PAYMENT', 'PENDING', 'CONFIRMED'].includes(delivery.status);
   const slaConfig = SLA_CONFIG[slaStatus];
   const SLAIcon = slaConfig.icon;
   const isActiveDelivery = !['DELIVERED', 'CANCELLED'].includes(delivery.status);
@@ -483,26 +486,38 @@ export default function DeliveryDetailScreen() {
           </View>
         </View>
 
+        {/* Payment CTA for Unpaid Jobs */}
         {paymentStatus !== 'COMPLETED' && delivery.status !== 'CANCELLED' && (
-          <TouchableOpacity
-            style={styles.payNowBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push({
-                pathname: '/payment-checkout' as any,
-                params: {
-                  amount: delivery.estimatedPrice.toFixed(2),
-                  description: `Delivery ${delivery.trackingNumber}`,
-                  deliveryId: delivery.id,
-                  trackingNumber: delivery.trackingNumber,
-                },
-              });
-            }}
-            activeOpacity={0.7}
-          >
-            <Wallet size={18} color="#fff" />
-            <Text style={styles.payNowBtnText}>Pay £{delivery.estimatedPrice.toFixed(2)} Now</Text>
-          </TouchableOpacity>
+          <View style={styles.paymentCTASection}>
+            <View style={styles.paymentWarning}>
+              <AlertTriangle size={18} color={Colors.warning} />
+              <Text style={styles.paymentWarningText}>
+                {delivery.status === 'PENDING_PAYMENT' 
+                  ? 'Payment is required to confirm this booking and assign a driver.'
+                  : 'Payment for this delivery is still pending.'}
+              </Text>
+            </View>
+            <TouchableOpacity
+                style={styles.payNowBtn}
+                onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                    pathname: '/payment-checkout' as any,
+                    params: {
+                    amount: delivery.estimatedPrice.toFixed(2),
+                    description: `Delivery ${delivery.trackingNumber}`,
+                    deliveryId: delivery.id,
+                    trackingNumber: delivery.trackingNumber,
+                    },
+                });
+                }}
+                activeOpacity={0.7}
+            >
+                <Wallet size={18} color="#fff" />
+                <Text style={styles.payNowBtnText}>Pay £{delivery.estimatedPrice.toFixed(2)} Now</Text>
+                <ChevronRight size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
         )}
 
         {delivery.driverName && (
@@ -1077,9 +1092,47 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cancelButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.danger,
+  },
+  paymentCTASection: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.warning + '40',
+    gap: 12,
+  },
+  paymentWarning: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    backgroundColor: Colors.warning + '10',
+    padding: 12,
+    borderRadius: 12,
+  },
+  paymentWarningText: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.text,
+    fontWeight: '500' as const,
+    lineHeight: 18,
+  },
+  payNowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.customerPrimary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  payNowBtnText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
   },
   podButton: {
     flexDirection: 'row',

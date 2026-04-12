@@ -61,13 +61,12 @@ export default function BookDeliveryScreen() {
       } as any);
 
       router.push({
-        pathname: '/checkout' as any,
+        pathname: '/payment-checkout' as any,
         params: {
-            jobId: delivery.id,
-            jobNumber: delivery.jobNumber,
-            amount: formData.estimatedPrice.toString(),
-            pickup: delivery.pickupCity,
-            dropoff: delivery.dropoffCity,
+          deliveryId: delivery.id,
+          trackingNumber: delivery.trackingNumber,
+          amount: formData.totalIncVat.toFixed(2),
+          description: `Delivery ${delivery.trackingNumber}`,
         }
       });
     } catch (error: any) {

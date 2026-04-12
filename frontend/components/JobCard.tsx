@@ -13,6 +13,7 @@ interface JobCardProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  PENDING_PAYMENT: { label: 'Pending Payment', color: Colors.warning, bg: '#FEF3C7' },
   ASSIGNED: { label: 'Assigned', color: Colors.statusAssigned, bg: '#EEF2FF' },
   DRIVER_ACCEPTED: { label: 'Accepted', color: Colors.statusAccepted, bg: '#EFF6FF' },
   EN_ROUTE_TO_PICKUP: { label: 'En Route to Pickup', color: Colors.statusEnRoute, bg: '#FEF3C7' },

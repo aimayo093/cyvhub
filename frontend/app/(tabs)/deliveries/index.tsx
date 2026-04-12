@@ -18,6 +18,7 @@ import { Delivery, DeliveryStatus } from '@/types';
 type FilterTab = 'active' | 'completed' | 'all';
 
 const DELIVERY_STATUS_CONFIG: Record<DeliveryStatus, { label: string; color: string; bg: string }> = {
+  PENDING_PAYMENT: { label: 'Pending Payment', color: Colors.warning, bg: '#FEF3C7' },
   PENDING: { label: 'Pending', color: Colors.deliveryPending, bg: '#FEF3C7' },
   CONFIRMED: { label: 'Confirmed', color: Colors.deliveryConfirmed, bg: '#DBEAFE' },
   DRIVER_ASSIGNED: { label: 'Driver Assigned', color: Colors.deliveryAssigned, bg: '#EDE9FE' },

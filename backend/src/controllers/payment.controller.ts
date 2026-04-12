@@ -76,7 +76,10 @@ export class PaymentController {
                 if (deliveryId) {
                     await prisma.job.update({
                         where: { id: deliveryId },
-                        data: { paymentStatus: 'COMPLETED' }
+                        data: { 
+                            paymentStatus: 'COMPLETED',
+                            status: 'PENDING_DISPATCH'
+                        }
                     });
                 }
             }

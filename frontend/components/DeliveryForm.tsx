@@ -94,6 +94,7 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
   const [showPickupWindowPicker, setShowPickupWindowPicker] = useState<boolean>(false);
   const [showDeliveryWindowPicker, setShowDeliveryWindowPicker] = useState<boolean>(false);
   const [showSavedLocations, setShowSavedLocations] = useState<LocationTarget | null>(null);
+  const [isSummaryMode, setIsSummaryMode] = useState<boolean>(false);
 
   // Price calculation
   const fetchPrice = useCallback(async () => {
@@ -194,6 +195,11 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
   const handleInternalSubmit = async () => {
     if (!validate()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (mode === 'booking' && !isSummaryMode) {
+      setIsSummaryMode(true);
+      return;
+    }
     
     const formData = {
       pickup,
@@ -216,6 +222,8 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
       pickupTimeWindow: isReadyNow ? 'READY_NOW' : (selectedPickupWindow || undefined),
       deliveryTimeWindow: selectedDeliveryWindow || undefined,
       isReadyNow,
+      totalIncVat: estimatedPrice * 1.2,
+      vatAmount: estimatedPrice * 0.2,
     };
 
     await onSubmit(formData);
@@ -233,401 +241,491 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
     </View>
   );
 
+  const renderSummary = () => {
+    const vat = estimatedPrice * 0.2;
+    const total = estimatedPrice + vat;
+
+    return (
+      <View style={styles.summaryContainer}>
+        <View style={styles.summaryHeader}>
+          <Calculator size={22} color={Colors.customerPrimary} />
+          <View>
+            <Text style={styles.summaryTitle}>Booking Summary</Text>
+            <Text style={styles.summarySubtitle}>Review your shipment details</Text>
+          </View>
+        </View>
+
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryIcon}>
+              <MapPin size={16} color={Colors.success} />
+            </View>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryLabel}>PICKUP</Text>
+              <Text style={styles.summaryText}>{pickup?.line1}, {pickup?.townCity}</Text>
+              <Text style={styles.summarySubtext}>{pickupContact}</Text>
+            </View>
+          </View>
+
+          <View style={styles.summaryDivider} />
+
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryIcon}>
+              <MapPin size={16} color={Colors.danger} />
+            </View>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryLabel}>DROPOFF</Text>
+              <Text style={styles.summaryText}>{dropoff?.line1}, {dropoff?.townCity}</Text>
+              <Text style={styles.summarySubtext}>{dropoffContact}</Text>
+            </View>
+          </View>
+
+          <View style={styles.summaryDivider} />
+
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryIcon}>
+              <Truck size={16} color={Colors.customerPrimary} />
+            </View>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryLabel}>SHIPMENT</Text>
+              <Text style={styles.summaryText}>{selectedVehicle} · {selectedJobType}</Text>
+              <Text style={styles.summarySubtext}>
+                {parcels.reduce((acc, p) => acc + (parseInt(p.quantity) || 1), 0)} items · {distanceMiles.toFixed(1)} miles
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.priceBreakdownCard}>
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>Subtotal</Text>
+            <Text style={styles.priceValue}>£{estimatedPrice.toFixed(2)}</Text>
+          </View>
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>VAT (20%)</Text>
+            <Text style={styles.priceValue}>£{vat.toFixed(2)}</Text>
+          </View>
+          <View style={[styles.priceRow, styles.totalRow]}>
+            <Text style={styles.totalLabel}>Total Amount</Text>
+            <Text style={styles.totalValue}>£{total.toFixed(2)}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.backLink}
+          onPress={() => setIsSummaryMode(false)}
+        >
+          <Text style={styles.backLinkText}>Edit details</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* Pickup Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <View style={[styles.sectionDot, { backgroundColor: Colors.success }]} />
-          <Text style={styles.sectionLabel}>Pickup Details</Text>
-          <TouchableOpacity
-            style={styles.savedLocationToggle}
-            onPress={() => setShowSavedLocations(showSavedLocations === 'pickup' ? null : 'pickup')}
-          >
-            <Bookmark size={14} color={Colors.customerPrimary} />
-          </TouchableOpacity>
-        </View>
-
-        {showSavedLocations === 'pickup' && renderQuickFill('pickup')}
-
-        <View style={styles.inputGroup}>
-          <PostcodeAutocompleteMobile 
-            label="Pickup Address" 
-            onAddressSelect={setPickup} 
-            initialValue={pickup} 
-          />
-
-          <View style={styles.inputRow}>
-            <User size={16} color={Colors.textMuted} />
-            <TextInput
-              style={styles.input}
-              placeholder="Contact name at pickup"
-              placeholderTextColor={Colors.textMuted}
-              value={pickupContact}
-              onChangeText={setPickupContact}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Dropoff Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <View style={[styles.sectionDot, { backgroundColor: Colors.danger }]} />
-          <Text style={styles.sectionLabel}>Dropoff Details</Text>
-          <TouchableOpacity
-            style={styles.savedLocationToggle}
-            onPress={() => setShowSavedLocations(showSavedLocations === 'dropoff' ? null : 'dropoff')}
-          >
-            <Bookmark size={14} color={Colors.customerPrimary} />
-          </TouchableOpacity>
-        </View>
-
-        {showSavedLocations === 'dropoff' && renderQuickFill('dropoff')}
-
-        <View style={styles.inputGroup}>
-          <PostcodeAutocompleteMobile 
-            label="Dropoff Address" 
-            onAddressSelect={setDropoff} 
-            initialValue={dropoff} 
-          />
-
-          <View style={styles.inputRow}>
-            <User size={16} color={Colors.textMuted} />
-            <TextInput
-              style={styles.input}
-              placeholder="Contact name at dropoff"
-              placeholderTextColor={Colors.textMuted}
-              value={dropoffContact}
-              onChangeText={setDropoffContact}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Job Type Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <FileText size={16} color={Colors.customerPrimary} />
-          <Text style={styles.sectionLabel}>Job Type</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.pickerButton}
-          onPress={() => setShowJobTypePicker(!showJobTypePicker)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.pickerButtonText}>{selectedJobType}</Text>
-          <ChevronDown size={18} color={Colors.textMuted} />
-        </TouchableOpacity>
-
-        {showJobTypePicker && (
-          <View style={styles.pickerOptions}>
-            {JOB_TYPES.map(jt => (
+      {isSummaryMode ? (
+        renderSummary()
+      ) : (
+        <>
+          {/* Pickup Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionDot, { backgroundColor: Colors.success }]} />
+              <Text style={styles.sectionLabel}>Pickup Details</Text>
               <TouchableOpacity
-                key={jt}
-                style={[styles.pickerOption, selectedJobType === jt && styles.pickerOptionActive]}
-                onPress={() => {
-                  setSelectedJobType(jt);
-                  setShowJobTypePicker(false);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
+                style={styles.savedLocationToggle}
+                onPress={() => setShowSavedLocations(showSavedLocations === 'pickup' ? null : 'pickup')}
               >
-                <Text style={[styles.pickerOptionText, selectedJobType === jt && styles.pickerOptionTextActive]}>{jt}</Text>
+                <Bookmark size={14} color={Colors.customerPrimary} />
               </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* Parcels Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Package size={16} color={Colors.customerPrimary} />
-          <Text style={styles.sectionLabel}>Parcels Information</Text>
-        </View>
-        <View style={styles.parcelsList}>
-          {parcels.map((parcel, index) => (
-            <View key={index} style={styles.parcelBox}>
-                <View style={styles.parcelRow}>
-                     <TextInput
-                         style={[styles.smallInput, { flex: 3 }]}
-                         placeholder="Description (e.g. Box of parts)"
-                         placeholderTextColor={Colors.textMuted}
-                         value={parcel.description}
-                         onChangeText={(v) => {
-                             const newParcels = [...parcels];
-                             newParcels[index].description = v;
-                             setParcels(newParcels);
-                         }}
-                     />
-                     <TextInput
-                         style={[styles.smallInput, { flex: 1 }]}
-                         placeholder="Qty"
-                         placeholderTextColor={Colors.textMuted}
-                         keyboardType="numeric"
-                         value={parcel.quantity}
-                         onChangeText={(v) => {
-                             const newParcels = [...parcels];
-                             newParcels[index].quantity = v;
-                             setParcels(newParcels);
-                         }}
-                     />
-                </View>
-               <View style={styles.parcelRow}>
-                    <TextInput
-                        style={styles.smallInput}
-                        placeholder="L (cm)"
-                        placeholderTextColor={Colors.textMuted}
-                        keyboardType="numeric"
-                        value={parcel.lengthCm}
-                        onChangeText={(v) => {
-                            const newParcels = [...parcels];
-                            newParcels[index].lengthCm = v;
-                            setParcels(newParcels);
-                        }}
-                    />
-                    <TextInput
-                        style={styles.smallInput}
-                        placeholder="W"
-                        placeholderTextColor={Colors.textMuted}
-                        keyboardType="numeric"
-                        value={parcel.widthCm}
-                        onChangeText={(v) => {
-                            const newParcels = [...parcels];
-                            newParcels[index].widthCm = v;
-                            setParcels(newParcels);
-                        }}
-                    />
-                    <TextInput
-                        style={styles.smallInput}
-                        placeholder="H"
-                        placeholderTextColor={Colors.textMuted}
-                        keyboardType="numeric"
-                        value={parcel.heightCm}
-                        onChangeText={(v) => {
-                            const newParcels = [...parcels];
-                            newParcels[index].heightCm = v;
-                            setParcels(newParcels);
-                        }}
-                    />
-                    <TextInput
-                        style={styles.smallInput}
-                        placeholder="Kg"
-                        placeholderTextColor={Colors.textMuted}
-                        keyboardType="numeric"
-                        value={parcel.weightKg}
-                        onChangeText={(v) => {
-                            const newParcels = [...parcels];
-                            newParcels[index].weightKg = v;
-                            setParcels(newParcels);
-                        }}
-                    />
-                </View>
-                {parcels.length > 1 && (
-                    <TouchableOpacity 
-                        onPress={() => {
-                            const newParcels = [...parcels];
-                            newParcels.splice(index, 1);
-                            setParcels(newParcels);
-                        }}
-                        style={styles.removeParcelBtn}
-                    >
-                        <Text style={styles.removeParcelText}>Remove</Text>
-                    </TouchableOpacity>
-                )}
             </View>
-          ))}
-          <TouchableOpacity 
-            style={styles.addParcelBtn}
-            onPress={() => setParcels([...parcels, { lengthCm: '', widthCm: '', heightCm: '', weightKg: '', quantity: '1', description: '' }])}
-          >
-            <Plus size={14} color={Colors.customerPrimary} />
-            <Text style={styles.addParcelBtnText}>Add Another Parcel Type</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      {/* Special Instructions Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <AlertCircle size={16} color={Colors.warning} />
-          <Text style={styles.sectionLabel}>Special Instructions</Text>
-          <Text style={styles.optionalTag}>Optional</Text>
-        </View>
-        <View style={styles.inputGroup}>
-          <View style={[styles.inputRow, { minHeight: 72, alignItems: 'flex-start', paddingTop: 14 }]}>
-            <TextInput
-              style={[styles.input, { textAlignVertical: 'top' }]}
-              placeholder="E.g., Ring doorbell, use side entrance, call on arrival..."
-              placeholderTextColor={Colors.textMuted}
-              value={specialInstructions}
-              onChangeText={setSpecialInstructions}
-              multiline
-            />
+            {showSavedLocations === 'pickup' && renderQuickFill('pickup')}
+
+            <View style={styles.inputGroup}>
+              <PostcodeAutocompleteMobile 
+                label="Pickup Address" 
+                onAddressSelect={setPickup} 
+                initialValue={pickup} 
+              />
+
+              <View style={styles.inputRow}>
+                <User size={16} color={Colors.textMuted} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Contact name at pickup"
+                  placeholderTextColor={Colors.textMuted}
+                  value={pickupContact}
+                  onChangeText={setPickupContact}
+                />
+              </View>
+            </View>
           </View>
-        </View>
-      </View>
 
-      {/* Vehicle Type Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Truck size={16} color={Colors.customerPrimary} />
-          <Text style={styles.sectionLabel}>Vehicle Type</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.pickerButton}
-          onPress={() => setShowVehiclePicker(!showVehiclePicker)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.pickerButtonText}>{selectedVehicle}</Text>
-          <ChevronDown size={18} color={Colors.textMuted} />
-        </TouchableOpacity>
-
-        {showVehiclePicker && (
-          <View style={styles.pickerOptions}>
-            {VEHICLE_TYPES.map(vehicle => (
+          {/* Dropoff Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionDot, { backgroundColor: Colors.danger }]} />
+              <Text style={styles.sectionLabel}>Dropoff Details</Text>
               <TouchableOpacity
-                key={vehicle}
-                style={[styles.pickerOption, selectedVehicle === vehicle && styles.pickerOptionActive]}
-                onPress={() => {
-                  setSelectedVehicle(vehicle);
-                  setShowVehiclePicker(false);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
+                style={styles.savedLocationToggle}
+                onPress={() => setShowSavedLocations(showSavedLocations === 'dropoff' ? null : 'dropoff')}
               >
-                <Text style={[styles.pickerOptionText, selectedVehicle === vehicle && styles.pickerOptionTextActive]}>{vehicle}</Text>
+                <Bookmark size={14} color={Colors.customerPrimary} />
               </TouchableOpacity>
-            ))}
+            </View>
+
+            {showSavedLocations === 'dropoff' && renderQuickFill('dropoff')}
+
+            <View style={styles.inputGroup}>
+              <PostcodeAutocompleteMobile 
+                label="Dropoff Address" 
+                onAddressSelect={setDropoff} 
+                initialValue={dropoff} 
+              />
+
+              <View style={styles.inputRow}>
+                <User size={16} color={Colors.textMuted} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Contact name at dropoff"
+                  placeholderTextColor={Colors.textMuted}
+                  value={dropoffContact}
+                  onChangeText={setDropoffContact}
+                />
+              </View>
+            </View>
           </View>
-        )}
-      </View>
 
-      {/* Collection Time Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Clock size={16} color={Colors.customerPrimary} />
-          <Text style={styles.sectionLabel}>Collection Time</Text>
-        </View>
-        <View style={styles.vehicleOptions}>
-          <TouchableOpacity 
-            style={[styles.vehicleOption, isReadyNow && styles.vehicleOptionSelected]} 
-            onPress={() => {
-              setIsReadyNow(true);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }} 
-            activeOpacity={0.8}
-          >
-            <Clock size={14} color={isReadyNow ? '#FFFFFF' : Colors.textMuted} />
-            <Text style={[styles.vehicleText, isReadyNow && styles.vehicleTextSelected]}>Ready Now</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.vehicleOption, !isReadyNow && styles.vehicleOptionSelected]} 
-            onPress={() => {
-              setIsReadyNow(false);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }} 
-            activeOpacity={0.8}
-          >
-            <Calculator size={14} color={!isReadyNow ? '#FFFFFF' : Colors.textMuted} />
-            <Text style={[styles.vehicleText, !isReadyNow && styles.vehicleTextSelected]}>Pre-book Later</Text>
-          </TouchableOpacity>
-        </View>
-
-        {!isReadyNow && (
-          <>
-            <Text style={[styles.subLabel, { marginTop: 14 }]}>Pickup Window</Text>
+          {/* Job Type Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <FileText size={16} color={Colors.customerPrimary} />
+              <Text style={styles.sectionLabel}>Job Type</Text>
+            </View>
             <TouchableOpacity
               style={styles.pickerButton}
-              onPress={() => setShowPickupWindowPicker(!showPickupWindowPicker)}
+              onPress={() => setShowJobTypePicker(!showJobTypePicker)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.pickerButtonText, !selectedPickupWindow && { color: Colors.textMuted }]}>
-                {selectedPickupWindow ? getWindowLabel(selectedPickupWindow) : 'Select pickup time window'}
-              </Text>
+              <Text style={styles.pickerButtonText}>{selectedJobType}</Text>
               <ChevronDown size={18} color={Colors.textMuted} />
             </TouchableOpacity>
 
-            {showPickupWindowPicker && (
+            {showJobTypePicker && (
               <View style={styles.pickerOptions}>
-                {TIME_WINDOWS.map(tw => (
+                {JOB_TYPES.map(jt => (
                   <TouchableOpacity
-                    key={tw.value}
-                    style={[styles.pickerOption, selectedPickupWindow === tw.value && styles.pickerOptionActive]}
+                    key={jt}
+                    style={[styles.pickerOption, selectedJobType === jt && styles.pickerOptionActive]}
                     onPress={() => {
-                      setSelectedPickupWindow(tw.value);
-                      setShowPickupWindowPicker(false);
+                      setSelectedJobType(jt);
+                      setShowJobTypePicker(false);
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     }}
                   >
-                    <Text style={[styles.pickerOptionText, selectedPickupWindow === tw.value && styles.pickerOptionTextActive]}>{tw.label}</Text>
+                    <Text style={[styles.pickerOptionText, selectedJobType === jt && styles.pickerOptionTextActive]}>{jt}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
-          </>
-        )}
-
-        <Text style={[styles.subLabel, { marginTop: 14 }]}>Delivery Window</Text>
-        <TouchableOpacity
-          style={styles.pickerButton}
-          onPress={() => setShowDeliveryWindowPicker(!showDeliveryWindowPicker)}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.pickerButtonText, !selectedDeliveryWindow && { color: Colors.textMuted }]}>
-            {selectedDeliveryWindow ? getWindowLabel(selectedDeliveryWindow) : 'Select delivery time window'}
-          </Text>
-          <ChevronDown size={18} color={Colors.textMuted} />
-        </TouchableOpacity>
-
-        {showDeliveryWindowPicker && (
-          <View style={styles.pickerOptions}>
-            {TIME_WINDOWS.map(tw => (
-              <TouchableOpacity
-                key={tw.value}
-                style={[styles.pickerOption, selectedDeliveryWindow === tw.value && styles.pickerOptionActive]}
-                onPress={() => {
-                  setSelectedDeliveryWindow(tw.value);
-                  setShowDeliveryWindowPicker(false);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-              >
-                <Text style={[styles.pickerOptionText, selectedDeliveryWindow === tw.value && styles.pickerOptionTextActive]}>{tw.label}</Text>
-              </TouchableOpacity>
-            ))}
           </View>
-        )}
-      </View>
 
-      {/* Estimate Card */}
-      <View style={[styles.estimateCard, calculationError && styles.estimateCardError]}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.estimateLabel}>
-            {calculationError ? 'Calculation Issue' : 'Estimated Price'}
-          </Text>
-          <Text style={styles.estimateSubLabel}>
-            {calculationError ? calculationError : `${selectedJobType} · ${selectedVehicle}`}
-          </Text>
-        </View>
-        {!calculationError && (
-          <Text style={styles.estimatePrice}>
-            £{pickup?.postcode && dropoff?.postcode && estimatedPrice > 0 ? estimatedPrice.toFixed(2) : '--'}
-          </Text>
-        )}
-        {calculationError && <AlertCircle size={20} color={Colors.danger} />}
-      </View>
+          {/* Parcels Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Package size={16} color={Colors.customerPrimary} />
+              <Text style={styles.sectionLabel}>Parcels Information</Text>
+            </View>
+            <View style={styles.parcelsList}>
+              {parcels.map((parcel, index) => (
+                <View key={index} style={styles.parcelBox}>
+                    <View style={styles.parcelRow}>
+                        <TextInput
+                            style={[styles.smallInput, { flex: 3 }]}
+                            placeholder="Description (e.g. Box of parts)"
+                            placeholderTextColor={Colors.textMuted}
+                            value={parcel.description}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].description = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                        <TextInput
+                            style={[styles.smallInput, { flex: 1 }]}
+                            placeholder="Qty"
+                            placeholderTextColor={Colors.textMuted}
+                            keyboardType="numeric"
+                            value={parcel.quantity}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].quantity = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                    </View>
+                  <View style={styles.parcelRow}>
+                        <TextInput
+                            style={styles.smallInput}
+                            placeholder="L (cm)"
+                            placeholderTextColor={Colors.textMuted}
+                            keyboardType="numeric"
+                            value={parcel.lengthCm}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].lengthCm = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                        <TextInput
+                            style={styles.smallInput}
+                            placeholder="W"
+                            placeholderTextColor={Colors.textMuted}
+                            keyboardType="numeric"
+                            value={parcel.widthCm}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].widthCm = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                        <TextInput
+                            style={styles.smallInput}
+                            placeholder="H"
+                            placeholderTextColor={Colors.textMuted}
+                            keyboardType="numeric"
+                            value={parcel.heightCm}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].heightCm = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                        <TextInput
+                            style={styles.smallInput}
+                            placeholder="Kg"
+                            placeholderTextColor={Colors.textMuted}
+                            keyboardType="numeric"
+                            value={parcel.weightKg}
+                            onChangeText={(v) => {
+                                const newParcels = [...parcels];
+                                newParcels[index].weightKg = v;
+                                setParcels(newParcels);
+                            }}
+                        />
+                    </View>
+                    {parcels.length > 1 && (
+                        <TouchableOpacity 
+                            onPress={() => {
+                                const newParcels = [...parcels];
+                                newParcels.splice(index, 1);
+                                setParcels(newParcels);
+                            }}
+                            style={styles.removeParcelBtn}
+                        >
+                            <Text style={styles.removeParcelText}>Remove</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+              ))}
+              <TouchableOpacity 
+                style={styles.addParcelBtn}
+                onPress={() => setParcels([...parcels, { lengthCm: '', widthCm: '', heightCm: '', weightKg: '', quantity: '1', description: '' }])}
+              >
+                <Plus size={14} color={Colors.customerPrimary} />
+                <Text style={styles.addParcelBtnText}>Add Another Parcel Type</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Special Instructions Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <AlertCircle size={16} color={Colors.warning} />
+              <Text style={styles.sectionLabel}>Special Instructions</Text>
+              <Text style={styles.optionalTag}>Optional</Text>
+            </View>
+            <View style={styles.inputGroup}>
+              <View style={[styles.inputRow, { minHeight: 72, alignItems: 'flex-start', paddingTop: 14 }]}>
+                <TextInput
+                  style={[styles.input, { textAlignVertical: 'top' }]}
+                  placeholder="E.g., Ring doorbell, use side entrance, call on arrival..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={specialInstructions}
+                  onChangeText={setSpecialInstructions}
+                  multiline
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Vehicle Type Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Truck size={16} color={Colors.customerPrimary} />
+              <Text style={styles.sectionLabel}>Vehicle Type</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowVehiclePicker(!showVehiclePicker)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.pickerButtonText}>{selectedVehicle}</Text>
+              <ChevronDown size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+
+            {showVehiclePicker && (
+              <View style={styles.pickerOptions}>
+                {VEHICLE_TYPES.map(vehicle => (
+                  <TouchableOpacity
+                    key={vehicle}
+                    style={[styles.pickerOption, selectedVehicle === vehicle && styles.pickerOptionActive]}
+                    onPress={() => {
+                      setSelectedVehicle(vehicle);
+                      setShowVehiclePicker(false);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                  >
+                    <Text style={[styles.pickerOptionText, selectedVehicle === vehicle && styles.pickerOptionTextActive]}>{vehicle}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Collection Time Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Clock size={16} color={Colors.customerPrimary} />
+              <Text style={styles.sectionLabel}>Collection Time</Text>
+            </View>
+            <View style={styles.vehicleOptions}>
+              <TouchableOpacity 
+                style={[styles.vehicleOption, isReadyNow && styles.vehicleOptionSelected]} 
+                onPress={() => {
+                  setIsReadyNow(true);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }} 
+                activeOpacity={0.8}
+              >
+                <Clock size={14} color={isReadyNow ? '#FFFFFF' : Colors.textMuted} />
+                <Text style={[styles.vehicleText, isReadyNow && styles.vehicleTextSelected]}>Ready Now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.vehicleOption, !isReadyNow && styles.vehicleOptionSelected]} 
+                onPress={() => {
+                  setIsReadyNow(false);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }} 
+                activeOpacity={0.8}
+              >
+                <Calculator size={14} color={!isReadyNow ? '#FFFFFF' : Colors.textMuted} />
+                <Text style={[styles.vehicleText, !isReadyNow && styles.vehicleTextSelected]}>Pre-book Later</Text>
+              </TouchableOpacity>
+            </View>
+
+            {!isReadyNow && (
+              <>
+                <Text style={[styles.subLabel, { marginTop: 14 }]}>Pickup Window</Text>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowPickupWindowPicker(!showPickupWindowPicker)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.pickerButtonText, !selectedPickupWindow && { color: Colors.textMuted }]}>
+                    {selectedPickupWindow ? getWindowLabel(selectedPickupWindow) : 'Select pickup time window'}
+                  </Text>
+                  <ChevronDown size={18} color={Colors.textMuted} />
+                </TouchableOpacity>
+
+                {showPickupWindowPicker && (
+                  <View style={styles.pickerOptions}>
+                    {TIME_WINDOWS.map(tw => (
+                      <TouchableOpacity
+                        key={tw.value}
+                        style={[styles.pickerOption, selectedPickupWindow === tw.value && styles.pickerOptionActive]}
+                        onPress={() => {
+                          setSelectedPickupWindow(tw.value);
+                          setShowPickupWindowPicker(false);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                      >
+                        <Text style={[styles.pickerOptionText, selectedPickupWindow === tw.value && styles.pickerOptionTextActive]}>{tw.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            <Text style={[styles.subLabel, { marginTop: 14 }]}>Delivery Window</Text>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowDeliveryWindowPicker(!showDeliveryWindowPicker)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.pickerButtonText, !selectedDeliveryWindow && { color: Colors.textMuted }]}>
+                {selectedDeliveryWindow ? getWindowLabel(selectedDeliveryWindow) : 'Select delivery time window'}
+              </Text>
+              <ChevronDown size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+
+            {showDeliveryWindowPicker && (
+              <View style={styles.pickerOptions}>
+                {TIME_WINDOWS.map(tw => (
+                  <TouchableOpacity
+                    key={tw.value}
+                    style={[styles.pickerOption, selectedDeliveryWindow === tw.value && styles.pickerOptionActive]}
+                    onPress={() => {
+                      setSelectedDeliveryWindow(tw.value);
+                      setShowDeliveryWindowPicker(false);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                  >
+                    <Text style={[styles.pickerOptionText, selectedDeliveryWindow === tw.value && styles.pickerOptionTextActive]}>{tw.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Estimate Card */}
+          <View style={[styles.estimateCard, calculationError && styles.estimateCardError]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.estimateLabel}>
+                {calculationError ? 'Calculation Issue' : 'Estimated Price'}
+              </Text>
+              <Text style={styles.estimateSubLabel}>
+                {calculationError ? calculationError : `${selectedJobType} · ${selectedVehicle}`}
+              </Text>
+            </View>
+            {!calculationError && (
+              <Text style={styles.estimatePrice}>
+                £{pickup?.postcode && dropoff?.postcode && estimatedPrice > 0 ? estimatedPrice.toFixed(2) : '--'}
+              </Text>
+            )}
+            {calculationError && <AlertCircle size={20} color={Colors.danger} />}
+          </View>
+        </>
+      )}
 
       {/* Main Submit Button */}
       <TouchableOpacity
-        style={[styles.submitButton, (isSubmitting || calculationError !== '') && styles.submitButtonDisabled]}
+        style={[styles.submitButton, (isSubmitting || (calculationError !== '' && !isSummaryMode)) && styles.submitButtonDisabled]}
         onPress={handleInternalSubmit}
-        disabled={isSubmitting || calculationError !== ''}
+        disabled={isSubmitting || (calculationError !== '' && !isSummaryMode)}
         activeOpacity={0.8}
       >
         {isSubmitting ? (
           <ActivityIndicator color="#FFFFFF" size="small" />
         ) : (
           <>
-            <Text style={styles.submitButtonText}>{mode === 'booking' ? 'Book Now' : 'Submit Quote Request'}</Text>
+            <Text style={styles.submitButtonText}>
+              {mode === 'booking' 
+                ? (isSummaryMode ? 'Confirm & Pay Now' : 'Continue to Summary') 
+                : 'Submit Quote Request'}
+            </Text>
             {mode === 'booking' ? (
                 <ChevronRight size={18} color="#FFFFFF" />
             ) : (
@@ -903,5 +1001,120 @@ const styles = StyleSheet.create({
   estimateCardError: {
     borderColor: Colors.danger + '40',
     backgroundColor: '#FEF2F2',
+  },
+  // Summary Styles
+  summaryContainer: {
+    marginBottom: 20,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+    backgroundColor: Colors.customerPrimary + '10',
+    padding: 16,
+    borderRadius: 16,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: Colors.customerPrimary,
+  },
+  summarySubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  summaryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+    marginBottom: 16,
+    gap: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  summaryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryContent: {
+    flex: 1,
+  },
+  summaryLabel: {
+    fontSize: 10,
+    fontWeight: '800' as const,
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  summaryText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  summarySubtext: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginLeft: 44,
+  },
+  priceBreakdownCard: {
+    backgroundColor: Colors.navy,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    gap: 12,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  priceLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  priceValue: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  totalRow: {
+    marginTop: 4,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+  },
+  totalValue: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    color: '#FFFFFF',
+  },
+  backLink: {
+    alignSelf: 'center',
+    paddingVertical: 10,
+  },
+  backLinkText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.customerPrimary,
+    textDecorationLine: 'underline',
   },
 });
