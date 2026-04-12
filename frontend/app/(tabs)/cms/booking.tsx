@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform
+    View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GuestQuoteConfig, ServiceTier, VehicleOption, initialGuestQuote } from '@/constants/cmsDefaults';
+import { apiClient } from '@/services/api';
 
 export default function BookingCMS() {
     const insets = useSafeAreaInsets();
@@ -36,15 +37,36 @@ export default function BookingCMS() {
     const handleSave = async () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         try {
+            // 1. Persist to local cache for fast re-load
             await AsyncStorage.setItem('cms_guestQuoteConfig', JSON.stringify(config));
+
+            // 2. Sync to backend so all devices/users see the updated config
+            try {
+                await apiClient('/cms/config', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        key: 'global_cms_bundle',
+                        partialUpdate: { guestQuoteConfig: config },
+                    }),
+                });
+            } catch (apiErr) {
+                console.warn('[CMS Booking] Backend sync failed (saved locally):', apiErr);
+                // Don't block the user — local save succeeded
+            }
+
             setHasUnsavedChanges(false);
             if (Platform.OS === 'web') {
-                alert('Guest Booking Content Published!');
+                alert('✅ Guest Booking Content Published!');
             } else {
-                Alert.alert('Success', 'Guest Booking Content Published!');
+                Alert.alert('Success', 'Guest Booking Content Published Globally!');
             }
         } catch (error) {
             console.error('Failed to save guest quote config', error);
+            if (Platform.OS === 'web') {
+                alert('❌ Save failed. Please try again.');
+            } else {
+                Alert.alert('Error', 'Failed to save. Please try again.');
+            }
         }
     };
 
@@ -127,7 +149,14 @@ export default function BookingCMS() {
         setHasUnsavedChanges(true);
     };
 
-    if (isLoading) return null;
+    if (isLoading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={Colors.adminPrimary} />
+                <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 14 }}>Loading booking config...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>

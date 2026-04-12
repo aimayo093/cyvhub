@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import {
@@ -192,7 +193,17 @@ export default function CarrierProfileScreen() {
     );
   }, []);
 
-  if (!carrier) return null;
+  if (!carrier) {
+    return (
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Stack.Screen options={{ title: 'Company Profile' }} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.carrierPrimary} />
+          <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 14 }}>Loading profile...</Text>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView

@@ -120,7 +120,17 @@ export default function TaxComplianceScreen() {
     Alert.alert('Rates Saved', 'The platform standard VAT rate has been updated.');
   };
 
-  if (!admin) return null; // Protect route
+  if (!admin) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 32 }]}>
+        <ShieldCheck size={48} color={Colors.textMuted} style={{ opacity: 0.4 }} />
+        <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.text, marginTop: 16, textAlign: 'center' }}>Access Restricted</Text>
+        <Text style={{ fontSize: 14, color: Colors.textMuted, marginTop: 8, textAlign: 'center' }}>
+          This screen is only available to admin users.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

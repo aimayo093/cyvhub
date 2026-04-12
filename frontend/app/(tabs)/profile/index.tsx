@@ -111,7 +111,13 @@ function DriverProfileSection() {
 
   useEffect(() => { loadCompliance(); }, []);
 
-  if (!driver) return null;
+  if (!driver) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+        <ActivityIndicator size="small" color={Colors.primary} />
+      </View>
+    );
+  }
 
   const docsBySlug: Record<string, any> = {};
   (compliance?.documents || []).forEach((d: any) => {
@@ -210,7 +216,13 @@ function DriverProfileSection() {
 function CustomerProfileSection() {
   const { customer } = useAuth();
   const router = useRouter();
-  if (!customer) return null;
+  if (!customer) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+        <ActivityIndicator size="small" color={Colors.customerPrimary} />
+      </View>
+    );
+  }
 
   return (
     <>
@@ -254,7 +266,13 @@ function CustomerProfileSection() {
 function AdminProfileSection() {
   const { admin } = useAuth();
   const router = useRouter();
-  if (!admin) return null;
+  if (!admin) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+        <ActivityIndicator size="small" color={Colors.adminPrimary} />
+      </View>
+    );
+  }
 
   return (
     <>
@@ -308,7 +326,13 @@ function CarrierProfileSection() {
 
   useEffect(() => { loadCompliance(); }, []);
 
-  if (!carrier) return null;
+  if (!carrier) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+        <ActivityIndicator size="small" color={Colors.carrierPrimary} />
+      </View>
+    );
+  }
   const c = carrier as any;
   const overallBadge = getOverallBadge(compliance?.overallStatus || 'not_submitted');
 
@@ -445,7 +469,19 @@ export default function ProfileScreen() {
     ]);
   }, [logout, router]);
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 12, justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={Colors.textInverse} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={accent} />
+          <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 14 }}>Loading your profile...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

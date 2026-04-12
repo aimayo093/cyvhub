@@ -64,7 +64,21 @@ export default function CarrierProfileScreen() {
         );
     }
 
-    if (!carrier) return null;
+    if (!carrier) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 32 }]}>
+                <Truck size={48} color={Colors.textMuted} style={{ opacity: 0.4 }} />
+                <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.text, marginTop: 16, textAlign: 'center' }}>Carrier not found</Text>
+                <Text style={{ fontSize: 14, color: Colors.textMuted, marginTop: 8, textAlign: 'center' }}>This carrier profile could not be loaded.</Text>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={{ marginTop: 24, backgroundColor: Colors.adminPrimary, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 12 }}
+                >
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Go Back</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     const isPending = carrier.status === 'PENDING';
 

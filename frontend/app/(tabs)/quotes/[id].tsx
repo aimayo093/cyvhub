@@ -83,7 +83,52 @@ export default function QuoteDetailsScreen() {
         Alert.alert(title, message);
     };
 
-    if (loading || !quote) return null;
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+                    <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                        <ChevronLeft size={24} color={Colors.textInverse} />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleWrap}>
+                        <Text style={styles.headerTitle}>Quote Details</Text>
+                    </View>
+                    <View style={{ width: 32 }} />
+                </View>
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <ActivityIndicator size="large" color={Colors.adminPrimary} />
+                    <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 14 }}>Loading quote details...</Text>
+                </View>
+            </View>
+        );
+    }
+
+    if (!quote) {
+        return (
+            <View style={styles.container}>
+                <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+                    <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                        <ChevronLeft size={24} color={Colors.textInverse} />
+                    </TouchableOpacity>
+                    <View style={styles.headerTitleWrap}>
+                        <Text style={styles.headerTitle}>Quote Details</Text>
+                    </View>
+                    <View style={{ width: 32 }} />
+                </View>
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+                    <FileText size={48} color={Colors.textMuted} style={{ opacity: 0.4 }} />
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.text, marginTop: 16, textAlign: 'center' }}>Quote not found</Text>
+                    <Text style={{ fontSize: 14, color: Colors.textMuted, marginTop: 8, textAlign: 'center' }}>This quote may have been removed or is no longer available.</Text>
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        style={{ marginTop: 24, backgroundColor: Colors.adminPrimary, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 12 }}
+                    >
+                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Go Back</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
