@@ -59,7 +59,11 @@ export default function PaymentCheckoutScreen() {
   // Track the pending PayPal order ID so we can capture it on return
   const pendingPaypalOrderId = useRef<string | null>(null);
 
-  const amount = parseFloat(params.amount ?? '0');
+  // amount param is ex-VAT (as stored in calculatedPrice)
+  // Stripe and PayPal backends both add 20% VAT server-side
+  const amountExVat = parseFloat(params.amount ?? '0');
+  const vatAmount = parseFloat((amountExVat * 0.2).toFixed(2));
+  const totalWithVat = parseFloat((amountExVat + vatAmount).toFixed(2));
   const description = params.description ?? 'Delivery Payment';
 
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('stripe');
@@ -102,7 +106,7 @@ export default function PaymentCheckoutScreen() {
 
   // ── PayPal: create order → redirect to PayPal.com for approval ──────────
   const handlePaypalPay = useCallback(async () => {
-    if (amount <= 0) {
+    if (amountExVat <= 0) {
       Alert.alert('Error', 'Invalid payment amount');
       return;
     }
@@ -110,7 +114,7 @@ export default function PaymentCheckoutScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const { approvalUrl, transaction } = await initiatePaypalCheckout(
-        amount,
+        amountExVat, // send ex-VAT; backend adds 20% VAT
         description,
         params.deliveryId,
       );
@@ -141,7 +145,7 @@ export default function PaymentCheckoutScreen() {
   }, [amount, description, params, initiatePaypalCheckout]);
 
   const handlePay = useCallback(async () => {
-    if (amount <= 0) {
+    if (amountExVat <= 0) {
       Alert.alert('Error', 'Invalid payment amount');
       return;
     }
@@ -163,7 +167,7 @@ export default function PaymentCheckoutScreen() {
 
     try {
       await processPayment(
-        amount,
+        amountExVat, // send ex-VAT; backend adds 20% VAT
         selectedMethod,
         description,
         params.deliveryId,
@@ -185,7 +189,7 @@ export default function PaymentCheckoutScreen() {
 
   // ── Stripe Checkout: create session → redirect to Stripe-hosted page ────
   const handleStripeCheckout = useCallback(async () => {
-    if (amount <= 0) {
+    if (amountExVat <= 0) {
       Alert.alert('Error', 'Invalid payment amount');
       return;
     }
@@ -195,7 +199,7 @@ export default function PaymentCheckoutScreen() {
 
     try {
       const { url } = await initiateStripeCheckout(
-        amount,
+        amountExVat, // send ex-VAT; backend adds 20% VAT
         description,
         params.deliveryId,
         true, // useHostedSession = true → gets a redirect URL
@@ -272,7 +276,7 @@ export default function PaymentCheckoutScreen() {
             Payment Successful
           </Animated.Text>
           <Animated.Text style={[styles.successAmount, { opacity: successAnim }]}>
-            £{amount.toFixed(2)}
+            £{totalWithVat.toFixed(2)}
           </Animated.Text>
           <Animated.Text style={[styles.successDesc, { opacity: successAnim }]}>
             {description}
@@ -321,12 +325,29 @@ export default function PaymentCheckoutScreen() {
       />
 
       <View style={styles.amountCard}>
-        <Text style={styles.amountLabel}>Total Amount</Text>
-        <Text style={styles.amountValue}>£{amount.toFixed(2)}</Text>
+        <Text style={styles.amountLabel}>Total Amount (inc. VAT)</Text>
+        <Text style={styles.amountValue}>£{totalWithVat.toFixed(2)}</Text>
         <Text style={styles.amountDesc}>{description}</Text>
+
+        {/* VAT Breakdown */}
+        <View style={styles.vatBreakdown}>
+          <View style={styles.vatRow}>
+            <Text style={styles.vatLabel}>Subtotal (ex. VAT)</Text>
+            <Text style={styles.vatValue}>£{amountExVat.toFixed(2)}</Text>
+          </View>
+          <View style={styles.vatRow}>
+            <Text style={styles.vatLabel}>VAT (20%)</Text>
+            <Text style={styles.vatValue}>£{vatAmount.toFixed(2)}</Text>
+          </View>
+          <View style={[styles.vatRow, styles.vatTotalRow]}>
+            <Text style={styles.vatTotalLabel}>Total Charged</Text>
+            <Text style={styles.vatTotalValue}>£{totalWithVat.toFixed(2)}</Text>
+          </View>
+        </View>
+
         <View style={styles.secureRow}>
           <Lock size={12} color={Colors.success} />
-          <Text style={styles.secureText}>Secured with 256-bit encryption</Text>
+          <Text style={styles.secureText}>Secured with 256-bit encryption • VAT Reg. charged at checkout</Text>
         </View>
       </View>
 
@@ -423,7 +444,7 @@ export default function PaymentCheckoutScreen() {
             </View>
             <Text style={styles.paypalConnectTitle}>Pay with PayPal</Text>
             <Text style={styles.paypalConnectSub}>
-              You'll be securely redirected to PayPal to complete your payment of £{amount.toFixed(2)}. No PayPal account needed — debit and credit cards accepted too.
+              You'll be redirected to PayPal to pay £{totalWithVat.toFixed(2)} (inc. 20% VAT). No PayPal account needed — debit and credit cards are accepted.
             </Text>
           </View>
         </View>
@@ -453,7 +474,7 @@ export default function PaymentCheckoutScreen() {
                 <Zap size={18} color="#FFFFFF" />
               )}
               <Text style={styles.payBtnText}>
-                Pay £{amount.toFixed(2)} with {selectedMethod === 'stripe' ? 'Card' : 'PayPal'}
+                Pay £{totalWithVat.toFixed(2)} with {selectedMethod === 'stripe' ? 'Card' : 'PayPal'}
               </Text>
             </>
           )}
@@ -475,7 +496,7 @@ export default function PaymentCheckoutScreen() {
           <>
             <ExternalLink size={18} color="#FFFFFF" />
             <Text style={styles.stripeCheckoutBtnText}>
-              Pay £{amount.toFixed(2)} via Stripe Checkout
+              Pay £{totalWithVat.toFixed(2)} via Stripe Checkout (inc. VAT)
             </Text>
           </>
         )}
@@ -566,6 +587,20 @@ const styles = StyleSheet.create({
   amountDesc: { fontSize: 14, color: Colors.textMuted, marginTop: 6 },
   secureRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, backgroundColor: 'rgba(16,185,129,0.12)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
   secureText: { fontSize: 11, color: Colors.success, fontWeight: '600' as const },
+  vatBreakdown: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 16,
+    gap: 6,
+  },
+  vatRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  vatLabel: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+  vatValue: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '500' as const },
+  vatTotalRow: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)', marginTop: 4, paddingTop: 8 },
+  vatTotalLabel: { fontSize: 13, color: '#FFFFFF', fontWeight: '700' as const },
+  vatTotalValue: { fontSize: 13, color: Colors.success, fontWeight: '800' as const },
   section: { marginBottom: 20 },
   sectionTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.text, marginBottom: 12 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

@@ -65,7 +65,8 @@ export default function BookDeliveryScreen() {
         params: {
           deliveryId: delivery.id,
           trackingNumber: delivery.trackingNumber,
-          amount: formData.totalIncVat.toFixed(2),
+          // Pass the ex-VAT amount — Stripe/PayPal add 20% VAT at their checkout
+          amount: (formData.estimatedPrice || formData.totalExVat || (formData.totalIncVat / 1.2)).toFixed(2),
           description: `Delivery ${delivery.trackingNumber}`,
         }
       });
