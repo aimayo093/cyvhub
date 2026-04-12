@@ -11,6 +11,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import {
@@ -52,8 +53,11 @@ const cardIconStyles = StyleSheet.create({
 export default function PaymentCheckoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ amount?: string; description?: string; deliveryId?: string; trackingNumber?: string }>();
-  const { cards, paypalAccounts, processPayment, addCard, initiateStripeCheckout, handlePaymentReturn } = usePayments();
+  const { cards, paypalAccounts, processPayment, addCard, initiateStripeCheckout, initiatePaypalCheckout, handlePaymentReturn } = usePayments();
   const { updateDeliveryPayment } = useDeliveries();
+
+  // Track the pending PayPal order ID so we can capture it on return
+  const pendingPaypalOrderId = useRef<string | null>(null);
 
   const amount = parseFloat(params.amount ?? '0');
   const description = params.description ?? 'Delivery Payment';
@@ -96,14 +100,61 @@ export default function PaymentCheckoutScreen() {
     }
   }, [isProcessing, pulseAnim]);
 
+  // ── PayPal: create order → redirect to PayPal.com for approval ──────────
+  const handlePaypalPay = useCallback(async () => {
+    if (amount <= 0) {
+      Alert.alert('Error', 'Invalid payment amount');
+      return;
+    }
+    setIsProcessing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const { approvalUrl, transaction } = await initiatePaypalCheckout(
+        amount,
+        description,
+        params.deliveryId,
+      );
+      // Store order ID so we can capture it when PayPal redirects back
+      pendingPaypalOrderId.current = transaction.paypalOrderId ?? null;
+
+      if (!approvalUrl) {
+        throw new Error('PayPal did not return an approval URL. Check backend configuration.');
+      }
+
+      // Redirect to PayPal for payment approval
+      if (Platform.OS === 'web') {
+        window.location.href = approvalUrl;
+      } else {
+        const canOpen = await Linking.canOpenURL(approvalUrl);
+        if (canOpen) {
+          await Linking.openURL(approvalUrl);
+        } else {
+          throw new Error(`Cannot open PayPal URL: ${approvalUrl}`);
+        }
+      }
+      setIsProcessing(false);
+    } catch (e: any) {
+      setIsProcessing(false);
+      const errorMsg = e?.message || 'Could not connect to PayPal. Please try again.';
+      Alert.alert('PayPal Error', errorMsg);
+    }
+  }, [amount, description, params, initiatePaypalCheckout]);
+
   const handlePay = useCallback(async () => {
     if (amount <= 0) {
       Alert.alert('Error', 'Invalid payment amount');
       return;
     }
 
+    // PayPal — redirect to PayPal approval URL
+    if (selectedMethod === 'paypal') {
+      handlePaypalPay();
+      return;
+    }
+
+    // Stripe card — requires a saved card
     if (selectedMethod === 'stripe' && !selectedCardId) {
-      Alert.alert('No Card', 'Please add a card or select PayPal.');
+      Alert.alert('No Card', 'Please add a card or use PayPal.');
       return;
     }
 
@@ -129,8 +180,10 @@ export default function PaymentCheckoutScreen() {
       const errorMsg = e?.message || 'Please try again or use a different payment method.';
       Alert.alert('Payment Failed', errorMsg);
     }
-  }, [amount, selectedMethod, selectedCardId, processPayment, description, params, updateDeliveryPayment]);
+  }, [amount, selectedMethod, selectedCardId, processPayment, description, params, updateDeliveryPayment, handlePaypalPay]);
 
+
+  // ── Stripe Checkout: create session → redirect to Stripe-hosted page ────
   const handleStripeCheckout = useCallback(async () => {
     if (amount <= 0) {
       Alert.alert('Error', 'Invalid payment amount');
@@ -141,27 +194,31 @@ export default function PaymentCheckoutScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const { sessionId, transaction } = await initiateStripeCheckout(
+      const { url } = await initiateStripeCheckout(
         amount,
         description,
-        params.deliveryId
+        params.deliveryId,
+        true, // useHostedSession = true → gets a redirect URL
       );
 
-      setTimeout(async () => {
-        const result = await handlePaymentReturn('cyvhub://payment-success');
-        if (result.success && params.deliveryId) {
-          updateDeliveryPayment(params.deliveryId, 'COMPLETED');
-        }
-        setIsStripeRedirecting(false);
-        setIsComplete(true);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }, 2000);
+      if (!url) {
+        // No redirect URL returned (e.g. Stripe key not configured in dev)
+        throw new Error('Stripe did not return a checkout URL. Please ensure STRIPE_SECRET_KEY is configured.');
+      }
+
+      // Redirect to the Stripe-hosted checkout page
+      if (Platform.OS === 'web') {
+        window.location.href = url;
+      } else {
+        await Linking.openURL(url);
+      }
+      setIsStripeRedirecting(false);
     } catch (e: any) {
       setIsStripeRedirecting(false);
       const errorMsg = e?.message || 'Could not connect to Stripe. Please try another method.';
       Alert.alert('Checkout Failed', errorMsg);
     }
-  }, [amount, description, params, initiateStripeCheckout, handlePaymentReturn, updateDeliveryPayment]);
+  }, [amount, description, params, initiateStripeCheckout]);
 
   const handleAddCard = useCallback(() => {
     if (newCardNumber.length < 16 || newCardExpiry.length < 5 || newCardCvc.length < 3) {
@@ -359,32 +416,16 @@ export default function PaymentCheckoutScreen() {
 
       {selectedMethod === 'paypal' && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PayPal Account</Text>
-          {paypalAccounts.length > 0 ? (
-            paypalAccounts.map(acc => (
-              <View key={acc.id} style={styles.paypalItem}>
-                <View style={styles.paypalIcon}>
-                  <Text style={styles.paypalIconText}>P</Text>
-                </View>
-                <View style={styles.paypalInfo}>
-                  <Text style={styles.paypalEmail}>{acc.email}</Text>
-                  <Text style={styles.paypalLabel}>PayPal Account</Text>
-                </View>
-                <CheckCircle size={18} color={PAYPAL_BLUE} />
-              </View>
-            ))
-          ) : (
-            <View style={styles.paypalConnectCard}>
-              <View style={styles.paypalConnectIcon}>
-                <Text style={styles.paypalConnectIconText}>P</Text>
-              </View>
-              <Text style={styles.paypalConnectTitle}>Connect PayPal</Text>
-              <Text style={styles.paypalConnectSub}>You'll be redirected to PayPal to authorize payment</Text>
-              <TouchableOpacity style={styles.paypalConnectBtn} activeOpacity={0.8}>
-                <Text style={styles.paypalConnectBtnText}>Connect PayPal Account</Text>
-              </TouchableOpacity>
+          <Text style={styles.sectionTitle}>PayPal</Text>
+          <View style={styles.paypalConnectCard}>
+            <View style={styles.paypalConnectIcon}>
+              <Text style={styles.paypalConnectIconText}>P</Text>
             </View>
-          )}
+            <Text style={styles.paypalConnectTitle}>Pay with PayPal</Text>
+            <Text style={styles.paypalConnectSub}>
+              You'll be securely redirected to PayPal to complete your payment of £{amount.toFixed(2)}. No PayPal account needed — debit and credit cards accepted too.
+            </Text>
+          </View>
         </View>
       )}
 
