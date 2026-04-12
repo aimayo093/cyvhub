@@ -171,21 +171,32 @@ export default function DeliveryDetailScreen() {
     ]);
   }, [delivery, cancelDelivery, router]);
 
+  if (!id) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Stack.Screen options={{ title: 'Delivery Details' }} />
+        <ActivityIndicator size="large" color={Colors.customerPrimary} />
+        <Text style={styles.loadingText}>Missing delivery ID</Text>
+      </View>
+    );
+  }
+
   if (!delivery) {
     return (
       <View style={styles.loadingContainer}>
         <Stack.Screen options={{ title: 'Delivery Details' }} />
         <ActivityIndicator size="large" color={Colors.customerPrimary} />
-        <Text style={styles.loadingText}>Delivery not found</Text>
+        <Text style={styles.loadingText}>Loading delivery details...</Text>
       </View>
     );
   }
 
-  const statusConfig = STATUS_CONFIG[delivery.status];
+  // Defensive Lookups: Fallback to PENDING/ON_TRACK if backend returns specific Job statuses or missing SLA
+  const statusConfig = STATUS_CONFIG[delivery.status as DeliveryStatus] || STATUS_CONFIG.PENDING;
+  const slaConfig = delivery.slaStatus ? (SLA_CONFIG[delivery.slaStatus] || SLA_CONFIG.ON_TRACK) : SLA_CONFIG.ON_TRACK;
+  const SlaIcon = slaConfig.icon;
   const currentStepIndex = STATUS_STEPS.indexOf(delivery.status);
   const canCancel = ['PENDING_PAYMENT', 'PENDING', 'CONFIRMED'].includes(delivery.status);
-  const slaConfig = SLA_CONFIG[slaStatus];
-  const SLAIcon = slaConfig.icon;
   const isActiveDelivery = !['DELIVERED', 'CANCELLED'].includes(delivery.status);
 
   // Compute payment status from delivery field or from transactions
@@ -226,11 +237,11 @@ export default function DeliveryDetailScreen() {
           <View style={styles.slaAiRow}>
             <View style={[styles.slaCard, { borderLeftColor: slaConfig.color }]}>
               <View style={styles.slaHeader}>
-                <SLAIcon size={14} color={slaConfig.color} />
+                <SlaIcon size={14} color={slaConfig.color} />
                 <Text style={[styles.slaLabel, { color: slaConfig.color }]}>{slaConfig.label}</Text>
               </View>
               <Text style={styles.slaSubtext}>
-                {slaStatus === 'ON_TRACK' ? 'Delivery on schedule' : slaStatus === 'AT_RISK' ? 'Pending assignment' : 'Running behind schedule'}
+                {delivery.slaStatus === 'ON_TRACK' ? 'Delivery on schedule' : delivery.slaStatus === 'AT_RISK' ? 'Pending assignment' : 'Running behind schedule'}
               </Text>
             </View>
 

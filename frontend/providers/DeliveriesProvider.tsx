@@ -36,10 +36,10 @@ export const [DeliveriesProvider, useDeliveries] = createContextHook(() => {
     [deliveries]
   );
 
-  const getDelivery = useCallback(
-    (id: string): Delivery | undefined => deliveries.find(d => d.id === id),
-    [deliveries]
-  );
+  const getDelivery = useCallback((id: string) => {
+    if (!id) return undefined;
+    return deliveries.find(d => d.id === id);
+  }, [deliveries]);
 
   const createDelivery = useCallback(async (delivery: Omit<Delivery, 'id' | 'trackingNumber' | 'createdAt' | 'status'>) => {
     try {

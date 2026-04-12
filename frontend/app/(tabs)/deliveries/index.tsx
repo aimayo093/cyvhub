@@ -75,7 +75,7 @@ export default function DeliveriesScreen() {
   }, [router]);
 
   const renderDelivery = useCallback(({ item }: { item: Delivery }) => {
-    const statusConfig = DELIVERY_STATUS_CONFIG[item.status];
+    const statusConfig = DELIVERY_STATUS_CONFIG[item.status as DeliveryStatus] || DELIVERY_STATUS_CONFIG.PENDING;
     return (
       <TouchableOpacity
         style={styles.deliveryCard}

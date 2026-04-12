@@ -74,7 +74,9 @@ export default function CustomerQuotesScreen() {
     try {
       setRefreshing(true);
       const data = await apiClient('/quotes');
-      setQuotes(data.quotes || []);
+      // Normalize: Backend returns raw array, but UI might expect { quotes: [] }
+      const quotesList = Array.isArray(data) ? data : (data.quotes || []);
+      setQuotes(quotesList);
     } catch (error) {
       console.error('Failed to load quotes:', error);
     } finally {
@@ -204,7 +206,7 @@ export default function CustomerQuotesScreen() {
   };
 
   const renderQuote = useCallback(({ item }: { item: Quote }) => {
-    const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.PENDING;
+    const config = STATUS_CONFIG[item.status as QuoteStatus] || STATUS_CONFIG.PENDING;
     const StatusIcon = config.icon || Clock;
     const isApproved = item.status === 'APPROVED';
 
@@ -296,56 +298,58 @@ export default function CustomerQuotesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.headerTitle}>Quotes</Text>
-            <Text style={styles.headerSubtitle}>
-              {quotes.filter(q => q.status === 'PENDING').length} pending · {quotes.filter(q => q.status === 'APPROVED').length} approved
-            </Text>
+      <ResponsiveContainer scrollable={false}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerTitle}>Quotes</Text>
+              <Text style={styles.headerSubtitle}>
+                {quotes.filter(q => q.status === 'PENDING').length} pending · {quotes.filter(q => q.status === 'APPROVED').length} approved
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.newQuoteBtn}
+              onPress={() => { setShowNewQuote(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+              activeOpacity={0.8}
+            >
+              <Plus size={18} color="#FFFFFF" />
+              <Text style={styles.newQuoteBtnText}>New Quote</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.newQuoteBtn}
-            onPress={() => { setShowNewQuote(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-            activeOpacity={0.8}
-          >
-            <Plus size={18} color="#FFFFFF" />
-            <Text style={styles.newQuoteBtnText}>New Quote</Text>
-          </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.filterBar}>
-        {(['all', 'PENDING', 'APPROVED', 'CONVERTED', 'EXPIRED'] as FilterTab[]).map(f => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterTab, filter === f && styles.filterTabActive]}
-            onPress={() => { setFilter(f); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-          >
-            <Text style={[styles.filterLabel, filter === f && styles.filterLabelActive]}>
-              {f === 'all' ? 'All' : f === 'CONVERTED' ? 'Jobs' : f.charAt(0) + f.slice(1).toLowerCase()}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        <View style={styles.filterBar}>
+          {(['all', 'PENDING', 'APPROVED', 'CONVERTED', 'EXPIRED'] as FilterTab[]).map(f => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterTab, filter === f && styles.filterTabActive]}
+              onPress={() => { setFilter(f); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            >
+              <Text style={[styles.filterLabel, filter === f && styles.filterLabelActive]}>
+                {f === 'all' ? 'All' : f === 'CONVERTED' ? 'Jobs' : f.charAt(0) + f.slice(1).toLowerCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <FlatList
-        data={filteredQuotes}
-        renderItem={renderQuote}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.customerPrimary} />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <FileText size={44} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>No quotes found</Text>
-            <Text style={styles.emptySubtitle}>Submit a quote request to get started</Text>
-          </View>
-        }
-      />
+        <FlatList
+          data={filteredQuotes}
+          renderItem={renderQuote}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.customerPrimary} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <FileText size={44} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>No quotes found</Text>
+              <Text style={styles.emptySubtitle}>Submit a quote request to get started</Text>
+            </View>
+          }
+        />
+      </ResponsiveContainer>
 
       <Modal visible={showNewQuote} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalContainer}>
