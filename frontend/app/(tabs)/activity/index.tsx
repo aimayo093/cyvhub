@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,22 +39,55 @@ const MOCK_ACTIVITY: any[] = [];
 const MOCK_DRIVER_NOTIFICATIONS: any[] = [];
 import { ActivityItem, DriverNotification, DriverNotificationType } from '@/types';
 
-const CUSTOMER_ICON_MAP: Record<ActivityItem['type'], { Icon: typeof Package; color: string; bg: string }> = {
-  delivery_created: { Icon: Package, color: Colors.customerPrimary, bg: '#CCFBF1' },
-  delivery_picked_up: { Icon: Truck, color: Colors.primary, bg: '#DBEAFE' },
-  delivery_completed: { Icon: CheckCircle, color: Colors.success, bg: '#D1FAE5' },
-  payment: { Icon: CreditCard, color: Colors.purple, bg: '#EDE9FE' },
-  rating: { Icon: Star, color: Colors.warning, bg: '#FEF3C7' },
+const CUSTOMER_ICON_MAP: Record<string, { Icon: typeof Package; color: string; bg: string }> = {
+  delivery_created:   { Icon: Package,      color: Colors.customerPrimary, bg: '#CCFBF1' },
+  delivery_picked_up: { Icon: Truck,        color: Colors.primary,         bg: '#DBEAFE' },
+  delivery_completed: { Icon: CheckCircle,  color: Colors.success,         bg: '#D1FAE5' },
+  job_completed:      { Icon: CheckCircle,  color: Colors.success,         bg: '#D1FAE5' },
+  job_update:         { Icon: Clock,        color: Colors.info,            bg: '#CFFAFE' },
+  job_assigned:       { Icon: Briefcase,    color: Colors.primary,         bg: '#DBEAFE' },
+  job_started:        { Icon: Truck,        color: Colors.primary,         bg: '#DBEAFE' },
+  job_picked_up:      { Icon: Package,      color: Colors.customerPrimary, bg: '#CCFBF1' },
+  job_in_transit:     { Icon: Truck,        color: Colors.primary,         bg: '#DBEAFE' },
+  job_cancelled:      { Icon: AlertTriangle,color: Colors.warning,         bg: '#FEF3C7' },
+  job_failed:         { Icon: AlertTriangle,color: Colors.danger,          bg: '#FEE2E2' },
+  payout_received:    { Icon: CreditCard,   color: Colors.success,         bg: '#D1FAE5' },
+  settlement_pending: { Icon: CreditCard,   color: Colors.warning,         bg: '#FEF3C7' },
+  compliance_update:  { Icon: Shield,       color: Colors.carrierPrimary,  bg: '#FFEDD5' },
+  payment:            { Icon: CreditCard,   color: Colors.purple,          bg: '#EDE9FE' },
+  rating:             { Icon: Star,         color: Colors.warning,         bg: '#FEF3C7' },
 };
 
-const DRIVER_ICON_MAP: Record<DriverNotificationType, { Icon: typeof Package; color: string; bg: string }> = {
-  new_job: { Icon: Briefcase, color: Colors.primary, bg: '#DBEAFE' },
-  sla_warning: { Icon: AlertTriangle, color: Colors.warning, bg: '#FEF3C7' },
-  assignment_change: { Icon: RefreshCw, color: Colors.purple, bg: '#EDE9FE' },
-  job_update: { Icon: Clock, color: Colors.info, bg: '#CFFAFE' },
-  compliance: { Icon: Shield, color: Colors.carrierPrimary, bg: '#FFEDD5' },
-  system: { Icon: Settings, color: Colors.textSecondary, bg: '#F1F5F9' },
+const FALLBACK_ICON_CONFIG = { Icon: Bell, color: Colors.textSecondary, bg: '#F1F5F9' };
+
+function getCustomerIcon(type: string) {
+  return CUSTOMER_ICON_MAP[type] ?? FALLBACK_ICON_CONFIG;
+}
+
+const DRIVER_ICON_MAP: Record<string, { Icon: typeof Package; color: string; bg: string }> = {
+  new_job:           { Icon: Briefcase,    color: Colors.primary,        bg: '#DBEAFE' },
+  sla_warning:       { Icon: AlertTriangle,color: Colors.warning,        bg: '#FEF3C7' },
+  assignment_change: { Icon: RefreshCw,   color: Colors.purple,         bg: '#EDE9FE' },
+  job_update:        { Icon: Clock,       color: Colors.info,            bg: '#CFFAFE' },
+  job_assigned:      { Icon: Briefcase,   color: Colors.primary,        bg: '#DBEAFE' },
+  job_accepted:      { Icon: CheckCircle, color: Colors.success,        bg: '#D1FAE5' },
+  job_rejected:      { Icon: AlertTriangle,color: Colors.danger,         bg: '#FEE2E2' },
+  job_started:       { Icon: Truck,       color: Colors.primary,        bg: '#DBEAFE' },
+  job_picked_up:     { Icon: Package,     color: Colors.customerPrimary,bg: '#CCFBF1' },
+  job_in_transit:    { Icon: Truck,       color: Colors.primary,        bg: '#DBEAFE' },
+  job_completed:     { Icon: CheckCircle, color: Colors.success,        bg: '#D1FAE5' },
+  job_cancelled:     { Icon: AlertTriangle,color: Colors.warning,        bg: '#FEF3C7' },
+  job_failed:        { Icon: AlertTriangle,color: Colors.danger,         bg: '#FEE2E2' },
+  payout_received:   { Icon: CreditCard,  color: Colors.success,        bg: '#D1FAE5' },
+  settlement_pending:{ Icon: CreditCard,  color: Colors.warning,        bg: '#FEF3C7' },
+  compliance_update: { Icon: Shield,      color: Colors.carrierPrimary, bg: '#FFEDD5' },
+  compliance:        { Icon: Shield,      color: Colors.carrierPrimary, bg: '#FFEDD5' },
+  system:            { Icon: Settings,    color: Colors.textSecondary,  bg: '#F1F5F9' },
 };
+
+function getDriverIcon(type: string) {
+  return DRIVER_ICON_MAP[type] ?? { Icon: Bell, color: Colors.textSecondary, bg: '#F1F5F9' };
+}
 
 type DriverFilter = 'all' | 'unread' | 'sla_warning' | 'new_job';
 
@@ -128,7 +162,7 @@ function CustomerActivityScreen() {
   }, [router]);
 
   const renderItem = useCallback(({ item, index }: { item: ActivityItem; index: number }) => {
-    const iconConfig = CUSTOMER_ICON_MAP[item.type];
+    const iconConfig = getCustomerIcon(item.type);
     const IconComponent = iconConfig.Icon;
     const isLast = index === activity.length - 1;
 
@@ -303,7 +337,7 @@ function DriverNotificationsScreen() {
   }, []);
 
   const renderNotification = useCallback(({ item, index }: { item: DriverNotification; index: number }) => {
-    const iconConfig = DRIVER_ICON_MAP[item.type];
+    const iconConfig = getDriverIcon(item.type);
     const IconComponent = iconConfig.Icon;
     const isLast = index === filteredNotifications.length - 1;
 
@@ -422,7 +456,17 @@ function DriverNotificationsScreen() {
 }
 
 export default function ActivityScreen() {
-  const { userRole } = useAuth();
+  const { userRole, isLoading } = useAuth();
+
+  // Wait for auth to resolve before deciding which screen to show
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.customerPrimary} />
+      </View>
+    );
+  }
+
   if (userRole === 'driver') return <DriverNotificationsScreen />;
   return <CustomerActivityScreen />;
 }
