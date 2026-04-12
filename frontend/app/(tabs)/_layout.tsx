@@ -213,7 +213,6 @@ export default function TabLayout() {
             <Tabs.Screen name="map" options={{ title: "Map", href: (isDriver || isCarrier) ? undefined : null }} />
             <Tabs.Screen name="deliveries" options={{ title: "Deliveries", href: isCustomer ? undefined : null }} />
             <Tabs.Screen name="customer-quotes" options={{ title: "Quotes", href: isCustomer ? undefined : null }} />
-            <Tabs.Screen name="financials" options={{ title: "Financials", href: isCustomer ? undefined : null }} />
             <Tabs.Screen name="activity" options={{ title: "Activity", href: (isCustomer || isDriver) ? undefined : null }} />
             <Tabs.Screen name="dispatch" options={{ title: "Dispatch", href: isAdmin ? undefined : null }} />
             <Tabs.Screen name="tracking" options={{ title: "Tracking", href: isAdmin ? undefined : null }} />
@@ -297,7 +296,6 @@ function SidebarContent({
   if (isCustomer) {
     menuItems.push({ key: "deliveries", label: "Deliveries", icon: Package, route: "/(tabs)/deliveries", section: "Main" });
     menuItems.push({ key: "customer-quotes", label: "Quotes", icon: FileText, route: "/(tabs)/customer-quotes", section: "Main" });
-    menuItems.push({ key: "financials", label: "Financials", icon: Receipt, route: "/(tabs)/financials", section: "Main" });
     menuItems.push({ key: "payments", label: "Payments", icon: Wallet, route: "/(tabs)/payments", section: "Main" });
   }
 

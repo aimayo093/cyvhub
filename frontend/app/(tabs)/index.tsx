@@ -38,6 +38,7 @@ import {
   Radio,
   Layout,
   Tag,
+  Wallet,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -509,11 +510,11 @@ function CustomerHome() {
                 <Text style={styles.quickActionLabel}>My Quotes</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/financials' as any)}>
-                <View style={[styles.quickActionIcon, { backgroundColor: Colors.success + '15' }]}>
-                  <DollarSign size={24} color={Colors.success} />
+              <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(tabs)/payments' as any)}>
+                <View style={[styles.quickActionIcon, { backgroundColor: Colors.info + '15' }]}>
+                  <Wallet size={24} color={Colors.info} />
                 </View>
-                <Text style={styles.quickActionLabel}>Financials</Text>
+                <Text style={styles.quickActionLabel}>Payments</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/company-profile' as any)}>
