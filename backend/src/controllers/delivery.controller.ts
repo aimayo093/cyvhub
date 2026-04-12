@@ -299,19 +299,26 @@ export class DeliveryController {
                 return;
             }
 
-            // Status check - allow edits if not yet dispatched
+            // Status check - allow edits if not yet dispatched (payment-only updates bypass this below)
             const editableStatuses = ['PENDING_PAYMENT', 'AWAITING_PAYMENT', 'PENDING_DISPATCH'];
-            if (role !== 'admin' && !editableStatuses.includes(existing.status)) {
-                res.status(400).json({ error: `Cannot edit delivery in status: ${existing.status}` });
-                return;
-            }
 
             // Shallow update of fields
             const allowedFields = [
                 'pickupContactName', 'pickupContactPhone', 'pickupAddressLine1', 'pickupCity', 'pickupPostcode',
                 'dropoffContactName', 'dropoffContactPhone', 'dropoffAddressLine1', 'dropoffCity', 'dropoffPostcode',
-                'specialInstructions', 'goodsDescription', 'priority', 'jobType'
+                'specialInstructions', 'goodsDescription', 'priority', 'jobType',
+                // Payment confirmation fields — allowed for delivery owner at any status
+                'paymentStatus'
             ];
+
+            // Payment-status fields are allowed regardless of delivery status (payment can arrive post-dispatch etc)
+            const paymentOnlyFields = ['paymentStatus'];
+            const isPaymentOnlyUpdate = Object.keys(updates).every(k => paymentOnlyFields.includes(k));
+
+            if (role !== 'admin' && !editableStatuses.includes(existing.status) && !isPaymentOnlyUpdate) {
+                res.status(400).json({ error: `Cannot edit delivery in status: ${existing.status}` });
+                return;
+            }
 
             const filteredUpdates: any = {};
             for (const key of allowedFields) {

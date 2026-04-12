@@ -74,12 +74,23 @@ export const [DeliveriesProvider, useDeliveries] = createContextHook(() => {
     }
   }, []);
 
-  const updateDeliveryPayment = useCallback((deliveryId: string, paymentStatus: PaymentStatus) => {
-    // Payment update logic
+  const updateDeliveryPayment = useCallback(async (deliveryId: string, paymentStatus: PaymentStatus) => {
+    // 1. Optimistic update — instant UI feedback
     setDeliveries(prev =>
       prev.map(d => d.id === deliveryId ? { ...d, paymentStatus } : d)
     );
-  }, []);
+    // 2. Persist to backend so the status survives page refresh
+    try {
+      await apiClient(`/deliveries/${deliveryId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ paymentStatus }),
+      });
+    } catch (e) {
+      console.warn('[DeliveriesProvider] Failed to persist paymentStatus to backend:', e);
+    }
+    // 3. Re-fetch full list from server to get the canonical state
+    await loadDeliveries();
+  }, [loadDeliveries]);
 
   return {
     deliveries,
