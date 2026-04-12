@@ -142,7 +142,7 @@ export default function PaymentCheckoutScreen() {
       const errorMsg = e?.message || 'Could not connect to PayPal. Please try again.';
       Alert.alert('PayPal Error', errorMsg);
     }
-  }, [amount, description, params, initiatePaypalCheckout]);
+  }, [amountExVat, description, params, initiatePaypalCheckout]);
 
   const handlePay = useCallback(async () => {
     if (amountExVat <= 0) {
@@ -184,7 +184,7 @@ export default function PaymentCheckoutScreen() {
       const errorMsg = e?.message || 'Please try again or use a different payment method.';
       Alert.alert('Payment Failed', errorMsg);
     }
-  }, [amount, selectedMethod, selectedCardId, processPayment, description, params, updateDeliveryPayment, handlePaypalPay]);
+  }, [amountExVat, selectedMethod, selectedCardId, processPayment, description, params, updateDeliveryPayment, handlePaypalPay]);
 
 
   // ── Stripe Checkout: create session → redirect to Stripe-hosted page ────
@@ -222,7 +222,7 @@ export default function PaymentCheckoutScreen() {
       const errorMsg = e?.message || 'Could not connect to Stripe. Please try another method.';
       Alert.alert('Checkout Failed', errorMsg);
     }
-  }, [amount, description, params, initiateStripeCheckout]);
+  }, [amountExVat, description, params, initiateStripeCheckout]);
 
   const handleAddCard = useCallback(() => {
     if (newCardNumber.length < 16 || newCardExpiry.length < 5 || newCardCvc.length < 3) {
