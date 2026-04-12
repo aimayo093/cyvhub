@@ -107,10 +107,10 @@ export default function BookDeliveryScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pickupPostcode: pickup.postcode,
-          dropoffPostcode: dropoff.postcode,
-          pickupCoords: { lat: pickup.latitude, lng: pickup.longitude },
-          dropoffCoords: { lat: dropoff.latitude, lng: dropoff.longitude },
+          pickupPostcode: pickup?.postcode,
+          dropoffPostcode: dropoff?.postcode,
+          pickupCoords: { lat: pickup?.latitude, lng: pickup?.longitude },
+          dropoffCoords: { lat: dropoff?.latitude, lng: dropoff?.longitude },
           items: parcels.map(p => ({
             lengthCm: parseFloat(p.lengthCm) || 0,
             widthCm: parseFloat(p.widthCm) || 0,

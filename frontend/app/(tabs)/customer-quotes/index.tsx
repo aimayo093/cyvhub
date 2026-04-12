@@ -68,7 +68,7 @@ function formatDate(dateStr: string): string {
 
 export default function CustomerQuotesScreen() {
   const { customer } = useAuth();
-  const [insets, setInsets] = useState(useSafeAreaInsets()); // Fix insets issues on some platforms
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [filter, setFilter] = useState<FilterTab>('all');
@@ -308,8 +308,8 @@ export default function CustomerQuotesScreen() {
   };
 
   const renderQuote = useCallback(({ item }: { item: Quote }) => {
-    const config = STATUS_CONFIG[item.status];
-    const StatusIcon = config.icon;
+    const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.PENDING;
+    const StatusIcon = config.icon || Clock;
     const isApproved = item.status === 'APPROVED';
 
     return (

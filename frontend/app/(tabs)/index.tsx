@@ -15,13 +15,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Truck,
-  Clock,
-  CheckCircle,
-  ChevronRight,
-  Navigation,
-  Zap,
   TrendingUp,
   Package,
   Plus,
@@ -305,71 +298,7 @@ function CustomerHome() {
     aiSummary: "Start booking deliveries to generate your first logistics performance summary.",
   });
 
-  // Instant Quote State
-  const [instantQuote, setInstantQuote] = useState({
-    pickup: '',
-    dropoff: '',
-    price: 0,
-    loading: false,
-    error: '',
-  });
 
-  const handleInstantQuote = async () => {
-    // If we already have a quote, go to booking
-    if (instantQuote.price > 0) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      router.push({
-        pathname: '/book-delivery' as any,
-        params: {
-          prePickup: instantQuote.pickup,
-          preDropoff: instantQuote.dropoff,
-          prePrice: instantQuote.price.toString()
-        }
-      });
-      return;
-    }
-
-    if (!instantQuote.pickup || !instantQuote.dropoff) {
-      setInstantQuote(prev => ({ ...prev, error: 'Enter both postcodes' }));
-      return;
-    }
-
-    setInstantQuote(prev => ({ ...prev, loading: true, error: '', price: 0 }));
-    try {
-      const res = await apiClient('/quotes/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pickupPostcode: instantQuote.pickup,
-          dropoffPostcode: instantQuote.dropoff,
-          items: [{ lengthCm: 40, widthCm: 40, heightCm: 40, weightKg: 10, quantity: 1 }],
-          vehicleType: 'Small Van'
-        })
-      });
-
-      if (res && res.quotes && res.quotes.length > 0) {
-        // Normalize strings for matching
-        const normalize = (s: string) => (s || '').toUpperCase().replace(/\s/g, '_');
-        const targetVehicle = 'Small Van';
-        const quote = res.quotes.find((q: any) => normalize(q.vehicleName) === normalize(targetVehicle)) || res.quotes[0];
-        
-        const price = quote.totalExVat;
-        setInstantQuote(prev => ({ ...prev, price, loading: false }));
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } else if (res && res.error) {
-        setInstantQuote(prev => ({ ...prev, error: res.error, loading: false }));
-      } else {
-        setInstantQuote(prev => ({ ...prev, error: 'Route or vehicle not available', loading: false }));
-      }
-    } catch (e: any) {
-      console.error('[InstantQuote] Failed:', e);
-      setInstantQuote(prev => ({ 
-        ...prev, 
-        error: e.message?.includes('postcode') ? 'Invalid Postcode' : 'Service currently unavailable', 
-        loading: false 
-      }));
-    }
-  };
 
   const loadCustomerData = useCallback(async () => {
     try {
@@ -520,66 +449,7 @@ function CustomerHome() {
             <ChevronRight size={24} color="#FFF" style={{ zIndex: 1 }} />
           </TouchableOpacity>
 
-          {/* INSTANT QUOTE WIDGET */}
-          <View style={styles.instantQuoteContainer}>
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>Instant Estimate</Text>
-                <Text style={styles.iqSub}>Standard Parcel · Small Van</Text>
-              </View>
-              <Zap size={16} color={Colors.warning} />
-            </View>
-            <View style={styles.instantQuoteCard}>
-              <View style={styles.iqInputRow}>
-                <View style={[styles.iqInputWrap, { marginRight: 8 }]}>
-                  <MapPin size={14} color={Colors.textMuted} style={styles.iqIcon} />
-                  <TextInput
-                    style={styles.iqInput}
-                    placeholder="From"
-                    placeholderTextColor={Colors.textMuted}
-                    value={instantQuote.pickup}
-                    onChangeText={t => setInstantQuote(prev => ({ ...prev, pickup: t.toUpperCase() }))}
-                    autoCapitalize="characters"
-                  />
-                </View>
-                <View style={styles.iqInputWrap}>
-                  <MapPin size={14} color={Colors.customerPrimary} style={styles.iqIcon} />
-                  <TextInput
-                    style={styles.iqInput}
-                    placeholder="To"
-                    placeholderTextColor={Colors.textMuted}
-                    value={instantQuote.dropoff}
-                    onChangeText={t => setInstantQuote(prev => ({ ...prev, dropoff: t.toUpperCase() }))}
-                    autoCapitalize="characters"
-                  />
-                </View>
-              </View>
 
-              <View style={styles.iqFooter}>
-                {instantQuote.price > 0 ? (
-                  <View style={styles.iqResult}>
-                    <Text style={styles.iqPriceLabel}>Estimate:</Text>
-                    <Text style={styles.iqPrice}>£{instantQuote.price.toFixed(2)}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.iqError}>{instantQuote.error}</Text>
-                )}
-                
-                <TouchableOpacity 
-                   style={[styles.iqButton, instantQuote.loading && { opacity: 0.7 }]} 
-                   onPress={handleInstantQuote}
-                   disabled={instantQuote.loading}
-                >
-                  {instantQuote.loading ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.iqButtonText}>{instantQuote.price > 0 ? 'Book Now' : 'Get Price'}</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.iqNotice}>* Based on 10kg standard parcel (40x40x40cm)</Text>
-            </View>
-          </View>
 
           <View style={styles.activeSection}>
             <View style={styles.sectionHeader}>
@@ -2253,100 +2123,5 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#FFFFFF',
   },
-  instantQuoteContainer: {
-    marginBottom: 24,
-  },
-  instantQuoteCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  iqInputRow: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  iqInputWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surfaceAlt,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  iqIcon: {
-    marginRight: 8,
-  },
-  iqInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
-  },
-  iqSub: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginTop: 2,
-    fontWeight: '500' as const,
-  },
-  iqNotice: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    marginTop: 12,
-    fontStyle: 'italic' as const,
-    textAlign: 'center' as const,
-  },
-  iqFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 4,
-  },
-  iqResult: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  iqPriceLabel: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: '500' as const,
-  },
-  iqPrice: {
-    fontSize: 20,
-    fontWeight: '800' as const,
-    color: Colors.customerPrimary,
-  },
-  iqError: {
-    fontSize: 12,
-    color: Colors.danger,
-    fontWeight: '500' as const,
-    flex: 1,
-  },
-  iqButton: {
-    backgroundColor: Colors.customerPrimary,
-    paddingHorizontal: 20,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: Colors.customerPrimary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-  },
-  iqButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700' as const,
-  },
+
 });

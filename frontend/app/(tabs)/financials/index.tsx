@@ -41,6 +41,7 @@ function formatDate(dateStr: string): string {
 }
 
 function formatCurrency(amount: number): string {
+  if (amount === undefined || amount === null || isNaN(amount)) return '£0.00';
   return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -166,8 +167,8 @@ export default function FinancialsScreen() {
   }
 
   const renderInvoice = useCallback(({ item }: { item: any }) => {
-    const config = INVOICE_STATUS_CONFIG[item.status];
-    const StatusIcon = config.icon;
+    const config = INVOICE_STATUS_CONFIG[item.status] || INVOICE_STATUS_CONFIG.PENDING;
+    const StatusIcon = config.icon || Clock;
 
     return (
       <View style={styles.invoiceCard}>

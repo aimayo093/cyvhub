@@ -27,6 +27,7 @@ import {
   Factory,
   Banknote,
   ChevronDown,
+  Users,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -35,7 +36,8 @@ import { apiClient } from '@/services/api';
 const INDUSTRY_OPTIONS = ['IT / Technology', 'Construction', 'Manufacturing', 'Wholesale / Distribution', 'Medical', 'Furniture', 'Custom'];
 
 function formatCurrency(amount: number): string {
-  return `£${(amount || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (amount === undefined || amount === null || isNaN(amount)) return '£0.00';
+  return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function CompanyProfileScreen() {
