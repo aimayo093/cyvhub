@@ -74,10 +74,12 @@ export default function DeliveriesScreen() {
   const handlePayNow = useCallback((item: Delivery) => {
     payNowPressedRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Backend stores price in calculatedPrice; estimatedPrice is the local form field (may be 0)
+    const amount = item.calculatedPrice || item.estimatedPrice || 0;
     router.push({
       pathname: '/payment-checkout' as any,
       params: {
-        amount: typeof item.estimatedPrice === 'number' ? item.estimatedPrice.toFixed(2) : '0',
+        amount: amount.toFixed(2),
         description: `Delivery ${item.trackingNumber}`,
         deliveryId: item.id,
         trackingNumber: item.trackingNumber,
@@ -102,9 +104,9 @@ export default function DeliveriesScreen() {
   const renderDelivery = useCallback(({ item }: { item: Delivery }) => {
     const statusConfig = DELIVERY_STATUS_CONFIG[item.status as DeliveryStatus] || DELIVERY_STATUS_CONFIG.PENDING;
     const isPendingPayment = item.status === 'PENDING_PAYMENT';
-    const priceDisplay = typeof item.estimatedPrice === 'number'
-      ? `£${item.estimatedPrice.toFixed(2)}`
-      : '—';
+    // Use calculatedPrice (backend) with estimatedPrice as fallback
+    const price = item.calculatedPrice || item.estimatedPrice || 0;
+    const priceDisplay = price > 0 ? `£${price.toFixed(2)}` : '—';
     return (
       <TouchableOpacity
         style={[styles.deliveryCard, isPendingPayment && styles.deliveryCardPendingPayment]}

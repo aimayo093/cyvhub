@@ -4,6 +4,30 @@ import { apiClient } from '@/services/api';
 import { useAuth } from './AuthProvider';
 import { Delivery, DeliveryStatus, PaymentStatus } from '@/types';
 
+/**
+ * Normalizes a raw backend Job object into the frontend Delivery shape.
+ * The backend uses `calculatedPrice` and `pickupAddressLine1`;
+ * the frontend Delivery type uses `estimatedPrice` / `calculatedPrice` and `pickupAddress`.
+ */
+function normalizeDelivery(raw: any): Delivery {
+  return {
+    ...raw,
+    // Price: backend always stores in calculatedPrice; mirror it to estimatedPrice
+    calculatedPrice: raw.calculatedPrice ?? raw.estimatedPrice ?? 0,
+    estimatedPrice: raw.calculatedPrice ?? raw.estimatedPrice ?? 0,
+    // Address fields: backend uses pickupAddressLine1; frontend Delivery uses pickupAddress
+    pickupAddress: raw.pickupAddress ?? raw.pickupAddressLine1 ?? '',
+    dropoffAddress: raw.dropoffAddress ?? raw.dropoffAddressLine1 ?? '',
+    // Contact fields
+    pickupContact: raw.pickupContact ?? raw.pickupContactName ?? '',
+    dropoffContact: raw.dropoffContact ?? raw.dropoffContactName ?? '',
+    // Description
+    packageDescription: raw.packageDescription ?? raw.jobType ?? raw.goodsDescription ?? '',
+    // Tracking
+    trackingNumber: raw.trackingNumber ?? raw.jobNumber ?? raw.id,
+  };
+}
+
 export const [DeliveriesProvider, useDeliveries] = createContextHook(() => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -20,7 +44,8 @@ export const [DeliveriesProvider, useDeliveries] = createContextHook(() => {
     setError(null);
     try {
       const response = await apiClient('/deliveries');
-      setDeliveries(response.data || response || []);
+      const raw = response.data || response || [];
+      setDeliveries((Array.isArray(raw) ? raw : []).map(normalizeDelivery));
     } catch (e: any) {
       console.error('Failed to load deliveries:', e);
       setError(e?.message || 'Failed to load deliveries');
@@ -55,8 +80,9 @@ export const [DeliveriesProvider, useDeliveries] = createContextHook(() => {
         method: 'POST',
         body: JSON.stringify(delivery)
       });
-      setDeliveries(prev => [response.data, ...prev]);
-      return response.data;
+      const normalized = normalizeDelivery(response.data);
+      setDeliveries(prev => [normalized, ...prev]);
+      return normalized;
     } catch (e) {
       console.error('Failed to create delivery:', e);
       throw e;

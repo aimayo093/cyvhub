@@ -609,11 +609,13 @@ export default function DeliveryDetailScreen() {
             <TouchableOpacity
                 style={styles.payNowBtn}
                 onPress={() => {
+                // Backend stores price in calculatedPrice; estimatedPrice is the form input (may be 0)
+                const payAmount = delivery.calculatedPrice || delivery.estimatedPrice || 0;
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push({
                     pathname: '/payment-checkout' as any,
                     params: {
-                    amount: delivery.estimatedPrice.toFixed(2),
+                    amount: payAmount.toFixed(2),
                     description: `Delivery ${delivery.trackingNumber}`,
                     deliveryId: delivery.id,
                     trackingNumber: delivery.trackingNumber,
@@ -623,7 +625,7 @@ export default function DeliveryDetailScreen() {
                 activeOpacity={0.7}
             >
                 <Wallet size={18} color="#fff" />
-                <Text style={styles.payNowBtnText}>Pay £{delivery.estimatedPrice.toFixed(2)} Now</Text>
+                <Text style={styles.payNowBtnText}>Pay £{(delivery.calculatedPrice || delivery.estimatedPrice || 0).toFixed(2)} Now</Text>
                 <ChevronRight size={16} color="#fff" />
             </TouchableOpacity>
           </View>
