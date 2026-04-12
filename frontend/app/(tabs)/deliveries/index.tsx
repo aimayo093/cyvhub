@@ -58,12 +58,35 @@ export default function DeliveriesScreen() {
     setRefreshing(false);
   }, [refreshDeliveries]);
 
+  // Ref flag: set true when Pay Now is tapped so the outer card's onPress skips navigation
+  const payNowPressedRef = React.useRef(false);
+
   const handleDeliveryPress = useCallback((id: string) => {
+    // If Pay Now was just tapped, clear the flag and skip card navigation
+    if (payNowPressedRef.current) {
+      payNowPressedRef.current = false;
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/delivery-detail' as any, params: { id } });
   }, [router]);
 
+  const handlePayNow = useCallback((item: Delivery) => {
+    payNowPressedRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push({
+      pathname: '/payment-checkout' as any,
+      params: {
+        amount: typeof item.estimatedPrice === 'number' ? item.estimatedPrice.toFixed(2) : '0',
+        description: `Delivery ${item.trackingNumber}`,
+        deliveryId: item.id,
+        trackingNumber: item.trackingNumber,
+      },
+    });
+  }, [router]);
+
   const handleTrackLive = useCallback((delivery: Delivery) => {
+    payNowPressedRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({
       pathname: '/track-delivery' as any,
@@ -133,22 +156,11 @@ export default function DeliveriesScreen() {
           <ChevronRight size={16} color={Colors.textMuted} />
         </View>
 
-        {/* Pay Now indicator for PENDING_PAYMENT items */}
+        {/* Pay Now banner — uses dedicated handler to avoid stopPropagation unreliability on web */}
         {isPendingPayment && (
           <TouchableOpacity
             style={styles.payNowBanner}
-            onPress={(e) => {
-              e.stopPropagation();
-              router.push({
-                pathname: '/payment-checkout' as any,
-                params: {
-                  amount: typeof item.estimatedPrice === 'number' ? item.estimatedPrice.toFixed(2) : '0',
-                  description: `Delivery ${item.trackingNumber}`,
-                  deliveryId: item.id,
-                  trackingNumber: item.trackingNumber,
-                },
-              });
-            }}
+            onPress={() => handlePayNow(item)}
             activeOpacity={0.7}
           >
             <CreditCard size={14} color="#fff" />
@@ -160,7 +172,7 @@ export default function DeliveriesScreen() {
         {item.driverName && ['DRIVER_ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'].includes(item.status) && (
           <TouchableOpacity
             style={styles.trackLiveBtn}
-            onPress={(e) => { e.stopPropagation(); handleTrackLive(item); }}
+            onPress={() => handleTrackLive(item)}
             activeOpacity={0.7}
           >
             <View style={styles.trackLiveDot} />
@@ -170,7 +182,7 @@ export default function DeliveriesScreen() {
         )}
       </TouchableOpacity>
     );
-  }, [handleDeliveryPress, handleTrackLive, router]);
+  }, [handleDeliveryPress, handlePayNow, handleTrackLive]);
 
   // ── Loading state ──
   if (isLoading && deliveries.length === 0) {

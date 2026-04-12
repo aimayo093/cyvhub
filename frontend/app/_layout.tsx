@@ -39,9 +39,10 @@ function RootLayoutNav() {
       seg === 'reset-password' ||
       seg === 'terms' ||
       seg === 'privacy' ||
-      seg === 'payment-checkout' ||
-      seg === 'checkout' ||
       seg === 'track';
+      // NOTE: payment-checkout and checkout are intentionally NOT listed here —
+      // they are authenticated screens. Listing them as public caused the auth guard
+      // to redirect logged-in users back to /(tabs) whenever they navigated to payment.
 
     const isAdminRoute = seg === 'admin' || seg?.startsWith('admin-');
 

@@ -292,7 +292,8 @@ function DriverNotificationsScreen() {
     }
 
     if (item.jobId) {
-      router.push({ pathname: '/job-detail' as any, params: { id: item.jobId } });
+      // Route to delivery-detail which fetches from both /deliveries/:id and /jobs/:id
+      router.push({ pathname: '/delivery-detail' as any, params: { id: item.jobId } });
     }
   }, [router]);
 

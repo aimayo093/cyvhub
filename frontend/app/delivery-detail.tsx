@@ -30,11 +30,13 @@ import {
   Zap,
   CreditCard,
   Wallet,
+  AlertCircle,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDeliveries } from '@/providers/DeliveriesProvider';
 import { usePayments } from '@/providers/PaymentProvider';
+import { apiClient } from '@/services/api';
 import { DeliveryStatus, SLAStatus } from '@/types';
 
 const STATUS_CONFIG: Record<DeliveryStatus, { label: string; color: string; bg: string }> = {
@@ -114,11 +116,73 @@ function getAIEta(status: DeliveryStatus, estimatedDelivery?: string): { eta: st
 export default function DeliveryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { getDelivery, cancelDelivery } = useDeliveries();
-  // ── IMPORTANT: ALL hooks must be called unconditionally before any conditional returns ──
+  const { getDelivery, cancelDelivery, isLoading: providerLoading } = useDeliveries();
+  // ── ALL hooks unconditionally before any conditional returns (Rules of Hooks) ──
   const { transactions } = usePayments();
 
-  const delivery = useMemo(() => getDelivery(id ?? ''), [id, getDelivery]);
+  // Direct-fetch fallback: if the delivery isn’t in the context store, fetch from API
+  const [directDelivery, setDirectDelivery] = useState<any>(null);
+  const [fetchLoading, setFetchLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  const contextDelivery = useMemo(() => getDelivery(id ?? ''), [id, getDelivery]);
+
+  // Attempt a direct API fetch if the provider has finished loading but delivery isn’t there
+  useEffect(() => {
+    if (!id || contextDelivery || fetchedRef.current) return;
+    if (providerLoading) return; // Wait for provider to finish first
+
+    fetchedRef.current = true;
+    setFetchLoading(true);
+    setFetchError(null);
+
+    apiClient(`/deliveries/${id}`)
+      .then((res: any) => {
+        const data = res?.data ?? res;
+        if (data && data.id) {
+          setDirectDelivery(data);
+        } else {
+          setFetchError('Delivery not found.');
+        }
+      })
+      .catch((e: any) => {
+        // Try /jobs/:id as fallback (delivery may be stored as a job)
+        return apiClient(`/jobs/${id}`)
+          .then((res: any) => {
+            const data = res?.data ?? res?.job ?? res;
+            if (data && data.id) {
+              // Normalise job fields to delivery shape
+              setDirectDelivery({
+                ...data,
+                trackingNumber: data.jobNumber ?? data.trackingNumber ?? id,
+                pickupAddress: data.pickupAddressLine1 ?? data.pickupAddress ?? '',
+                pickupCity: data.pickupCity ?? '',
+                pickupPostcode: data.pickupPostcode ?? '',
+                pickupContact: data.pickupContact ?? '',
+                dropoffAddress: data.dropoffAddressLine1 ?? data.dropoffAddress ?? '',
+                dropoffCity: data.dropoffCity ?? '',
+                dropoffPostcode: data.dropoffPostcode ?? '',
+                dropoffContact: data.dropoffContact ?? '',
+                vehicleType: data.vehicleType ?? '',
+                packageDescription: data.packageDescription ?? data.jobType ?? '',
+                estimatedPrice: data.agreedPrice ?? data.estimatedPrice ?? 0,
+                status: data.status ?? 'PENDING',
+                createdAt: data.createdAt ?? new Date().toISOString(),
+              });
+            } else {
+              setFetchError('Delivery not found.');
+            }
+          })
+          .catch(() => {
+            setFetchError(e?.message || 'Could not load delivery details. Please try again.');
+          });
+      })
+      .finally(() => setFetchLoading(false));
+  }, [id, contextDelivery, providerLoading]);
+
+  // Use whichever source the delivery came from
+  const delivery = contextDelivery ?? directDelivery;
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [driverProgress] = useState<number>(() => {
@@ -153,7 +217,7 @@ export default function DeliveryDetailScreen() {
     return getAIEta(delivery.status, delivery.estimatedDelivery);
   }, [delivery]);
 
-  // Compute payment status from delivery field or from transactions (must be before any conditional return)
+  // Compute payment status (must be before any conditional return)
   const paymentStatus = useMemo(() => {
     if (!delivery) return 'PENDING';
     if (delivery.paymentStatus) return delivery.paymentStatus;
@@ -183,22 +247,53 @@ export default function DeliveryDetailScreen() {
     ]);
   }, [delivery, cancelDelivery, router]);
 
+  const handleRetry = useCallback(() => {
+    fetchedRef.current = false;
+    setFetchError(null);
+    setDirectDelivery(null);
+  }, []);
+
+  // ── Missing ID guard ──
   if (!id) {
     return (
       <View style={styles.loadingContainer}>
         <Stack.Screen options={{ title: 'Delivery Details' }} />
-        <ActivityIndicator size="large" color={Colors.customerPrimary} />
-        <Text style={styles.loadingText}>Missing delivery ID</Text>
+        <AlertTriangle size={44} color={Colors.warning} />
+        <Text style={styles.loadingText}>No delivery ID provided.</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => router.back()} activeOpacity={0.7}>
+          <Text style={styles.retryBtnText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  if (!delivery) {
+  // ── Still loading (provider or direct fetch) ──
+  if ((providerLoading || fetchLoading) && !delivery) {
     return (
       <View style={styles.loadingContainer}>
         <Stack.Screen options={{ title: 'Delivery Details' }} />
         <ActivityIndicator size="large" color={Colors.customerPrimary} />
         <Text style={styles.loadingText}>Loading delivery details...</Text>
+      </View>
+    );
+  }
+
+  // ── Error state: fetch failed or delivery not found ──
+  if ((fetchError || (!delivery && !providerLoading && !fetchLoading)) && !delivery) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Stack.Screen options={{ title: 'Delivery Details' }} />
+        <AlertCircle size={44} color={Colors.danger} />
+        <Text style={styles.errorTitle}>Delivery not found</Text>
+        <Text style={styles.loadingText}>
+          {fetchError ?? 'This delivery could not be loaded. It may have been removed or the link is incorrect.'}
+        </Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={handleRetry} activeOpacity={0.7}>
+          <Text style={styles.retryBtnText}>Try Again</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+          <Text style={styles.backBtnText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -631,8 +726,40 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: 8,
+    backgroundColor: Colors.customerPrimary,
+    paddingHorizontal: 32,
+    paddingVertical: 13,
+    borderRadius: 12,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700' as const,
+  },
+  backBtn: {
+    paddingHorizontal: 32,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  backBtnText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   scrollView: {
     flex: 1,

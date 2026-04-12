@@ -236,10 +236,16 @@ export default function PaymentCheckoutScreen() {
           </View>
           <TouchableOpacity
             style={styles.successBtn}
-            onPress={() => router.back()}
+            onPress={() => {
+              if (params.deliveryId) {
+                router.replace({ pathname: '/delivery-detail' as any, params: { id: params.deliveryId } });
+              } else {
+                router.back();
+              }
+            }}
             activeOpacity={0.8}
           >
-            <Text style={styles.successBtnText}>Done</Text>
+            <Text style={styles.successBtnText}>View Shipment</Text>
           </TouchableOpacity>
         </View>
       </View>
