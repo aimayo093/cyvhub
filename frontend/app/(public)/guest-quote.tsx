@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GuestQuoteConfig, initialGuestQuote } from '@/constants/cmsDefaults';
+import { useCMS } from '@/context/CMSContext';
 
 
 
@@ -78,7 +79,11 @@ export default function GuestQuotePage() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
     const { collection, delivery, ready, vehicle, parcels } = useLocalSearchParams();
     const router = useRouter();
-    const [config, setConfig] = useState<GuestQuoteConfig>(initialGuestQuote);
+
+    // CMS config from global context (live, synced with backend)
+    const { homepageData } = useCMS();
+    const config: GuestQuoteConfig = homepageData['cms_guestQuoteConfig'] || initialGuestQuote;
+
     const [dynamicQuotes, setDynamicQuotes] = useState<any[]>([]);
     const [rejectedVehicles, setRejectedVehicles] = useState<any[]>([]);
     const [distance, setDistance] = useState<number>(0);
@@ -119,11 +124,7 @@ export default function GuestQuotePage() {
             }
 
             try {
-                // 1. Fetch CMS text config for page titles/validity
-                const storedConfig = await AsyncStorage.getItem('cms_guestQuoteConfig');
-                if (storedConfig) {
-                    setConfig(JSON.parse(storedConfig));
-                }
+                // 1. CMS config is now sourced from the global CMSContext (set at top of component)
 
                 // 2. Fetch Dynamic Pricing from Backend
                 const response = await apiClient('/quotes/calculate', {

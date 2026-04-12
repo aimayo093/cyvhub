@@ -35,7 +35,7 @@ export default function BookDeliveryScreen() {
         pickupLatitude: formData.pickup.latitude,
         pickupLongitude: formData.pickup.longitude,
         pickupContactName: formData.pickupContactName,
-        pickupContactPhone: '0000000000',
+        pickupContactPhone: customer?.phone || '',
 
         dropoffAddressLine1: formData.dropoff.line1,
         dropoffAddressLine2: formData.dropoff.line2,
@@ -44,7 +44,7 @@ export default function BookDeliveryScreen() {
         dropoffLatitude: formData.dropoff.latitude,
         dropoffLongitude: formData.dropoff.longitude,
         dropoffContactName: formData.dropoffContactName,
-        dropoffContactPhone: '0000000000',
+        dropoffContactPhone: customer?.phone || '',
 
         parcels: formData.parcels,
         vehicleType: formData.vehicleType,
