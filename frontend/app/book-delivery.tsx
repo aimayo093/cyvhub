@@ -70,8 +70,8 @@ export default function BookDeliveryScreen() {
   const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
   
   useEffect(() => {
-    if (params.prePickup) setPickupPostcode(params.prePickup as string);
-    if (params.preDropoff) setDropoffPostcode(params.preDropoff as string);
+    if (params.prePickup) setPickup({ postcode: params.prePickup as string, latitude: 0, longitude: 0 });
+    if (params.preDropoff) setDropoff({ postcode: params.preDropoff as string, latitude: 0, longitude: 0 });
     if (params.preVehicle) setSelectedVehicle(params.preVehicle as string);
     if (params.prePrice) setEstimatedPrice(parseFloat(params.prePrice as string) || 0);
   }, [params]);
@@ -144,7 +144,7 @@ export default function BookDeliveryScreen() {
       setCalculationError(e.message || 'We couldn\'t calculate a price for this route.');
       setEstimatedPrice(0);
     }
-  }, [pickupPostcode, dropoffPostcode, parcels, selectedVehicle]);
+  }, [pickup, dropoff, parcels, selectedVehicle]);
 
   useEffect(() => {
     fetchPrice();
@@ -154,14 +154,22 @@ export default function BookDeliveryScreen() {
     if (!customer) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (target === 'pickup') {
-      setPickupAddress(customer.defaultAddress || '');
-      setPickupCity(customer.defaultCity || '');
-      setPickupPostcode(customer.defaultPostcode || '');
+      setPickup({
+        line1: customer.defaultAddress || '',
+        townCity: customer.defaultCity || '',
+        postcode: customer.defaultPostcode || '',
+        latitude: 0,
+        longitude: 0
+      });
       setPickupContact(`${customer.firstName} ${customer.lastName}`);
     } else {
-      setDropoffAddress(customer.defaultAddress || '');
-      setDropoffCity(customer.defaultCity || '');
-      setDropoffPostcode(customer.defaultPostcode || '');
+      setDropoff({
+        line1: customer.defaultAddress || '',
+        townCity: customer.defaultCity || '',
+        postcode: customer.defaultPostcode || '',
+        latitude: 0,
+        longitude: 0
+      });
       setDropoffContact(`${customer.firstName} ${customer.lastName}`);
     }
   }, [customer]);
@@ -171,11 +179,11 @@ export default function BookDeliveryScreen() {
   }, []);
 
   const validate = useCallback((): boolean => {
-    if (!pickupAddress.trim() || !pickupCity.trim() || !pickupPostcode.trim() || !pickupContact.trim()) {
+    if (!pickup?.line1?.trim() || !pickup?.townCity?.trim() || !pickup?.postcode?.trim() || !pickupContact.trim()) {
       Alert.alert('Missing Info', 'Please fill in all pickup details.');
       return false;
     }
-    if (!dropoffAddress.trim() || !dropoffCity.trim() || !dropoffPostcode.trim() || !dropoffContact.trim()) {
+    if (!dropoff?.line1?.trim() || !dropoff?.townCity?.trim() || !dropoff?.postcode?.trim() || !dropoffContact.trim()) {
       Alert.alert('Missing Info', 'Please fill in all dropoff details.');
       return false;
     }
@@ -185,7 +193,7 @@ export default function BookDeliveryScreen() {
       return false;
     }
     return true;
-  }, [pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, parcels]);
+  }, [pickup, pickupContact, dropoff, dropoffContact, parcels]);
 
   const handleSubmit = useCallback(async () => {
     if (!validate()) return;
@@ -254,7 +262,7 @@ export default function BookDeliveryScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [validate, createDelivery, pickupAddress, pickupCity, pickupPostcode, pickupContact, dropoffAddress, dropoffCity, dropoffPostcode, dropoffContact, selectedVehicle, router, selectedJobType, specialInstructions, selectedPickupWindow, selectedDeliveryWindow, estimatedPrice, parcels, isReadyNow]);
+  }, [validate, createDelivery, pickup, pickupContact, dropoff, dropoffContact, selectedVehicle, router, selectedJobType, specialInstructions, selectedPickupWindow, selectedDeliveryWindow, estimatedPrice, parcels, isReadyNow]);
 
   const handleSaveQuote = useCallback(async () => {
     if (!validate()) return;
@@ -272,8 +280,8 @@ export default function BookDeliveryScreen() {
         quoteNumber: `QT-${Date.now()}`,
         customerId: customer?.id ?? 'guest',
         businessId: customer?.businessAccountId || undefined,
-        pickupPostcode: pickupPostcode.trim(),
-        dropoffPostcode: dropoffPostcode.trim(),
+        pickupPostcode: pickup?.postcode?.trim(),
+        dropoffPostcode: dropoff?.postcode?.trim(),
         vehicleType: selectedVehicle,
         distanceKm: distanceMiles * 1.60934, // Convert miles to km for schema
         estimatedCost: estimatedPrice,
@@ -303,7 +311,7 @@ export default function BookDeliveryScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [validate, estimatedPrice, customer, pickupPostcode, dropoffPostcode, selectedVehicle, parcels, router]);
+  }, [validate, estimatedPrice, customer, pickup, dropoff, selectedVehicle, parcels, router]);
 
   const renderQuickFill = useCallback((target: LocationTarget) => (
     <View style={styles.savedLocationsWrap}>
@@ -692,7 +700,7 @@ export default function BookDeliveryScreen() {
             </View>
             {!calculationError && (
               <Text style={styles.estimatePrice}>
-                £{pickupPostcode && dropoffPostcode && estimatedPrice > 0 ? estimatedPrice.toFixed(2) : '--'}
+                £{pickup?.postcode && dropoff?.postcode && estimatedPrice > 0 ? estimatedPrice.toFixed(2) : '--'}
               </Text>
             )}
             {calculationError && <AlertCircle size={20} color={Colors.danger} />}
