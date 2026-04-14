@@ -138,7 +138,7 @@ export const upsertConfig = async (req: AuthenticatedRequest, res: Response) => 
                 data: {
                     entityType: 'GLOBAL_CONFIG',
                     entityKey: key,
-                    snapshot: existing.config,
+                    snapshot: existing.config as any,
                     updatedBy: req.user.userId
                 }
             });
@@ -237,7 +237,7 @@ export const restoreRevision = async (req: AuthenticatedRequest, res: Response) 
             await prisma.globalConfig.update({
                 where: { key: revision.entityKey },
                 data: {
-                    config: revision.snapshot,
+                    config: revision.snapshot as any,
                     updatedBy: req.user.userId,
                     updatedAt: new Date()
                 }
