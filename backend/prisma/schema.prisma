@@ -37,9 +37,9 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  jobsAsCustomer Job[] @relation("CustomerJobs")
-  jobsAsDriver   Job[] @relation("DriverJobs")
-  jobsAsCarrier  Job[] @relation("CarrierJobs")
+  jobsAsCustomer Job[]          @relation("CustomerJobs")
+  jobsAsDriver   Job[]          @relation("DriverJobs")
+  jobsAsCarrier  Job[]          @relation("CarrierJobs")
   quoteRequests  QuoteRequest[]
 
   businessAccountId String?
@@ -76,6 +76,8 @@ model User {
   // Stripe Connect — marketplace payout fields
   stripeAccountId          String? // Connected account ID (acct_xxx)
   stripeOnboardingComplete Boolean @default(false)
+
+  @@index([businessAccountId])
 }
 
 // ─── Driver Compliance Documents ────────────────────────────────────────────
@@ -110,6 +112,7 @@ model DriverComplianceDocument {
 
   @@index([driverId])
   @@index([status])
+  @@index([verifiedByAdminId])
 }
 
 model Job {
@@ -203,13 +206,20 @@ model Job {
   notes Json?
 
   // Automated Dispatch
-  trackingUnlocked     Boolean @default(false)  // gates customer live tracking
-  dispatchStatus       String  @default("IDLE") // IDLE | SEARCHING | OFFER_SENT | ACCEPTED | EXHAUSTED | ESCALATED
-  dispatchAttemptCount Int     @default(0)
+  trackingUnlocked     Boolean           @default(false) // gates customer live tracking
+  dispatchStatus       String            @default("IDLE") // IDLE | SEARCHING | OFFER_SENT | ACCEPTED | EXHAUSTED | ESCALATED
+  dispatchAttemptCount Int               @default(0)
   dispatchAttempts     DispatchAttempt[]
 
   // Relations
   activityLogs ActivityLog[]
+
+  @@index([customerId])
+  @@index([assignedDriverId])
+  @@index([assignedCarrierId])
+  @@index([businessAccountId])
+  @@index([contractId])
+  @@index([invoiceId])
 }
 
 model Parcel {
@@ -230,6 +240,10 @@ model Parcel {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([jobId])
+  @@index([quoteRequestId])
+  @@index([quoteId])
 }
 
 // ==========================================
@@ -335,10 +349,10 @@ model BusinessAccount {
 
   status          String  @default("ACTIVE") // "ACTIVE" | "ON_HOLD" | "PENDING" | "SUSPENDED"
   industryProfile String?
-  
+
   // Registration & Tax
   registrationNumber String?
-  vatNumber         String?
+  vatNumber          String?
   directorName       String?
   logoUrl            String?
 
@@ -397,6 +411,8 @@ model RateRule {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([contractId])
 }
 
 model Quote {
@@ -523,6 +539,8 @@ model FleetVehicle {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([carrierId])
 }
 
 model ComplianceDocument {
@@ -555,6 +573,7 @@ model ComplianceDocument {
 
   @@index([carrierId])
   @@index([status])
+  @@index([verifiedByAdminId])
 }
 
 // ==========================================
@@ -580,6 +599,8 @@ model Invoice {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([businessAccountId])
 }
 
 model ActivityLog {
@@ -598,6 +619,8 @@ model ActivityLog {
   amount     Float?
 
   timestamp DateTime @default(now())
+
+  @@index([jobId])
 }
 
 // ==========================================
@@ -692,6 +715,8 @@ model TimeOffRequest {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Payslip {
@@ -713,6 +738,8 @@ model Payslip {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // ==========================================
@@ -777,6 +804,8 @@ model PricingRule {
   isPercentage Boolean @default(false)
 
   createdAt DateTime @default(now())
+
+  @@index([vehicleClassId])
 }
 
 model PayoutRule {
@@ -794,29 +823,31 @@ model PayoutRule {
   isPercentage Boolean @default(false)
 
   createdAt DateTime @default(now())
+
+  @@index([vehicleClassId])
 }
 
 model QuoteRequest {
-  id              String @id @default(uuid())
-  pickupPostcode  String
-  pickupAddressLine1 String?
-  pickupAddressLine2 String?
-  pickupCity         String?
-  pickupCounty       String?
-  pickupLatitude     Float?
-  pickupLongitude    Float?
+  id                     String  @id @default(uuid())
+  pickupPostcode         String
+  pickupAddressLine1     String?
+  pickupAddressLine2     String?
+  pickupCity             String?
+  pickupCounty           String?
+  pickupLatitude         Float?
+  pickupLongitude        Float?
   pickupFormattedAddress String?
 
-  dropoffPostcode String
-  dropoffAddressLine1 String?
-  dropoffAddressLine2 String?
-  dropoffCity         String?
-  dropoffCounty       String?
-  dropoffLatitude     Float?
-  dropoffLongitude    Float?
+  dropoffPostcode         String
+  dropoffAddressLine1     String?
+  dropoffAddressLine2     String?
+  dropoffCity             String?
+  dropoffCounty           String?
+  dropoffLatitude         Float?
+  dropoffLongitude        Float?
   dropoffFormattedAddress String?
 
-  distanceMiles   Float
+  distanceMiles Float
 
   // Imputed Metrics
   actualWeightKg     Float
@@ -841,6 +872,9 @@ model QuoteRequest {
   job       Job?
 
   createdAt DateTime @default(now())
+
+  @@index([recommendedVehicleId])
+  @@index([customerId])
 }
 
 model QuoteLineItem {
@@ -854,6 +888,8 @@ model QuoteLineItem {
   description String
 
   createdAt DateTime @default(now())
+
+  @@index([quoteRequestId])
 }
 
 model ManualReviewCase {
@@ -899,14 +935,14 @@ model GlobalConfig {
 }
 
 model CMSRevision {
-  id        String   @id @default(uuid())
-  entityType String  // "GLOBAL_CONFIG" | "PAGE_CONTENT"
-  entityKey  String  // e.g., "global_cms_bundle" or a page slug like "home"
-  snapshot  Json
-  
+  id         String @id @default(uuid())
+  entityType String // "GLOBAL_CONFIG" | "PAGE_CONTENT"
+  entityKey  String // e.g., "global_cms_bundle" or a page slug like "home"
+  snapshot   Json
+
   updatedBy String?
   createdAt DateTime @default(now())
-  
+
   @@index([entityType, entityKey])
 }
 
@@ -1016,6 +1052,7 @@ model Dispute {
   @@index([jobId])
   @@index([creatorId])
   @@index([status])
+  @@index([targetId])
 }
 
 model DisputeMessage {
@@ -1030,6 +1067,9 @@ model DisputeMessage {
   fileUrl String? // Optional evidence
 
   createdAt DateTime @default(now())
+
+  @@index([disputeId])
+  @@index([authorId])
 }
 
 // ==========================================
@@ -1039,9 +1079,9 @@ model DisputeMessage {
 // Records each individual offer sent to a driver during automated dispatch.
 // One DispatchAttempt per driver per job; status tracks the response lifecycle.
 model DispatchAttempt {
-  id     String @id @default(uuid())
-  jobId  String
-  job    Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  id    String @id @default(uuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   driverId String
   driver   User   @relation("DriverOffers", fields: [driverId], references: [id], onDelete: Cascade)
