@@ -9,8 +9,7 @@ export const runDispatch = async (req: AuthenticatedRequest, res: Response) => {
         if (req.user?.role !== 'admin') {
             return res.status(403).json({ error: 'Forbidden' });
         }
-
-        const { jobId } = req.params;
+        const jobId = req.params.jobId as string;
 
         const job = await prisma.job.findUnique({ where: { id: jobId } });
         if (!job) return res.status(404).json({ error: 'Job not found' });
@@ -41,8 +40,7 @@ export const acceptOffer = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-        const { attemptId } = req.params;
+        const attemptId = req.params.attemptId as string;
         const result = await DispatchEngineService.acceptOffer(attemptId, userId);
 
         res.json({ message: 'Job accepted successfully', job: result.job });
@@ -60,8 +58,7 @@ export const rejectOffer = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-        const { attemptId } = req.params;
+        const attemptId = req.params.attemptId as string;
         await DispatchEngineService.rejectOffer(attemptId, userId);
 
         res.json({ message: 'Offer declined' });
