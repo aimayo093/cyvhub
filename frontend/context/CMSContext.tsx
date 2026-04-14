@@ -148,6 +148,10 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         };
 
         const setupRealtime = () => {
+            if (!supabase) {
+                console.warn('[CMSContext] Supabase client is not available. Realtime updates disabled.');
+                return () => {};
+            }
             const channel = supabase
                 .channel('global_config_changes')
                 .on(
