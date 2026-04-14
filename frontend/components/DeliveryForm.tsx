@@ -61,6 +61,7 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
   // State
   const [pickup, setPickup] = useState<any>(initialData?.pickup || null);
   const [pickupContact, setPickupContact] = useState<string>(initialData?.pickupContactName || '');
+  const [pickupContactPhone, setPickupContactPhone] = useState<string>(initialData?.pickupContactPhone || '');
   
   const [dropoff, setDropoff] = useState<any>(initialData?.dropoff || (customer ? {
     line1: customer.defaultAddress || '',
@@ -72,6 +73,9 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
   
   const [dropoffContact, setDropoffContact] = useState<string>(
     initialData?.dropoffContactName || (customer ? `${customer.firstName} ${customer.lastName}` : '')
+  );
+  const [dropoffContactPhone, setDropoffContactPhone] = useState<string>(
+    initialData?.dropoffContactPhone || (customer ? customer.phone : '')
   );
 
   const [parcels, setParcels] = useState<any[]>(initialData?.parcels || [
@@ -165,9 +169,11 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
     if (target === 'pickup') {
       setPickup(addr);
       setPickupContact(name);
+      setPickupContactPhone(customer.phone || '');
     } else {
       setDropoff(addr);
       setDropoffContact(name);
+      setDropoffContactPhone(customer.phone || '');
     }
   }, [customer]);
 
@@ -176,12 +182,12 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
   }, []);
 
   const validate = useCallback((): boolean => {
-    if (!pickup?.line1?.trim() || !pickup?.townCity?.trim() || !pickup?.postcode?.trim() || !pickupContact.trim()) {
-      Alert.alert('Missing Info', 'Please fill in all pickup details.');
+    if (!pickup?.line1?.trim() || !pickup?.townCity?.trim() || !pickup?.postcode?.trim() || !pickupContact.trim() || !pickupContactPhone.trim()) {
+      Alert.alert('Missing Info', 'Please fill in all pickup details, including a contact phone number.');
       return false;
     }
-    if (!dropoff?.line1?.trim() || !dropoff?.townCity?.trim() || !dropoff?.postcode?.trim() || !dropoffContact.trim()) {
-      Alert.alert('Missing Info', 'Please fill in all dropoff details.');
+    if (!dropoff?.line1?.trim() || !dropoff?.townCity?.trim() || !dropoff?.postcode?.trim() || !dropoffContact.trim() || !dropoffContactPhone.trim()) {
+      Alert.alert('Missing Info', 'Please fill in all dropoff details, including a contact phone number.');
       return false;
     }
     const parcelsValid = parcels.every(p => p.lengthCm && p.weightKg);
@@ -204,8 +210,10 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
     const formData = {
       pickup,
       pickupContactName: pickupContact.trim(),
+      pickupContactPhone: pickupContactPhone.trim(),
       dropoff,
       dropoffContactName: dropoffContact.trim(),
+      dropoffContactPhone: dropoffContactPhone.trim(),
       parcels: parcels.map(p => ({
         ...p,
         lengthCm: parseFloat(p.lengthCm),
@@ -359,6 +367,17 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
                   onChangeText={setPickupContact}
                 />
               </View>
+              <View style={styles.inputRow}>
+                <User size={16} color={Colors.textMuted} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Contact phone at pickup"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="phone-pad"
+                  value={pickupContactPhone}
+                  onChangeText={setPickupContactPhone}
+                />
+              </View>
             </View>
           </View>
 
@@ -392,6 +411,17 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
                   placeholderTextColor={Colors.textMuted}
                   value={dropoffContact}
                   onChangeText={setDropoffContact}
+                />
+              </View>
+              <View style={styles.inputRow}>
+                <User size={16} color={Colors.textMuted} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Contact phone at dropoff"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="phone-pad"
+                  value={dropoffContactPhone}
+                  onChangeText={setDropoffContactPhone}
                 />
               </View>
             </View>
