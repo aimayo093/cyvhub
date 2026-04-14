@@ -14,13 +14,28 @@
   - [ ] Wire UI to allow modifying Business Account properties (billing terms, overrides).
   - [ ] Enable business account suspensions/approvals.
   - [ ] **Section F: User Management**
-  - [ ] General user suspension routes for drivers/customers.
-  - [ ] Wire up User Management list component
+  - [x] **Section D: Carrier Management**
+  - [x] Connect "Upload Compliance Document" directly to MediaAsset backend / Supabase storage.
+  - [x] Un-mock "Suspend Carrier" actions.
+  - [x] **Section E: Businesses Module**
+  - [x] Wire UI to allow modifying Business Account properties (billing terms, overrides).
+  - [x] Enable business account suspensions/approvals.
+  - [x] **Section F: User Management**
+  - [x] General user suspension routes for drivers/customers.
+  - [x] Wire up User Management list component
 
 - [x] **Phase 4: Input Validation (Section D)**
   - [x] Review and sanitize `quote.controller.ts` payload limits and type-checking.
   - [x] Revisit `auth.controller.ts` for strict type checking of email, password.
-  - [x] Update `job.controller.ts` for data sanitization.
+  - [x] Update `backend/prisma/schema.prisma` to include the `CMSRevision` table.
+  - [x] Run Prisma migration / db push to update the database schema.
+  - [x] Update `backend/src/controllers/cms.controller.ts` to insert a snapshot row into `CMSRevision` immediately before `upsertConfig` overrides `GlobalConfig`.
+  - [x] Add endpoints to `cms.routes.ts` to retrieve and restore `CMSRevision` records.
+  - [x] Update `frontend/context/CMSContext.tsx` with a new `batchUpdateAndSync` method to prevent racing conditions from closure snapshots.
+  - [x] Refactor `frontend/app/(tabs)/cms/homepage.tsx` to invoke `batchUpdateAndSync` instead of multiple sequential setter calls.
+  - [x] Refactor other CMS edit files (like `about.tsx`, `contact.tsx`, `services.tsx`, `industries.tsx`, `seo.tsx`) to safely use `batchUpdateAndSync` if needed.
+  - [x] Configure Supabase Realtime in `frontend/context/CMSContext.tsx` to automatically listen for `GlobalConfig` database row updates and invoke `refreshFromBackend(false)` across all active platforms.
+  - [x] Validate and test the CMS configuration saving mechanism with end-to-end payloads.
 
 - [x] **Phase 5: Token Expiry & Refresh Flow (Section E)**
   - [x] Modify `backend/src/utils/jwt.ts` for 1h and 7d tokens.

@@ -10,6 +10,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '@/services/api';
+import { supabase } from '@/utils/supabase';
 import {
     initialHeader,
     initialFooter,
@@ -47,6 +48,16 @@ interface CMSContextValue {
     setIndustryDetails: (v: Record<string, IndustryDetail>, sync?: boolean) => Promise<void>;
     setHomepageSection: (key: string, value: any, sync?: boolean) => Promise<void>;
     setHomepageSections: (updates: Record<string, any>, sync?: boolean) => Promise<void>;
+    
+    batchUpdateAndSync: (updates: Partial<{
+        header: HeaderConfig;
+        footer: FooterConfig;
+        aboutPage: AboutPageConfig;
+        contactPage: ContactPageConfig;
+        servicesPage: ServicesPageConfig;
+        industryDetails: Record<string, IndustryDetail>;
+        homepageData: Record<string, any>;
+    }>, sync?: boolean) => Promise<void>;
 
     isLoaded: boolean;
     refreshFromBackend: (force?: boolean) => Promise<void>;
@@ -129,64 +140,87 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
                 // 2. Refresh from Backend (Global Sync)
                 await refreshFromBackend();
-            } catch (e) {
-                console.error('CMSContext: Init failed:', e);
+            } catch (error) {
+                console.error('[CMSContext] Initialization error:', error);
             } finally {
                 setIsLoaded(true);
             }
         };
+
+        const setupRealtime = () => {
+            const channel = supabase
+                .channel('global_config_changes')
+                .on(
+                    'postgres_changes',
+                    { event: 'UPDATE', schema: 'public', table: 'GlobalConfig', filter: `key=eq.${CMS_CONFIG_KEY}` },
+                    (payload) => {
+                        console.log('[CMSContext] Realtime Update Received, refreshing backend data...', payload);
+                        // True = forces fetching without caring about the 5 minute throttle
+                        refreshFromBackend(true);
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        };
+
         init();
+        const cleanupSupabase = setupRealtime();
+
+        return () => {
+            cleanupSupabase();
+        };
     }, [refreshFromBackend, applyData]);
 
     const getFullState = useCallback(() => ({
         header, footer, aboutPage, contactPage, servicesPage, industryDetails, homepageData
     }), [header, footer, aboutPage, contactPage, servicesPage, industryDetails, homepageData]);
 
-    const setHeader = async (v: HeaderConfig, sync = false) => {
-        setHeaderState(v);
-        if (sync) await syncToBackend({ ...getFullState(), header: v });
+    const batchUpdateAndSync = async (updates: Partial<{
+        header: HeaderConfig;
+        footer: FooterConfig;
+        aboutPage: AboutPageConfig;
+        contactPage: ContactPageConfig;
+        servicesPage: ServicesPageConfig;
+        industryDetails: Record<string, IndustryDetail>;
+        homepageData: Record<string, any>;
+    }>, sync = true) => {
+        const payload = { ...getFullState(), ...updates };
+        
+        // Optimistically update React State
+        if (updates.header) setHeaderState(updates.header);
+        if (updates.footer) setFooterState(updates.footer);
+        if (updates.aboutPage) setAboutPageState(updates.aboutPage);
+        if (updates.contactPage) setContactPageState(updates.contactPage);
+        if (updates.servicesPage) setServicesPageState(updates.servicesPage);
+        if (updates.industryDetails) setIndustryDetailsState(updates.industryDetails);
+        if (updates.homepageData) setHomepageData(updates.homepageData);
+
+        if (sync) {
+            await syncToBackend(payload);
+        }
     };
 
-    const setFooter = async (v: FooterConfig, sync = false) => {
-        setFooterState(v);
-        if (sync) await syncToBackend({ ...getFullState(), footer: v });
-    };
-
-    const setAboutPage = async (v: AboutPageConfig, sync = false) => {
-        setAboutPageState(v);
-        if (sync) await syncToBackend({ ...getFullState(), aboutPage: v });
-    };
-
-    const setContactPage = async (v: ContactPageConfig, sync = false) => {
-        setContactPageState(v);
-        if (sync) await syncToBackend({ ...getFullState(), contactPage: v });
-    };
-
-    const setServicesPage = async (v: ServicesPageConfig, sync = false) => {
-        setServicesPageState(v);
-        if (sync) await syncToBackend({ ...getFullState(), servicesPage: v });
-    };
-
-    const setIndustryDetails = async (v: Record<string, IndustryDetail>, sync = false) => {
-        setIndustryDetailsState(v);
-        if (sync) await syncToBackend({ ...getFullState(), industryDetails: v });
-    };
+    const setHeader = async (v: HeaderConfig, sync = false) => batchUpdateAndSync({ header: v }, sync);
+    const setFooter = async (v: FooterConfig, sync = false) => batchUpdateAndSync({ footer: v }, sync);
+    const setAboutPage = async (v: AboutPageConfig, sync = false) => batchUpdateAndSync({ aboutPage: v }, sync);
+    const setContactPage = async (v: ContactPageConfig, sync = false) => batchUpdateAndSync({ contactPage: v }, sync);
+    const setServicesPage = async (v: ServicesPageConfig, sync = false) => batchUpdateAndSync({ servicesPage: v }, sync);
+    const setIndustryDetails = async (v: Record<string, IndustryDetail>, sync = false) => batchUpdateAndSync({ industryDetails: v }, sync);
 
     const setHomepageSection = async (key: string, value: any, sync = false) => {
         const newHpData = { ...homepageData, [key]: value };
-        setHomepageData(newHpData);
-        if (sync) await syncToBackend({ ...getFullState(), homepageData: newHpData });
+        await batchUpdateAndSync({ homepageData: newHpData }, sync);
     };
 
     /**
      * Batch-update multiple homepage sections and sync once to the backend.
-     * Use this instead of calling setHomepageSection N times to avoid
-     * each call overwriting the previous in a write race.
      */
     const setHomepageSections = async (updates: Record<string, any>, sync = false) => {
         const newHpData = { ...homepageData, ...updates };
-        setHomepageData(newHpData);
-        if (sync) await syncToBackend({ ...getFullState(), homepageData: newHpData });
+        await batchUpdateAndSync({ homepageData: newHpData }, sync);
     };
 
     return (
@@ -195,6 +229,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
             industryDetails, homepageData,
             setHeader, setFooter, setAboutPage, setContactPage, setServicesPage,
             setIndustryDetails, setHomepageSection, setHomepageSections,
+            batchUpdateAndSync,
             isLoaded,
             refreshFromBackend
         }}>

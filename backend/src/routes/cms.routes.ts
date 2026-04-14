@@ -6,7 +6,9 @@ import {
     upsertPage, 
     deletePage,
     getConfig,
-    upsertConfig
+    upsertConfig,
+    getRevisions,
+    restoreRevision
 } from '../controllers/cms.controller';
 
 const router = Router();
@@ -22,6 +24,10 @@ router.get('/config/:key', getConfig);
 router.post('/pages', authenticate, upsertPage);
 router.post('/config', authenticate, upsertConfig);
 router.delete('/pages/:id', authenticate, deletePage);
+
+// --- Revision endpoints ---
+router.get('/revisions', authenticate, getRevisions);
+router.post('/revisions/:revisionId/restore', authenticate, restoreRevision);
 
 export default router;
 

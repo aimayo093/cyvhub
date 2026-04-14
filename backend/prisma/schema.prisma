@@ -898,6 +898,18 @@ model GlobalConfig {
   @@index([key])
 }
 
+model CMSRevision {
+  id        String   @id @default(uuid())
+  entityType String  // "GLOBAL_CONFIG" | "PAGE_CONTENT"
+  entityKey  String  // e.g., "global_cms_bundle" or a page slug like "home"
+  snapshot  Json
+  
+  updatedBy String?
+  createdAt DateTime @default(now())
+  
+  @@index([entityType, entityKey])
+}
+
 model JobCounter {
   id      Int @id @default(1)
   current Int @default(0)

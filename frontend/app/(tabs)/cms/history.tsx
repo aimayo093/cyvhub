@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,6 +6,7 @@ import {
     ScrollView,
     TouchableOpacity,
     Alert,
+    ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,75 +19,71 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
+import { apiClient } from '@/services/api';
+import { useCMS } from '@/context/CMSContext';
 
 type RevisionEntry = {
     id: string;
-    page: string;
-    timestamp: string;
-    author: string;
-    changes: string;
-    status: 'published' | 'draft' | 'archived';
+    entityType: string;
+    entityKey: string;
+    snapshot: any;
+    updatedBy: string;
+    createdAt: string;
 };
-
-const mockHistory: RevisionEntry[] = [
-    {
-        id: 'rev-105',
-        page: 'Homepage',
-        timestamp: 'Today, 14:30',
-        author: 'Aimayo (Admin)',
-        changes: 'Updated Hero headline and CTA link',
-        status: 'published',
-    },
-    {
-        id: 'rev-104',
-        page: 'Services',
-        timestamp: 'Yesterday, 09:15',
-        author: 'System Auto-Save',
-        changes: 'Draft saved during feature list edit',
-        status: 'draft',
-    },
-    {
-        id: 'rev-103',
-        page: 'About Us',
-        timestamp: 'Oct 24, 2024, 16:45',
-        author: 'Aimayo (Admin)',
-        changes: 'Added new team member',
-        status: 'archived',
-    },
-    {
-        id: 'rev-102',
-        page: 'Homepage',
-        timestamp: 'Oct 22, 2024, 11:20',
-        author: 'Aimayo (Admin)',
-        changes: 'Reordered slider items',
-        status: 'archived',
-    },
-    {
-        id: 'rev-101',
-        page: 'Contact Us',
-        timestamp: 'Oct 20, 2024, 10:00',
-        author: 'Aimayo (Admin)',
-        changes: 'Updated support phone number',
-        status: 'archived',
-    },
-];
 
 export default function RevisionHistoryCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { refreshFromBackend } = useCMS();
 
-    const handleRestore = (id: string, page: string) => {
+    const [history, setHistory] = useState<RevisionEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [restoring, setRestoring] = useState<string | null>(null);
+
+    const fetchHistory = async () => {
+        try {
+            setLoading(true);
+            const data = await apiClient('/cms/revisions');
+            setHistory(data);
+        } catch (error) {
+            console.error('[CMS] Failed to fetch revisions:', error);
+            Alert.alert('Error', 'Could not load revision history.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchHistory();
+    }, []);
+
+    const handleRestore = (rev: RevisionEntry) => {
         Alert.alert(
             'Restore Version',
-            `Are you sure you want to restore the ${page} page to this previous version?\n\nCurrent unpublished changes will be lost.`,
+            `Are you sure you want to restore the ${rev.entityKey} config to this previous version?\n\nCurrent unpublished changes will be lost.`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Restore',
                     style: 'destructive',
-                    onPress: () => {
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        Alert.alert('Success', 'Version restored successfully. You are now editing the restored version.');
+                    onPress: async () => {
+                        try {
+                            setRestoring(rev.id);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            await apiClient(`/cms/revisions/${rev.id}/restore`, { method: 'POST' });
+                            
+                            // Immediately refresh context to pull the newly restored global bundle
+                            await refreshFromBackend(true);
+                            
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            Alert.alert('Success', 'Version restored successfully. The live site has been updated.');
+                            fetchHistory(); // Refresh the list
+                        } catch (error) {
+                            console.error('[CMS] Failed to restore revision:', error);
+                            Alert.alert('Error', 'Failed to restore this revision. Please try again.');
+                        } finally {
+                            setRestoring(null);
+                        }
                     }
                 }
             ]
@@ -96,9 +93,14 @@ export default function RevisionHistoryCMS() {
     const getStatusStyle = (status: string) => {
         switch (status) {
             case 'published': return { bg: Colors.success + '20', text: Colors.success };
-            case 'draft': return { bg: Colors.warning + '20', text: Colors.warning };
-            default: return { bg: Colors.borderLight, text: Colors.textSecondary };
+            case 'archived': return { bg: Colors.borderLight, text: Colors.textSecondary };
+            default: return { bg: Colors.adminPrimary + '20', text: Colors.adminPrimary };
         }
+    };
+
+    const formatDate = (dateStr: string) => {
+        const d = new Date(dateStr);
+        return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     };
 
     return (
@@ -121,56 +123,68 @@ export default function RevisionHistoryCMS() {
                     <History size={24} color={Colors.adminPrimary} style={{ marginBottom: 12 }} />
                     <Text style={styles.infoTitle}>Safeguard your content</Text>
                     <Text style={styles.infoDesc}>
-                        The system automatically saves drafts as you work and creates a permanent backup every time you publish. You can safely preview or restore any previous version.
+                        The system creates a permanent backup before every global publish. You can safely restore any previous snapshot to the live platform.
                     </Text>
                 </View>
 
-                <View style={styles.timeline}>
-                    {mockHistory.map((rev, index) => {
-                        const statusStyle = getStatusStyle(rev.status);
+                {loading ? (
+                    <ActivityIndicator size="large" color={Colors.adminPrimary} style={{ marginTop: 40 }} />
+                ) : history.length === 0 ? (
+                    <Text style={{ textAlign: 'center', color: Colors.textSecondary, marginTop: 20 }}>No revision history available yet.</Text>
+                ) : (
+                    <View style={styles.timeline}>
+                        {history.map((rev, index) => {
+                            const isLatest = index === 0;
+                            const status = isLatest ? 'Archived (Latest backup)' : 'archived';
+                            const statusStyle = getStatusStyle(status);
 
-                        return (
-                            <View key={rev.id} style={styles.timelineItem}>
-                                <View style={styles.timelineLine} />
-                                <View style={[styles.timelineDot, rev.status === 'published' && { backgroundColor: Colors.success }]} />
+                            return (
+                                <View key={rev.id} style={styles.timelineItem}>
+                                    <View style={styles.timelineLine} />
+                                    <View style={[styles.timelineDot, isLatest && { backgroundColor: Colors.adminSecondary }]} />
 
-                                <View style={styles.revisionCard}>
-                                    <View style={styles.revisionHeader}>
-                                        <Text style={styles.revisionPage}>{rev.page}</Text>
-                                        <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
-                                            {rev.status === 'published' && <CheckCircle size={10} color={statusStyle.text} style={{ marginRight: 4 }} />}
-                                            <Text style={[styles.badgeText, { color: statusStyle.text }]}>{rev.status.toUpperCase()}</Text>
+                                    <View style={styles.revisionCard}>
+                                        <View style={styles.revisionHeader}>
+                                            <Text style={styles.revisionPage}>{rev.entityKey}</Text>
+                                            <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
+                                                <Text style={[styles.badgeText, { color: statusStyle.text }]}>
+                                                    {status.toUpperCase()}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        <Text style={styles.revisionChanges}>
+                                            {rev.entityType === 'GLOBAL_CONFIG' ? 'Global CMS Bundle Update' : 'Page Update'}
+                                        </Text>
+
+                                        <View style={styles.revisionMetaContainer}>
+                                            <Text style={styles.revisionMeta}>{formatDate(rev.createdAt)}</Text>
+                                            <Text style={styles.revisionMetaDot}>•</Text>
+                                            <Text style={styles.revisionMeta}>User ID: {rev.updatedBy.substring(0, 8)}...</Text>
+                                        </View>
+
+                                        <View style={styles.actionRow}>
+                                            <TouchableOpacity 
+                                                style={[styles.actionBtn, { backgroundColor: Colors.warning + '10' }]}
+                                                onPress={() => handleRestore(rev)}
+                                                disabled={restoring === rev.id}
+                                            >
+                                                {restoring === rev.id ? (
+                                                    <ActivityIndicator size="small" color={Colors.warning} />
+                                                ) : (
+                                                    <>
+                                                        <RotateCcw size={14} color={Colors.warning} />
+                                                        <Text style={[styles.actionBtnText, { color: Colors.warning }]}>Restore to Live</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
                                         </View>
                                     </View>
-
-                                    <Text style={styles.revisionChanges}>"{rev.changes}"</Text>
-
-                                    <View style={styles.revisionMetaContainer}>
-                                        <Text style={styles.revisionMeta}>{rev.timestamp}</Text>
-                                        <Text style={styles.revisionMetaDot}>•</Text>
-                                        <Text style={styles.revisionMeta}>{rev.author}</Text>
-                                    </View>
-
-                                    <View style={styles.actionRow}>
-                                        <TouchableOpacity style={styles.actionBtn}>
-                                            <Eye size={14} color={Colors.adminPrimary} />
-                                            <Text style={styles.actionBtnText}>Preview</Text>
-                                        </TouchableOpacity>
-                                        {rev.status !== 'published' && (
-                                            <TouchableOpacity
-                                                style={[styles.actionBtn, { backgroundColor: Colors.danger + '10' }]}
-                                                onPress={() => handleRestore(rev.id, rev.page)}
-                                            >
-                                                <RotateCcw size={14} color={Colors.danger} />
-                                                <Text style={[styles.actionBtnText, { color: Colors.danger }]}>Restore to Draft</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
                                 </View>
-                            </View>
-                        );
-                    })}
-                </View>
+                            );
+                        })}
+                    </View>
+                )}
 
                 <View style={{ height: 60 }} />
             </ScrollView>

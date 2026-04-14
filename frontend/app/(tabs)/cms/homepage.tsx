@@ -108,23 +108,24 @@ export default function HomepageCMS() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         try {
-            // Save header and footer (separate context keys, synced individually)
-            await setHeader(headerConfig, true);
-            await setFooter(footerConfig, true);
-
-            // Batch all homepage sections into a SINGLE backend write to avoid
-            // sequential calls overwriting each other in the DB.
-            await setHomepageSections({
-                cms_heroConfig: hero,
-                cms_slidesConfig: slides,
-                cms_howItWorksConfig: howItWorks,
-                cms_whyUsConfig: whyUs,
-                cms_servicesConfig: servicesData,
-                cms_statsConfig: statsData,
-                cms_industriesConfig: industriesData,
-                cms_testimonialsConfig: testimonialsData,
-                cms_customSections: customSections,
-                cms_ctaConfig: cta,
+            // Batch all updates into a single payload to avoid race conditions
+            // and overwriting due to closure stale state tracking.
+            await batchUpdateAndSync({
+                header: headerConfig,
+                footer: footerConfig,
+                homepageData: {
+                    ...homepageData,
+                    cms_heroConfig: hero,
+                    cms_slidesConfig: slides,
+                    cms_howItWorksConfig: howItWorks,
+                    cms_whyUsConfig: whyUs,
+                    cms_servicesConfig: servicesData,
+                    cms_statsConfig: statsData,
+                    cms_industriesConfig: industriesData,
+                    cms_testimonialsConfig: testimonialsData,
+                    cms_customSections: customSections,
+                    cms_ctaConfig: cta,
+                }
             }, true);
 
             // Force-refresh from backend so public site picks up changes immediately
