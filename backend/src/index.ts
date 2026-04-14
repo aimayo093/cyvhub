@@ -36,6 +36,7 @@ import complianceRoutes from './routes/compliance.routes';
 import paypalRoutes from './routes/paypal.routes';
 import stripeConnectRoutes from './routes/stripe-connect.routes';
 import disputeRoutes from './routes/dispute.routes';
+import dispatchRoutes from './routes/dispatch.routes';
 
 dotenv.config();
 
@@ -272,6 +273,9 @@ app.use('/api/stripe-connect', stripeConnectRoutes);
 
 // Disputes & Refunds
 app.use('/api/disputes', disputeRoutes);
+
+// Automated Dispatch Engine
+app.use('/api/dispatch', dispatchRoutes);
 
 console.log('✅ All routes registered.');
 

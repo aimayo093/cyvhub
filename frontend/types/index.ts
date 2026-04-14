@@ -1,5 +1,7 @@
 export type UserRole = 'driver' | 'customer' | 'admin' | 'carrier';
 
+export type DispatchStatus = 'IDLE' | 'SEARCHING' | 'OFFER_SENT' | 'ACCEPTED' | 'EXHAUSTED' | 'ESCALATED';
+
 export type JobStatus =
   | 'DRAFT'
   | 'PENDING_DISPATCH'
@@ -14,6 +16,19 @@ export type JobStatus =
   | 'COMPLETED'
   | 'FAILED'
   | 'CANCELLED';
+
+export interface DispatchAttempt {
+  id: string;
+  jobId: string;
+  driverId: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
+  offerSentAt: string;
+  offerExpiresAt: string;
+  respondedAt?: string;
+  attemptNumber: number;
+  distanceKm?: number;
+  job?: Partial<Job>;
+}
 
 export type JobPriority = 'NORMAL' | 'URGENT';
 
@@ -84,6 +99,10 @@ export interface Job {
   assignedCarrier?: string;
   parcels?: Parcel[];
   notes?: any[];
+  // Dispatch engine fields
+  dispatchStatus?: DispatchStatus;
+  trackingUnlocked?: boolean;
+  dispatchAttemptCount?: number;
 }
 
 export interface DriverProfile {
@@ -156,6 +175,9 @@ export interface Delivery {
   aiEtaConfidence?: number;
   paymentStatus?: PaymentStatus;
   parcels?: Parcel[];
+  // Dispatch engine fields
+  trackingUnlocked?: boolean;
+  dispatchStatus?: DispatchStatus;
 }
 
 export interface ComplianceItem {

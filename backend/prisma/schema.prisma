@@ -52,6 +52,12 @@ model User {
   lastKnownLat Float?
   lastKnownLng Float?
 
+  // Automated dispatch availability — driver must set this to receive offers
+  onlineForDispatch Boolean @default(false)
+
+  // Dispatch offers received as a driver/carrier
+  dispatchOffers DispatchAttempt[] @relation("DriverOffers")
+
   // HR & Payroll Additions
   hrRecord        HRRecord?
   timeOffRequests TimeOffRequest[]
@@ -195,6 +201,12 @@ model Job {
 
   // Internal Notes (JSON array of { text: string, timestamp: Date, author: string })
   notes Json?
+
+  // Automated Dispatch
+  trackingUnlocked     Boolean @default(false)  // gates customer live tracking
+  dispatchStatus       String  @default("IDLE") // IDLE | SEARCHING | OFFER_SENT | ACCEPTED | EXHAUSTED | ESCALATED
+  dispatchAttemptCount Int     @default(0)
+  dispatchAttempts     DispatchAttempt[]
 
   // Relations
   activityLogs ActivityLog[]
@@ -1006,4 +1018,36 @@ model DisputeMessage {
   fileUrl String? // Optional evidence
 
   createdAt DateTime @default(now())
+}
+
+// ==========================================
+// AUTOMATED DISPATCH ENGINE (PHASE DISPATCH)
+// ==========================================
+
+// Records each individual offer sent to a driver during automated dispatch.
+// One DispatchAttempt per driver per job; status tracks the response lifecycle.
+model DispatchAttempt {
+  id     String @id @default(uuid())
+  jobId  String
+  job    Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  driverId String
+  driver   User   @relation("DriverOffers", fields: [driverId], references: [id], onDelete: Cascade)
+
+  // PENDING | ACCEPTED | REJECTED | EXPIRED | CANCELLED
+  status String @default("PENDING")
+
+  offerSentAt    DateTime  @default(now())
+  offerExpiresAt DateTime
+  respondedAt    DateTime?
+
+  attemptNumber Int    @default(1)
+  distanceKm    Float? // Distance from driver to pickup at time of offer
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([driverId])
+  @@index([status])
+  @@index([offerExpiresAt])
 }

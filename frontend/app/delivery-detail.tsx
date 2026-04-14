@@ -368,76 +368,102 @@ export default function DeliveryDetailScreen() {
         )}
 
         {isActiveDelivery && (
-          <View style={styles.liveMapCard}>
-            <View style={styles.liveMapHeader}>
-              <View style={styles.liveMapHeaderLeft}>
-                <Navigation size={14} color={Colors.customerPrimary} />
-                <Text style={styles.liveMapTitle}>Live Tracking</Text>
-              </View>
-              {['IN_TRANSIT', 'PICKED_UP'].includes(delivery.status) && (
-                <View style={styles.liveBadge}>
-                  <Animated.View style={[styles.liveDot, { transform: [{ scale: pulseAnim }] }]} />
-                  <Text style={styles.liveText}>LIVE</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.mapPlaceholder}>
-              <View style={styles.mapRouteVisual}>
-                <View style={styles.mapPickupPoint}>
-                  <View style={styles.mapPickupDot} />
-                  <Text style={styles.mapPointLabel}>{delivery.pickupCity}</Text>
-                </View>
-
-                <View style={styles.mapRouteLine}>
-                  <View style={[styles.mapRouteProgress, { width: `${driverProgress * 100}%` as any }]} />
-                  {delivery.driverName && driverProgress > 0 && driverProgress < 1 && (
-                    <Animated.View
-                      style={[
-                        styles.mapDriverMarker,
-                        { left: `${driverProgress * 100}%` as any },
-                      ]}
-                    >
-                      <Truck size={14} color="#FFFFFF" />
-                    </Animated.View>
+          <>
+            {delivery.trackingUnlocked ? (
+              /* ── Driver accepted — show live map ── */
+              <View style={styles.liveMapCard}>
+                <View style={styles.liveMapHeader}>
+                  <View style={styles.liveMapHeaderLeft}>
+                    <Navigation size={14} color={Colors.customerPrimary} />
+                    <Text style={styles.liveMapTitle}>Live Tracking</Text>
+                  </View>
+                  {['IN_TRANSIT', 'PICKED_UP'].includes(delivery.status) && (
+                    <View style={styles.liveBadge}>
+                      <Animated.View style={[styles.liveDot, { transform: [{ scale: pulseAnim }] }]} />
+                      <Text style={styles.liveText}>LIVE</Text>
+                    </View>
                   )}
                 </View>
 
-                <View style={styles.mapDropoffPoint}>
-                  <View style={styles.mapDropoffDot} />
-                  <Text style={styles.mapPointLabel}>{delivery.dropoffCity}</Text>
-                </View>
-              </View>
+                <View style={styles.mapPlaceholder}>
+                  <View style={styles.mapRouteVisual}>
+                    <View style={styles.mapPickupPoint}>
+                      <View style={styles.mapPickupDot} />
+                      <Text style={styles.mapPointLabel}>{delivery.pickupCity}</Text>
+                    </View>
 
-              <View style={styles.mapStats}>
-                <View style={styles.mapStat}>
-                  <Text style={styles.mapStatLabel}>Distance</Text>
-                  <Text style={styles.mapStatValue}>
-                    {delivery.pickupCity === delivery.dropoffCity ? '~5 km' : '~45 km'}
+                    <View style={styles.mapRouteLine}>
+                      <View style={[styles.mapRouteProgress, { width: `${driverProgress * 100}%` as any }]} />
+                      {delivery.driverName && driverProgress > 0 && driverProgress < 1 && (
+                        <Animated.View
+                          style={[
+                            styles.mapDriverMarker,
+                            { left: `${driverProgress * 100}%` as any },
+                          ]}
+                        >
+                          <Truck size={14} color="#FFFFFF" />
+                        </Animated.View>
+                      )}
+                    </View>
+
+                    <View style={styles.mapDropoffPoint}>
+                      <View style={styles.mapDropoffDot} />
+                      <Text style={styles.mapPointLabel}>{delivery.dropoffCity}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.mapStats}>
+                    <View style={styles.mapStat}>
+                      <Text style={styles.mapStatLabel}>Distance</Text>
+                      <Text style={styles.mapStatValue}>
+                        {delivery.pickupCity === delivery.dropoffCity ? '~5 km' : '~45 km'}
+                      </Text>
+                    </View>
+                    <View style={styles.mapStatDivider} />
+                    <View style={styles.mapStat}>
+                      <Text style={styles.mapStatLabel}>Est. Arrival</Text>
+                      <Text style={styles.mapStatValue}>
+                        {aiEta.eta ? formatTime(aiEta.eta) : delivery.estimatedDelivery ? formatTime(delivery.estimatedDelivery) : '--:--'}
+                      </Text>
+                    </View>
+                    <View style={styles.mapStatDivider} />
+                    <View style={styles.mapStat}>
+                      <Text style={styles.mapStatLabel}>Status</Text>
+                      <Text style={[styles.mapStatValue, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {aiEta.message && aiEta.eta ? (
+                  <View style={styles.aiInsightRow}>
+                    <Zap size={12} color={Colors.customerPrimary} />
+                    <Text style={styles.aiInsightText}>{aiEta.message}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              /* ── Dispatch still searching — show holding card ── */
+              <View style={[styles.liveMapCard, styles.dispatchWaitCard]}>
+                <View style={styles.liveMapHeader}>
+                  <View style={styles.liveMapHeaderLeft}>
+                    <Navigation size={14} color={Colors.textMuted} />
+                    <Text style={[styles.liveMapTitle, { color: Colors.textMuted }]}>Live Tracking</Text>
+                  </View>
+                  <View style={[styles.liveBadge, { backgroundColor: '#FEF3C7' }]}>
+                    <Animated.View style={[styles.liveDot, { backgroundColor: Colors.warning, transform: [{ scale: pulseAnim }] }]} />
+                    <Text style={[styles.liveText, { color: Colors.warning }]}>SEARCHING</Text>
+                  </View>
+                </View>
+                <View style={styles.dispatchWaitBody}>
+                  <AlertTriangle size={28} color={Colors.warning} />
+                  <Text style={styles.dispatchWaitTitle}>Finding your driver…</Text>
+                  <Text style={styles.dispatchWaitSubtitle}>
+                    We're matching your booking to the nearest available driver. Live tracking will appear here once a driver accepts.
                   </Text>
                 </View>
-                <View style={styles.mapStatDivider} />
-                <View style={styles.mapStat}>
-                  <Text style={styles.mapStatLabel}>Est. Arrival</Text>
-                  <Text style={styles.mapStatValue}>
-                    {aiEta.eta ? formatTime(aiEta.eta) : delivery.estimatedDelivery ? formatTime(delivery.estimatedDelivery) : '--:--'}
-                  </Text>
-                </View>
-                <View style={styles.mapStatDivider} />
-                <View style={styles.mapStat}>
-                  <Text style={styles.mapStatLabel}>Status</Text>
-                  <Text style={[styles.mapStatValue, { color: statusConfig.color }]}>{statusConfig.label}</Text>
-                </View>
               </View>
-            </View>
-
-            {aiEta.message && aiEta.eta ? (
-              <View style={styles.aiInsightRow}>
-                <Zap size={12} color={Colors.customerPrimary} />
-                <Text style={styles.aiInsightText}>{aiEta.message}</Text>
-              </View>
-            ) : null}
-          </View>
+            )}
+          </>
         )}
 
         {delivery.status !== 'CANCELLED' && (
@@ -1347,5 +1373,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     lineHeight: 18,
+  },
+  // ── Dispatch wait card ──────────────────────────────────────────────────
+  dispatchWaitCard: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+  },
+  dispatchWaitBody: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 10,
+  },
+  dispatchWaitTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#92400E',
+    textAlign: 'center',
+  },
+  dispatchWaitSubtitle: {
+    fontSize: 13,
+    color: '#A16207',
+    textAlign: 'center',
+    paddingHorizontal: 12,
+    lineHeight: 20,
   },
 });

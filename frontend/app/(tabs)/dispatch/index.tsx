@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,12 +24,15 @@ import {
   RefreshCw,
   MessageSquare,
   Edit3,
+  Wifi,
+  Radio,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useJobs } from '@/providers/JobsProvider';
 import { Job, SLAStatus } from '@/types';
 import AssigneeModal from '@/components/AssigneeModal';
+import { apiClient } from '@/services/api';
 
 function getSLAStyle(status: SLAStatus) {
   switch (status) {
@@ -38,6 +41,17 @@ function getSLAStyle(status: SLAStatus) {
     case 'BREACHED': return { color: Colors.danger, bg: Colors.dangerLight, label: 'Breached' };
     case 'MET': return { color: Colors.success, bg: Colors.successLight, label: 'Met' };
     default: return { color: Colors.textMuted, bg: '#F1F5F9', label: status || 'Pending' };
+  }
+}
+
+function getDispatchColor(status: string | undefined) {
+  switch(status) {
+    case 'SEARCHING': return Colors.warning;
+    case 'OFFER_SENT': return Colors.primary;
+    case 'ACCEPTED': return Colors.success;
+    case 'ESCALATED': return Colors.danger;
+    case 'EXHAUSTED': return Colors.danger;
+    default: return Colors.textMuted;
   }
 }
 
@@ -59,6 +73,7 @@ export default function DispatchScreen() {
   
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [onlineCount, setOnlineCount] = useState<number>(0);
 
   const pendingJobs = useMemo(() => jobs.filter(j => j.status === 'PENDING_DISPATCH'), [jobs]);
   const activeJobs = useMemo(() => jobs.filter(j => 
@@ -67,10 +82,24 @@ export default function DispatchScreen() {
   
   const atRiskCount = useMemo(() => jobs.filter(j => j.slaStatus === 'AT_RISK' || j.slaStatus === 'BREACHED').length, [jobs]);
 
+  const fetchOnlineDrivers = useCallback(async () => {
+    try {
+      const res = await apiClient('/dispatch/drivers/online');
+      setOnlineCount(res.drivers?.length || 0);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOnlineDrivers();
+  }, [fetchOnlineDrivers]);
+
   const onRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await refreshJobs();
-  }, [refreshJobs]);
+    await fetchOnlineDrivers();
+  }, [refreshJobs, fetchOnlineDrivers]);
 
   const handleOpenAssign = useCallback((jobId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -129,9 +158,32 @@ export default function DispatchScreen() {
     );
   }, [cancelJob]);
 
+  const handleTriggerDispatch = useCallback((job: Job) => {
+    Alert.alert(
+      'Trigger Auto-Dispatch',
+      'This will ping the nearest available driver. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Force Dispatch', 
+          onPress: async () => {
+            try {
+              await apiClient(`/dispatch/run/${job.id}`, { method: 'POST' });
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              setTimeout(refreshJobs, 1000);
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'Failed to trigger dispatch engine.');
+            }
+          } 
+        }
+      ]
+    );
+  }, [refreshJobs]);
+
   const renderJob = useCallback((job: Job) => {
     const slaStyle = getSLAStyle(job.slaStatus as SLAStatus);
     const businessName = (job as any).customer?.businessAccount?.tradingName || 'Retail Customer';
+    const dispatchColor = getDispatchColor(job.dispatchStatus);
 
     return (
       <View key={job.id} style={styles.jobCard}>
@@ -142,6 +194,12 @@ export default function DispatchScreen() {
               <View style={styles.urgentBadge}>
                 <AlertTriangle size={9} color={Colors.danger} />
                 <Text style={styles.urgentText}>URGENT</Text>
+              </View>
+            )}
+            {job.dispatchStatus && job.dispatchStatus !== 'IDLE' && (
+              <View style={[styles.dispatchBadge, { borderColor: dispatchColor }]}>
+                <Radio size={9} color={dispatchColor} />
+                <Text style={[styles.dispatchText, { color: dispatchColor }]}>{job.dispatchStatus}</Text>
               </View>
             )}
           </View>
@@ -171,12 +229,25 @@ export default function DispatchScreen() {
             <Clock size={12} color={Colors.textMuted} />
             <Text style={styles.metaText}>{timeSince(job.createdAt)}</Text>
           </View>
+          {(job.dispatchAttemptCount || 0) > 0 && (
+            <View style={styles.jobMeta}>
+              <Users size={12} color={Colors.warning} />
+              <Text style={styles.metaText}>{job.dispatchAttemptCount} attempts</Text>
+            </View>
+          )}
           
           <View style={styles.flexFiller} />
           <Text style={styles.price}>£{job.calculatedPrice.toFixed(0)}</Text>
         </View>
 
         <View style={styles.jobActionsRow}>
+          {job.status === 'PENDING_DISPATCH' ? (
+            <TouchableOpacity style={[styles.miniAction, { backgroundColor: Colors.adminPrimary + '15' }]} onPress={() => handleTriggerDispatch(job)}>
+              <Radio size={11} color={Colors.adminPrimary} />
+              <Text style={[styles.miniActionText, { color: Colors.adminPrimary }]}>Engine</Text>
+            </TouchableOpacity>
+          ) : null}
+
           {job.status === 'PENDING_DISPATCH' ? (
             <TouchableOpacity style={[styles.miniAction, { backgroundColor: Colors.primary + '10' }]} onPress={() => handleOpenAssign(job.id)}>
               <Users size={11} color={Colors.primary} />
@@ -208,7 +279,7 @@ export default function DispatchScreen() {
         </View>
       </View>
     );
-  }, [handleOpenAssign, handleAddNote, handleCancel, router]);
+  }, [handleOpenAssign, handleAddNote, handleCancel, handleTriggerDispatch, router]);
 
   return (
     <View style={styles.container}>
@@ -238,6 +309,11 @@ export default function DispatchScreen() {
             <AlertTriangle size={14} color={Colors.danger} />
             <Text style={styles.statValue}>{atRiskCount}</Text>
             <Text style={styles.statLabel}>At Risk</Text>
+          </View>
+          <View style={[styles.statCard, { borderLeftColor: Colors.success }]}>
+            <Wifi size={14} color={Colors.success} />
+            <Text style={styles.statValue}>{onlineCount}</Text>
+            <Text style={styles.statLabel}>Online</Text>
           </View>
         </View>
       </View>
@@ -306,8 +382,8 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
   headerIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: Colors.adminPrimary + '18', alignItems: 'center', justifyContent: 'center' },
   statsRow: { flexDirection: 'row', gap: 8 },
-  statCard: { flex: 1, backgroundColor: Colors.navyLight, borderRadius: 10, padding: 10, borderLeftWidth: 3, alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 18, fontWeight: '700' as const, color: Colors.textInverse },
+  statCard: { flex: 1, backgroundColor: Colors.navyLight, borderRadius: 10, padding: 8, borderLeftWidth: 3, alignItems: 'center', gap: 2 },
+  statValue: { fontSize: 16, fontWeight: '700' as const, color: Colors.textInverse },
   statLabel: { fontSize: 10, color: Colors.textMuted, fontWeight: '500' as const },
   body: { flex: 1 },
   bodyContent: { padding: 16 },
@@ -318,11 +394,13 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '700' as const, color: Colors.text },
   jobCard: { backgroundColor: Colors.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: Colors.border },
   jobTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  jobNumberWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  jobNumberWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   jobNumber: { fontSize: 14, fontWeight: '700' as const, color: Colors.text },
   businessName: { fontSize: 13, fontWeight: '600' as const, color: Colors.textSecondary, marginBottom: 10 },
   urgentBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.dangerLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, gap: 3 },
   urgentText: { fontSize: 9, fontWeight: '800' as const, color: Colors.danger },
+  dispatchBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, gap: 3, borderWidth: 1 },
+  dispatchText: { fontSize: 9, fontWeight: '800' as const },
   slaBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, gap: 4 },
   slaText: { fontSize: 10, fontWeight: '700' as const },
   routeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
@@ -336,7 +414,7 @@ const styles = StyleSheet.create({
   createJobBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.adminPrimary, borderRadius: 12, paddingVertical: 12, gap: 6, marginBottom: 16 },
   createJobBtnText: { fontSize: 14, fontWeight: '700' as const, color: '#FFFFFF' },
   jobActionsRow: { flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.borderLight },
-  miniAction: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: Colors.surfaceAlt },
+  miniAction: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, backgroundColor: Colors.surfaceAlt },
   miniActionText: { fontSize: 10, fontWeight: '600' as const },
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.text },

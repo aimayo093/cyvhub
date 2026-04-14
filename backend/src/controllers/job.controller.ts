@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { NotificationService } from '../utils/notification.service';
 import { PricingService } from '../services/pricing.service';
 import { SuitabilityService } from '../services/suitability.service';
+import { DispatchEngineService } from '../services/dispatch.service';
 
 export const getJobs = async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -592,6 +593,11 @@ export const createJob = async (req: AuthenticatedRequest, res: Response) => {
             }
         }
 
+        // 5. AUTOMATED DISPATCH — fire-and-forget after response
+        DispatchEngineService.dispatchJob(job.id).catch((dispatchErr) => {
+            console.error('[CreateJob] Dispatch engine error:', dispatchErr);
+        });
+
         res.status(201).json({ message: 'Job created successfully', job });
     } catch (error) {
         console.error('Create Job Error:', error);
@@ -617,6 +623,8 @@ export const assignJob = async (req: AuthenticatedRequest, res: Response) => {
 
         const data: any = {
             status: 'ASSIGNED',
+            trackingUnlocked: true,         // Admin manual assignment unlocks customer tracking
+            dispatchStatus: 'ACCEPTED',
             assignedDriverId: driverId || null,
             assignedCarrierId: carrierId || null
         };

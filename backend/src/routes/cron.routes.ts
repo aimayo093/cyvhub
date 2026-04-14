@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { ComplianceService } from '../services/compliance.service';
 import { PayoutService } from '../services/payout.service';
+import { DispatchEngineService } from '../services/dispatch.service';
 
 const router = Router();
 
@@ -44,6 +45,27 @@ router.get('/payouts', async (req: Request, res: Response) => {
         res.json({ success: true, message: 'Payout workflow completed', result });
     } catch (error) {
         console.error('Payout Cron Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * Dispatch offer expiry sweeper — call every 30 seconds from Vercel Cron.
+ * Marks timed-out PENDING offers as EXPIRED and advances the offer queue.
+ */
+router.get('/dispatch', async (req: Request, res: Response) => {
+    try {
+        const authHeader = req.headers.authorization;
+        const cronSecret = process.env.CRON_SECRET;
+
+        if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+            return res.status(401).json({ error: 'Unauthorized Cron Execution' });
+        }
+
+        const result = await DispatchEngineService.processExpiredOffers();
+        res.json({ success: true, message: 'Dispatch expiry sweep completed', result });
+    } catch (error) {
+        console.error('Dispatch Cron Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
