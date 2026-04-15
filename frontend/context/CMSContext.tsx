@@ -127,7 +127,10 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
                         serviceDetails: data.serviceDetails,
                         industryDetails: data.industryDetails,
                         header: data.header,
-                        footer: data.footer
+                        footer: data.footer,
+                        aboutPage: data.aboutPage,
+                        contactPage: data.contactPage,
+                        servicesPage: data.servicesPage
                     }
                 })
             });

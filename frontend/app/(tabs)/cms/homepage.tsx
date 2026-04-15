@@ -8,6 +8,7 @@ import {
     Switch,
     TextInput,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +26,7 @@ import {
     AlignLeft,
     Settings,
     MessageSquareQuote,
+    RotateCcw,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
@@ -84,6 +86,7 @@ export default function HomepageCMS() {
     const [footerConfig, setFooterConfig] = useState<FooterConfig>(initialFooter);
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
 
     // Sync local state with Global CMS Context on load
     React.useEffect(() => {
@@ -105,6 +108,8 @@ export default function HomepageCMS() {
     }, [isLoaded, homepageData, header, footer]);
 
     const handleSave = async () => {
+        if (isPublishing) return;
+        setIsPublishing(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         try {
@@ -137,6 +142,8 @@ export default function HomepageCMS() {
             console.error('[CMS] Failed to save homepage data:', error);
             const errMsg = error?.message || 'Please check your connection and try again.';
             alert(`❌ Error saving to backend: ${errMsg}`);
+        } finally {
+            setIsPublishing(false);
         }
     };
 
@@ -206,17 +213,33 @@ export default function HomepageCMS() {
                         <Text style={styles.headerSubtitle}>Marketing CMS Module</Text>
                     </View>
                     <View style={styles.headerActions}>
-                        <TouchableOpacity style={styles.previewButton}>
+                        <TouchableOpacity 
+                            style={styles.previewButton}
+                            onPress={() => router.push('/(tabs)/cms/history')}
+                        >
+                            <RotateCcw size={16} color={Colors.textInverse} />
+                            <Text style={styles.previewButtonText}>History</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={styles.previewButton}
+                            // onPress={() => router.push('/')} // Preview logic would go here
+                        >
                             <Eye size={16} color={Colors.textInverse} />
                             <Text style={styles.previewButtonText}>Preview</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.saveButton, !hasUnsavedChanges && styles.saveButtonDisabled]}
+                            style={[styles.saveButton, (!hasUnsavedChanges || isPublishing) && styles.saveButtonDisabled]}
                             onPress={handleSave}
-                            disabled={!hasUnsavedChanges}
+                            disabled={!hasUnsavedChanges || isPublishing}
                         >
-                            <Save size={16} color={hasUnsavedChanges ? '#FFF' : 'rgba(255,255,255,0.5)'} />
-                            <Text style={[styles.saveButtonText, !hasUnsavedChanges && { color: 'rgba(255,255,255,0.5)' }]}>Publish</Text>
+                            {isPublishing ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <Save size={16} color={hasUnsavedChanges ? '#FFF' : 'rgba(255,255,255,0.5)'} />
+                            )}
+                            <Text style={[styles.saveButtonText, (!hasUnsavedChanges || isPublishing) && { color: 'rgba(255,255,255,0.5)' }]}>
+                                {isPublishing ? 'Publishing...' : 'Publish'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>

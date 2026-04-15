@@ -3,86 +3,85 @@ import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
+    FlatList,
     TouchableOpacity,
+    ActivityIndicator,
     Alert,
-    ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-    ArrowLeft,
-    History,
-    RotateCcw,
-    CheckCircle,
-    Eye,
+import { 
+    History, 
+    ArrowLeft, 
+    RotateCcw, 
+    User, 
+    Calendar,
+    CheckCircle2,
+    Database
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import * as Haptics from 'expo-haptics';
 import { apiClient } from '@/services/api';
 import { useCMS } from '@/context/CMSContext';
 
-type RevisionEntry = {
+interface Revision {
     id: string;
     entityType: string;
     entityKey: string;
     snapshot: any;
     updatedBy: string;
     createdAt: string;
-};
+}
 
-export default function RevisionHistoryCMS() {
+export default function CMSHistoryScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { refreshFromBackend } = useCMS();
-
-    const [history, setHistory] = useState<RevisionEntry[]>([]);
+    
+    const [revisions, setRevisions] = useState<Revision[]>([]);
     const [loading, setLoading] = useState(true);
-    const [restoring, setRestoring] = useState<string | null>(null);
+    const [restoringId, setRestoringId] = useState<string | null>(null);
 
-    const fetchHistory = async () => {
+    const fetchRevisions = async () => {
         try {
             setLoading(true);
-            const data = await apiClient('/cms/revisions');
-            setHistory(data);
+            const data = await apiClient('/cms/revisions?entityKey=global_cms_bundle');
+            setRevisions(data);
         } catch (error) {
-            console.error('[CMS] Failed to fetch revisions:', error);
-            Alert.alert('Error', 'Could not load revision history.');
+            console.error('[History] Failed to fetch revisions:', error);
+            Alert.alert('Error', 'Failed to load revision history.');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchHistory();
+        fetchRevisions();
     }, []);
 
-    const handleRestore = (rev: RevisionEntry) => {
+    const handleRestore = (revision: Revision) => {
         Alert.alert(
-            'Restore Version',
-            `Are you sure you want to restore the ${rev.entityKey} config to this previous version?\n\nCurrent unpublished changes will be lost.`,
+            'Restore Revision',
+            `Are you sure you want to roll back to the version from ${new Date(revision.createdAt).toLocaleString()}? This will overwrite the current live configuration.`,
             [
                 { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Restore',
+                { 
+                    text: 'Restore Now', 
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            setRestoring(rev.id);
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            await apiClient(`/cms/revisions/${rev.id}/restore`, { method: 'POST' });
+                            setRestoringId(revision.id);
+                            await apiClient(`/cms/revisions/${revision.id}/restore`, { method: 'POST' });
                             
-                            // Immediately refresh context to pull the newly restored global bundle
+                            // Force refresh the context to pick up the restored data
                             await refreshFromBackend(true);
                             
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            Alert.alert('Success', 'Version restored successfully. The live site has been updated.');
-                            fetchHistory(); // Refresh the list
+                            Alert.alert('Success', 'Revision restored successfully!');
+                            router.back();
                         } catch (error) {
-                            console.error('[CMS] Failed to restore revision:', error);
-                            Alert.alert('Error', 'Failed to restore this revision. Please try again.');
+                            console.error('[History] Restore failed:', error);
+                            Alert.alert('Error', 'Failed to restore revision.');
                         } finally {
-                            setRestoring(null);
+                            setRestoringId(null);
                         }
                     }
                 }
@@ -90,135 +89,212 @@ export default function RevisionHistoryCMS() {
         );
     };
 
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'published': return { bg: Colors.success + '20', text: Colors.success };
-            case 'archived': return { bg: Colors.borderLight, text: Colors.textSecondary };
-            default: return { bg: Colors.adminPrimary + '20', text: Colors.adminPrimary };
-        }
-    };
+    const renderRevisionItem = ({ item, index }: { item: Revision, index: number }) => (
+        <View style={styles.card}>
+            <View style={styles.cardHeader}>
+                <View style={[styles.badge, index === 0 && styles.activeBadge]}>
+                    <Text style={[styles.badgeText, index === 0 && styles.activeBadgeText]}>
+                        {index === 0 ? 'Current Live' : `v${revisions.length - index}`}
+                    </Text>
+                </View>
+                <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleString()}</Text>
+            </View>
 
-    const formatDate = (dateStr: string) => {
-        const d = new Date(dateStr);
-        return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    };
+            <View style={styles.cardBody}>
+                <View style={styles.metaRow}>
+                    <User size={14} color={Colors.textMuted} />
+                    <Text style={styles.metaText}>Updated By: {item.updatedBy}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                    <Database size={14} color={Colors.textMuted} />
+                    <Text style={styles.metaText}>Entity: {item.entityKey}</Text>
+                </View>
+            </View>
+
+            <TouchableOpacity 
+                style={[styles.restoreButton, index === 0 && styles.disabledButton]} 
+                onPress={() => handleRestore(item)}
+                disabled={index === 0 || restoringId !== null}
+            >
+                {restoringId === item.id ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                    <>
+                        <RotateCcw size={16} color="#FFF" />
+                        <Text style={styles.restoreButtonText}>Restore this version</Text>
+                    </>
+                )}
+            </TouchableOpacity>
+        </View>
+    );
 
     return (
         <View style={styles.container}>
             <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <ArrowLeft size={20} color={Colors.textInverse} />
-                    </TouchableOpacity>
-                    <View style={styles.headerTitleContainer}>
-                        <Text style={styles.headerTitle}>Revision History</Text>
-                        <Text style={styles.headerSubtitle}>Content version control and backups</Text>
-                    </View>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <ArrowLeft size={20} color={Colors.textInverse} />
+                </TouchableOpacity>
+                <View>
+                    <Text style={styles.headerTitle}>Publishing History</Text>
+                    <Text style={styles.headerSubtitle}>Audit Log & Revisions</Text>
                 </View>
+                <History size={24} color={Colors.textInverse} style={styles.headerIcon} />
             </View>
 
-            <ScrollView style={styles.content} contentContainerStyle={styles.contentPadding}>
-
-                <View style={styles.infoCard}>
-                    <History size={24} color={Colors.adminPrimary} style={{ marginBottom: 12 }} />
-                    <Text style={styles.infoTitle}>Safeguard your content</Text>
-                    <Text style={styles.infoDesc}>
-                        The system creates a permanent backup before every global publish. You can safely restore any previous snapshot to the live platform.
-                    </Text>
+            {loading ? (
+                <View style={styles.centered}>
+                    <ActivityIndicator size="large" color={Colors.adminPrimary} />
+                    <Text style={styles.loadingText}>Fetching architecture logs...</Text>
                 </View>
-
-                {loading ? (
-                    <ActivityIndicator size="large" color={Colors.adminPrimary} style={{ marginTop: 40 }} />
-                ) : history.length === 0 ? (
-                    <Text style={{ textAlign: 'center', color: Colors.textSecondary, marginTop: 20 }}>No revision history available yet.</Text>
-                ) : (
-                    <View style={styles.timeline}>
-                        {history.map((rev, index) => {
-                            const isLatest = index === 0;
-                            const status = isLatest ? 'Archived (Latest backup)' : 'archived';
-                            const statusStyle = getStatusStyle(status);
-
-                            return (
-                                <View key={rev.id} style={styles.timelineItem}>
-                                    <View style={styles.timelineLine} />
-                                    <View style={[styles.timelineDot, isLatest && { backgroundColor: Colors.adminSecondary }]} />
-
-                                    <View style={styles.revisionCard}>
-                                        <View style={styles.revisionHeader}>
-                                            <Text style={styles.revisionPage}>{rev.entityKey}</Text>
-                                            <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
-                                                <Text style={[styles.badgeText, { color: statusStyle.text }]}>
-                                                    {status.toUpperCase()}
-                                                </Text>
-                                            </View>
-                                        </View>
-
-                                        <Text style={styles.revisionChanges}>
-                                            {rev.entityType === 'GLOBAL_CONFIG' ? 'Global CMS Bundle Update' : 'Page Update'}
-                                        </Text>
-
-                                        <View style={styles.revisionMetaContainer}>
-                                            <Text style={styles.revisionMeta}>{formatDate(rev.createdAt)}</Text>
-                                            <Text style={styles.revisionMetaDot}>•</Text>
-                                            <Text style={styles.revisionMeta}>User ID: {rev.updatedBy.substring(0, 8)}...</Text>
-                                        </View>
-
-                                        <View style={styles.actionRow}>
-                                            <TouchableOpacity 
-                                                style={[styles.actionBtn, { backgroundColor: Colors.warning + '10' }]}
-                                                onPress={() => handleRestore(rev)}
-                                                disabled={restoring === rev.id}
-                                            >
-                                                {restoring === rev.id ? (
-                                                    <ActivityIndicator size="small" color={Colors.warning} />
-                                                ) : (
-                                                    <>
-                                                        <RotateCcw size={14} color={Colors.warning} />
-                                                        <Text style={[styles.actionBtnText, { color: Colors.warning }]}>Restore to Live</Text>
-                                                    </>
-                                                )}
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                </View>
-                            );
-                        })}
-                    </View>
-                )}
-
-                <View style={{ height: 60 }} />
-            </ScrollView>
+            ) : (
+                <FlatList
+                    data={revisions}
+                    renderItem={renderRevisionItem}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={styles.listPadding}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <CheckCircle2 size={48} color={Colors.textMuted} />
+                            <Text style={styles.emptyText}>No revision history found yet.</Text>
+                        </View>
+                    }
+                />
+            )}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background },
-    header: { backgroundColor: Colors.navy, paddingBottom: 16 },
-    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
-    backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
-    headerTitleContainer: { flex: 1, marginLeft: 8 },
-    headerTitle: { fontSize: 20, fontWeight: '700', color: Colors.textInverse, marginBottom: 4 },
-    headerSubtitle: { fontSize: 13, color: Colors.textMuted },
-    content: { flex: 1 },
-    contentPadding: { padding: 20 },
-    infoCard: { backgroundColor: Colors.adminPrimary + '10', borderRadius: 12, padding: 20, marginBottom: 32, borderWidth: 1, borderColor: Colors.adminPrimary + '30' },
-    infoTitle: { fontSize: 16, fontWeight: '700', color: Colors.adminPrimary, marginBottom: 8 },
-    infoDesc: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
-    timeline: { paddingLeft: 10 },
-    timelineItem: { position: 'relative', paddingLeft: 30, marginBottom: 24 },
-    timelineLine: { position: 'absolute', left: 5, top: 16, bottom: -24, width: 2, backgroundColor: Colors.borderLight },
-    timelineDot: { position: 'absolute', left: 0, top: 4, width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.border, zIndex: 1, borderWidth: 2, borderColor: Colors.background },
-    revisionCard: { backgroundColor: Colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: Colors.border },
-    revisionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    revisionPage: { fontSize: 16, fontWeight: '700', color: Colors.text },
-    badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-    badgeText: { fontSize: 10, fontWeight: '700' },
-    revisionChanges: { fontSize: 14, color: Colors.textSecondary, fontStyle: 'italic', marginBottom: 12 },
-    revisionMetaContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-    revisionMeta: { fontSize: 12, color: Colors.textMuted },
-    revisionMetaDot: { fontSize: 12, color: Colors.textMuted, marginHorizontal: 6 },
-    actionRow: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: Colors.borderLight, paddingTop: 12 },
-    actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.adminPrimary + '10', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
-    actionBtnText: { fontSize: 13, fontWeight: '600', color: Colors.adminPrimary },
+    container: {
+        flex: 1,
+        backgroundColor: '#F8F9FA',
+    },
+    header: {
+        backgroundColor: Colors.adminPrimary,
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: Colors.textInverse,
+    },
+    headerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.7)',
+    },
+    headerIcon: {
+        marginLeft: 'auto',
+        opacity: 0.5,
+    },
+    listPadding: {
+        padding: 16,
+    },
+    card: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    badge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+        backgroundColor: '#E9ECEF',
+    },
+    activeBadge: {
+        backgroundColor: '#D1FAE5', // Greenish
+    },
+    badgeText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#495057',
+        textTransform: 'uppercase',
+    },
+    activeBadgeText: {
+        color: '#065F46',
+    },
+    dateText: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+        fontWeight: '500',
+    },
+    cardBody: {
+        gap: 8,
+        marginBottom: 16,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#F1F3F5',
+        paddingVertical: 12,
+    },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    metaText: {
+        fontSize: 13,
+        color: Colors.textMuted,
+    },
+    restoreButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#4F46E5', // Indigo
+        paddingVertical: 12,
+        borderRadius: 12,
+        gap: 8,
+    },
+    disabledButton: {
+        backgroundColor: '#E9ECEF',
+        opacity: 0.8,
+    },
+    restoreButtonText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        color: Colors.textMuted,
+        fontSize: 14,
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        paddingTop: 100,
+        gap: 16,
+    },
+    emptyText: {
+        color: Colors.textMuted,
+        fontSize: 16,
+    }
 });

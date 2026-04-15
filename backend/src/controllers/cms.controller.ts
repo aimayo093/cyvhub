@@ -278,13 +278,10 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
 
         console.log('[CMSController] Batch syncing CMS data...');
 
-        // We'll iterate and update each part. 
-        // Homepage is usually stored as 'cms_heroConfig', 'cms_statsConfig', etc.
-        // But the sync format from frontend might be different. Let's handle 'homepageData'
-        
+        const CMS_CONFIG_KEY = 'global_cms_bundle';
         const updates = [];
 
-        // 1. Handle Homepage Data (flattened configs)
+        // 1. Prepare individual row updates (for backward compatibility or specific partial fetches)
         if (data.homepage) {
             for (const [key, config] of Object.entries(data.homepage)) {
                 updates.push(
@@ -297,7 +294,6 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
             }
         }
 
-        // 2. Handle Service Details
         if (data.serviceDetails) {
             updates.push(
                 prisma.globalConfig.upsert({
@@ -308,7 +304,6 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
             );
         }
 
-        // 3. Handle Industry Details
         if (data.industryDetails) {
             updates.push(
                 prisma.globalConfig.upsert({
@@ -318,6 +313,62 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
                 })
             );
         }
+
+        // 2. Handle Header & Footer (Newly added to sync flow)
+        if (data.header) {
+            updates.push(
+                prisma.globalConfig.upsert({
+                    where: { key: 'header' },
+                    create: { key: 'header', config: data.header as any, updatedBy: req.user.userId },
+                    update: { config: data.header as any, updatedBy: req.user.userId, updatedAt: new Date() }
+                })
+            );
+        }
+
+        if (data.footer) {
+            updates.push(
+                prisma.globalConfig.upsert({
+                    where: { key: 'footer' },
+                    create: { key: 'footer', config: data.footer as any, updatedBy: req.user.userId },
+                    update: { config: data.footer as any, updatedBy: req.user.userId, updatedAt: new Date() }
+                })
+            );
+        }
+
+        // 3. CRITICAL: Update the MASTER BUNDLE that the frontend fetches on load.
+        // This resolves the "lost data on refresh" issue.
+        const masterPayload = {
+            header: data.header,
+            footer: data.footer,
+            serviceDetails: data.serviceDetails,
+            industryDetails: data.industryDetails,
+            homepageData: data.homepage,
+            // Preserve pages if they are ever bundled, but for now focus on the core context fields
+            aboutPage: data.aboutPage,
+            contactPage: data.contactPage,
+            servicesPage: data.servicesPage
+        };
+
+        // Create a Revision for the Master Bundle before overwriting
+        const existingMaster = await prisma.globalConfig.findUnique({ where: { key: CMS_CONFIG_KEY } });
+        if (existingMaster) {
+            await prisma.cMSRevision.create({
+                data: {
+                    entityType: 'GLOBAL_CONFIG',
+                    entityKey: CMS_CONFIG_KEY,
+                    snapshot: existingMaster.config as any,
+                    updatedBy: req.user.userId
+                }
+            });
+        }
+
+        updates.push(
+            prisma.globalConfig.upsert({
+                where: { key: CMS_CONFIG_KEY },
+                create: { key: CMS_CONFIG_KEY, config: masterPayload as any, updatedBy: req.user.userId },
+                update: { config: masterPayload as any, updatedBy: req.user.userId, updatedAt: new Date() }
+            })
+        );
 
         if (updates.length > 0) {
             await prisma.$transaction(updates);
