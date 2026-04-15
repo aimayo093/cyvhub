@@ -65,7 +65,7 @@ export default function HomepageCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { homepageData, header, footer, setHeader, setFooter, setHomepageSection, setHomepageSections, refreshFromBackend, isLoaded } = useCMS();
+    const { homepageData, header, footer, setHeader, setFooter, setHomepageSection, setHomepageSections, refreshFromBackend, isLoaded, batchUpdateAndSync } = useCMS();
     const [activeTab, setActiveTab] = useState<TabType>((params.tab as TabType) || 'hero');
 
     const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(initialHeader);
