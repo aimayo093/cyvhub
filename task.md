@@ -27,6 +27,13 @@
 - [x] **Phase 4: Input Validation (Section D)**
   - [x] Review and sanitize `quote.controller.ts` payload limits and type-checking.
   - [x] Revisit `auth.controller.ts` for strict type checking of email, password.
+  - [x] Integrate `CMSImagePicker` in Admin dashboard
+  - [x] Add Hard Publish button to Homepage CMS
+  - [x] Implement backend `PublishController` with GitHub REST API integration
+  - [x] Create and run `migrate-cms-content.ts` script
+  - [x] Refactor Backend `CMSController` to use `CMSPage`/`CMSSection`
+  - [x] Refactor Frontend `CMSContext` to handle granular data
+  - [x] Finalize E2E Verification
   - [x] Update `backend/prisma/schema.prisma` to include the `CMSRevision` table.
   - [x] Run Prisma migration / db push to update the database schema.
   - [x] Update `backend/src/controllers/cms.controller.ts` to insert a snapshot row into `CMSRevision` immediately before `upsertConfig` overrides `GlobalConfig`.

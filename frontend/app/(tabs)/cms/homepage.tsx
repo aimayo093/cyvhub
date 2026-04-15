@@ -27,10 +27,11 @@ import {
     Settings,
     MessageSquareQuote,
     RotateCcw,
+    Upload,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
-import ImageUploadField from '@/components/ImageUploadField';
+import CMSImagePicker from '@/components/CMSImagePicker';
 import {
     HeaderConfig,
     HeroConfig,
@@ -67,7 +68,7 @@ export default function HomepageCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { homepageData, header, footer, setHeader, setFooter, setHomepageSection, setHomepageSections, refreshFromBackend, isLoaded, batchUpdateAndSync } = useCMS();
+    const { homepageData, header, footer, setHeader, setFooter, setHomepageSection, setHomepageSections, refreshFromBackend, isLoaded, batchUpdateAndSync, hardPublish } = useCMS();
     const [activeTab, setActiveTab] = useState<TabType>((params.tab as TabType) || 'hero');
 
     const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(initialHeader);
@@ -87,6 +88,7 @@ export default function HomepageCMS() {
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
+    const [isHardPublishing, setIsHardPublishing] = useState(false);
 
     // Sync local state with Global CMS Context on load
     React.useEffect(() => {
@@ -144,6 +146,44 @@ export default function HomepageCMS() {
             alert(`❌ Error saving to backend: ${errMsg}`);
         } finally {
             setIsPublishing(false);
+        }
+    };
+
+    const handleHardPublish = async () => {
+        if (isHardPublishing) return;
+        setIsHardPublishing(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        try {
+            // Save first to DB
+            console.log('[CMS] Saving to DB before live publish...');
+            await batchUpdateAndSync({
+                header: headerConfig,
+                footer: footerConfig,
+                homepageData: {
+                    ...homepageData,
+                    cms_heroConfig: hero,
+                    cms_slidesConfig: slides,
+                    cms_howItWorksConfig: howItWorks,
+                    cms_whyUsConfig: whyUs,
+                    cms_servicesConfig: servicesData,
+                    cms_statsConfig: statsData,
+                    cms_industriesConfig: industriesData,
+                    cms_testimonialsConfig: testimonialsData,
+                    cms_customSections: customSections,
+                    cms_ctaConfig: cta,
+                }
+            }, true);
+
+            console.log('[CMS] Save successful, triggering hard publish sync...');
+            const result = await hardPublish();
+            alert(`🚀 Live Publish Successful!\n\nCommit: ${result.commitSha.substring(0, 7)}\nVercel build triggered.`);
+        } catch (error: any) {
+            console.error('[CMS] Hard publish failed:', error);
+            const errMsg = error.response?.data?.error || error.message || 'Check GITHUB_CMS_PAT.';
+            alert(`❌ Hard Publish Failed: ${errMsg}`);
+        } finally {
+            setIsHardPublishing(false);
         }
     };
 
@@ -241,6 +281,20 @@ export default function HomepageCMS() {
                                 {isPublishing ? 'Publishing...' : 'Publish'}
                             </Text>
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.publishLiveButton, isHardPublishing && styles.saveButtonDisabled]}
+                            onPress={handleHardPublish}
+                            disabled={isHardPublishing}
+                        >
+                            {isHardPublishing ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <Upload size={16} color="#FFF" />
+                            )}
+                            <Text style={styles.saveButtonText}>
+                                {isHardPublishing ? 'Syncing...' : 'Publish Live'}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -335,14 +389,15 @@ export default function HomepageCMS() {
                                 </View>
                                 {hero.bgImages.map((img, idx) => (
                                     <View key={idx} style={{ marginBottom: 12 }}>
-                                        <ImageUploadField 
+                                        <CMSImagePicker 
                                             value={img} 
-                                            onUploadComplete={url => {
+                                            onSelect={url => {
                                                 const newImgs = [...hero.bgImages];
                                                 newImgs[idx] = url;
                                                 updateHero('bgImages', newImgs);
                                             }}
                                             label={`Hero Background ${idx + 1}`}
+                                            category="hero"
                                         />
                                         <TouchableOpacity
                                             onPress={() => {
@@ -495,9 +550,10 @@ export default function HomepageCMS() {
 
                                 <View style={styles.slideContentSplit}>
                                     <View style={{ flex: 1 }}>
-                                        <ImageUploadField 
+                                        <CMSImagePicker 
                                             value={slide.imageUrl} 
-                                            onUploadComplete={url => updateSlide(slide.id, 'imageUrl', url)}
+                                            onSelect={url => updateSlide(slide.id, 'imageUrl', url)}
+                                            category="slider"
                                         />
                                     </View>
                                     <View style={styles.slideForm}>
@@ -541,13 +597,14 @@ export default function HomepageCMS() {
                         <Text style={styles.sectionDesc}>Manage the global top bar.</Text>
                         <View style={styles.card}>
                             <View style={styles.inputGroup}>
-                                <ImageUploadField 
+                                <CMSImagePicker 
                                     label="System Logo"
                                     value={headerConfig.logoUrl} 
-                                    onUploadComplete={url => {
+                                    onSelect={url => {
                                         setHeaderConfig({ ...headerConfig, logoUrl: url });
                                         setHasUnsavedChanges(true);
                                     }}
+                                    category="branding"
                                 />
                             </View>
                             <View style={styles.switchRow}>
@@ -892,36 +949,18 @@ export default function HomepageCMS() {
                                             <Trash2 size={16} color={Colors.danger} />
                                         </TouchableOpacity>
                                     </View>
-                                    <View style={styles.slideContentSplit}>
-                                        <Image source={{ uri: banner.imageUrl || 'https://via.placeholder.com/800x400' }} style={styles.slideGraphic} />
-                                        <View style={styles.slideForm}>
-                                            <TextInput style={styles.inputSmall} value={banner.title} placeholder="Title" onChangeText={t => {
+                                    <View style={{ padding: 16 }}>
+                                        <CMSImagePicker 
+                                            value={banner.imageUrl} 
+                                            onSelect={url => {
                                                 const newBanners = [...servicesData.banners];
-                                                newBanners[idx].title = t;
+                                                newBanners[idx].imageUrl = url;
                                                 setServicesData({ ...servicesData, banners: newBanners });
                                                 setHasUnsavedChanges(true);
-                                            }} />
-                                            <TextInput style={styles.inputSmall} value={banner.desc} placeholder="Description" onChangeText={t => {
-                                                const newBanners = [...servicesData.banners];
-                                                newBanners[idx].desc = t;
-                                                setServicesData({ ...servicesData, banners: newBanners });
-                                                setHasUnsavedChanges(true);
-                                            }} />
-                                            <TextInput style={styles.inputSmall} value={banner.link} placeholder="Link URL" onChangeText={t => {
-                                                const newBanners = [...servicesData.banners];
-                                                newBanners[idx].link = t;
-                                                setServicesData({ ...servicesData, banners: newBanners });
-                                                setHasUnsavedChanges(true);
-                                            }} />
-                                        </View>
-                                    </View>
-                                    <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-                                        <TextInput style={styles.inputSmall} value={banner.imageUrl} placeholder="Image URL" onChangeText={t => {
-                                            const newBanners = [...servicesData.banners];
-                                            newBanners[idx].imageUrl = t;
-                                            setServicesData({ ...servicesData, banners: newBanners });
-                                            setHasUnsavedChanges(true);
-                                        }} />
+                                            }}
+                                            label="Service Banner Graphic"
+                                            category="services"
+                                        />
                                     </View>
                                 </View>
                             ))}
@@ -1241,15 +1280,16 @@ export default function HomepageCMS() {
                                             const newInds = [...industriesData.industries]; newInds[idx].desc = t;
                                             setIndustriesData({ ...industriesData, industries: newInds }); setHasUnsavedChanges(true);
                                         }} />
-                                        <ImageUploadField 
+                                        <CMSImagePicker 
                                             label="Industry Image"
                                             value={industry.imageUrl} 
-                                            onUploadComplete={url => {
+                                            onSelect={url => {
                                                 const newInds = [...industriesData.industries];
                                                 newInds[idx].imageUrl = url;
                                                 setIndustriesData({ ...industriesData, industries: newInds });
                                                 setHasUnsavedChanges(true);
                                             }}
+                                            category="industries"
                                         />
                                     </View>
                                 </View>
@@ -1336,15 +1376,16 @@ export default function HomepageCMS() {
                                         }} />
                                         <View style={styles.row}>
                                             <View style={{ flex: 1 }}>
-                                            <ImageUploadField 
+                                            <CMSImagePicker 
                                                 label="Avatar"
                                                 value={test.avatarUrl} 
-                                                onUploadComplete={url => {
+                                                onSelect={url => {
                                                     const newTests = [...testimonialsData.testimonials];
                                                     newTests[idx].avatarUrl = url;
                                                     setTestimonialsData({ ...testimonialsData, testimonials: newTests });
                                                     setHasUnsavedChanges(true);
                                                 }}
+                                                category="testimonials"
                                             />
                                         </View>
                                             <TextInput style={[styles.input, { flex: 1 }]} value={test.rating.toString()} keyboardType="numeric" placeholder="Rating (1-5)" onChangeText={t => {
@@ -1427,15 +1468,16 @@ export default function HomepageCMS() {
                                             const newSec = [...customSections]; newSec[idx].buttonLink = t; setCustomSections(newSec); setHasUnsavedChanges(true);
                                         }} />
                                     </View>
-                                    <ImageUploadField 
+                                    <CMSImagePicker 
                                         label="Hero Image"
                                         value={section.imageUrl} 
-                                        onUploadComplete={url => {
+                                        onSelect={url => {
                                             const newSec = [...customSections];
                                             newSec[idx].imageUrl = url;
                                             setCustomSections(newSec);
                                             setHasUnsavedChanges(true);
                                         }}
+                                        category="custom"
                                     />
                                     <View style={styles.row}>
                                         <TextInput style={[styles.input, { flex: 1 }]} value={section.alignment} placeholder="Alignment: left, center, right" onChangeText={t => {
@@ -1525,6 +1567,20 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 13,
         fontWeight: '700',
+    },
+    publishLiveButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: '#10b981', // Emerald/Success color
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
     },
     tabsContainer: {
         paddingBottom: 0,

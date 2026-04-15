@@ -7,7 +7,14 @@ export class MediaController {
     // GET /api/media
     static async getMedia(req: Request, res: Response): Promise<void> {
         try {
+            const { category, type } = req.query;
+            
+            const where: any = {};
+            if (category) where.category = category;
+            if (type) where.type = type;
+
             const media = await prisma.mediaAsset.findMany({
+                where,
                 orderBy: { dateUploaded: 'desc' }
             });
 
@@ -25,6 +32,9 @@ export class MediaController {
                 res.status(400).json({ error: 'No file uploaded.' });
                 return;
             }
+
+            // Optional metadata from body
+            const { altText, category, isCommon } = req.body;
 
             // multer-storage-cloudinary populates req.file with Cloudinary metadata
             const { originalname, mimetype, size } = req.file;
@@ -52,6 +62,9 @@ export class MediaController {
                     url,
                     size: formattedSize,
                     type,
+                    altText: altText || null,
+                    category: category || null,
+                    isCommon: isCommon === 'true' || isCommon === true,
                 }
             });
 

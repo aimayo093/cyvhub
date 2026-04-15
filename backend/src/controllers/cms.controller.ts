@@ -105,6 +105,44 @@ export const getConfig = async (req: Request, res: Response) => {
             where: { key }
         });
 
+        // SPECIAL CASE: If requesting the master bundle, we can fallback or augment with granular data
+        if (key === 'global_cms_bundle') {
+            const homepagePage = await prisma.cMSPage.findUnique({
+                where: { slug: 'homepage' },
+                include: { sections: true }
+            });
+
+            if (homepagePage && config) {
+                const currentConfig = (config.config as any) || {};
+                const aggregatedHomepage: any = {};
+                
+                // Map sections back to the cms_XXXConfig keys
+                const typeToKeyMap: Record<string, string> = {
+                    'hero': 'cms_heroConfig',
+                    'slider': 'cms_slidesConfig',
+                    'howItWorks': 'cms_howItWorksConfig',
+                    'whyUs': 'cms_whyUsConfig',
+                    'services': 'cms_servicesConfig',
+                    'stats': 'cms_statsConfig',
+                    'industries': 'cms_industriesConfig',
+                    'testimonials': 'cms_testimonialsConfig',
+                    'cta': 'cms_ctaConfig',
+                    'custom': 'cms_customSections'
+                };
+
+                homepagePage.sections.forEach(sec => {
+                    const bundleKey = typeToKeyMap[sec.type];
+                    if (bundleKey) {
+                        aggregatedHomepage[bundleKey] = sec.content;
+                    }
+                });
+
+                // Merge into the config blob
+                currentConfig.homepageData = aggregatedHomepage;
+                return res.json({ ...config, config: currentConfig });
+            }
+        }
+
         if (!config) {
             console.log(`[CMSController] No config found for key: ${key}, returning empty.`);
             return res.json({ key, config: {} });
@@ -349,17 +387,40 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
             servicesPage: data.servicesPage
         };
 
-        // Create a Revision for the Master Bundle before overwriting
-        const existingMaster = await prisma.globalConfig.findUnique({ where: { key: CMS_CONFIG_KEY } });
-        if (existingMaster) {
-            await prisma.cMSRevision.create({
-                data: {
-                    entityType: 'GLOBAL_CONFIG',
-                    entityKey: CMS_CONFIG_KEY,
-                    snapshot: existingMaster.config as any,
-                    updatedBy: req.user.userId
-                }
+        // 4. NEW: Granular Sync to CMSPage/CMSSection
+        if (data.homepage) {
+            console.log('[CMSController] Granularly syncing homepage sections...');
+            const hpPage = await prisma.cMSPage.upsert({
+                where: { slug: 'homepage' },
+                create: { slug: 'homepage', title: 'Homepage', status: 'PUBLISHED' },
+                update: { title: 'Homepage', status: 'PUBLISHED' }
             });
+
+            const typeToKeyMap: Record<string, string> = {
+                'hero': 'cms_heroConfig',
+                'slider': 'cms_slidesConfig',
+                'howItWorks': 'cms_howItWorksConfig',
+                'whyUs': 'cms_whyUsConfig',
+                'services': 'cms_servicesConfig',
+                'stats': 'cms_statsConfig',
+                'industries': 'cms_industriesConfig',
+                'testimonials': 'cms_testimonialsConfig',
+                'cta': 'cms_ctaConfig',
+                'custom': 'cms_customSections'
+            };
+
+            for (const [type, bundleKey] of Object.entries(typeToKeyMap)) {
+                const content = data.homepage[bundleKey];
+                if (content) {
+                    updates.push(
+                        prisma.cMSSection.upsert({
+                            where: { pageId_type: { pageId: hpPage.id, type } },
+                            create: { pageId: hpPage.id, type, content: content as any },
+                            update: { content: content as any, updatedAt: new Date() }
+                        })
+                    );
+                }
+            }
         }
 
         updates.push(

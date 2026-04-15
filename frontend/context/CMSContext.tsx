@@ -66,6 +66,7 @@ interface CMSContextValue {
 
     isLoaded: boolean;
     refreshFromBackend: (force?: boolean) => Promise<void>;
+    hardPublish: () => Promise<{ success: boolean; commitSha: string }>;
 }
 
 const CMSContext = createContext<CMSContextValue | null>(null);
@@ -272,7 +273,17 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
             setHomepageSection, setHomepageSections,
             batchUpdateAndSync,
             isLoaded,
-            refreshFromBackend
+            refreshFromBackend,
+            hardPublish: async () => {
+                try {
+                    const response = await apiClient('/cms/publish', { method: 'POST' });
+                    if (response?.success) return response;
+                    throw new Error(response?.error || 'Hard publish failed.');
+                } catch (e) {
+                    console.error('[CMSContext] hardPublish failed:', e);
+                    throw e;
+                }
+            }
         }}>
             {children}
         </CMSContext.Provider>

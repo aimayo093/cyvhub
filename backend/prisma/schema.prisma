@@ -311,6 +311,9 @@ model MediaAsset {
   filename     String
   size         String
   type         String // "image" | "icon" | "document"
+  altText      String?
+  category     String? // "hero", "icon", "logo", "compliance", etc.
+  isCommon     Boolean  @default(false)
   dateUploaded DateTime @default(now())
 
   createdAt DateTime @default(now())
@@ -920,6 +923,39 @@ model PageContent {
   updatedAt DateTime @updatedAt
 
   @@index([slug])
+}
+
+// 🚀 ULTIMATE CMS CORE MODELS
+model CMSPage {
+  id              String       @id @default(uuid())
+  slug            String       @unique
+  title           String
+  metaTitle       String?
+  metaDescription String?
+  status          String       @default("DRAFT") // "DRAFT" | "PUBLISHED"
+  sections        CMSSection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+}
+
+model CMSSection {
+  id        String  @id @default(uuid())
+  pageId    String
+  page      CMSPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type      String // "HERO" | "FEATURES" | "STATS" | "CTA" | "TESTIMONIALS" | "CONTACT_FORM"
+  content   Json // Granular data for each section
+  order     Int     @default(0)
+  isVisible Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId])
+  @@index([type])
+  @@unique([pageId, type])
 }
 
 model GlobalConfig {

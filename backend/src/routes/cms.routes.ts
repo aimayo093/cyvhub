@@ -11,6 +11,7 @@ import {
     getRevisions,
     syncCMSData
 } from '../controllers/cms.controller';
+import { PublishController } from '../controllers/publish.controller';
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.get('/config/:key', getConfig);
 router.post('/pages', authenticate, upsertPage);
 router.post('/config', authenticate, upsertConfig);
 router.post('/sync', authenticate, syncCMSData);
+router.post('/publish', authenticate, PublishController.publishToLive);
 router.delete('/pages/:id', authenticate, deletePage);
 
 // --- Revision endpoints ---
