@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image,
 import { useRouter } from 'expo-router';
 import { Truck, Clock, ShieldCheck, ArrowRight, Zap, Target, Search, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight, BarChart3, Plane, Globe } from 'lucide-react-native';
 import Head from 'expo-router/head';
-import Colors from '@/constants/Colors';
+import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PostcodeAutocomplete } from '@/components/shared/PostcodeAutocomplete';

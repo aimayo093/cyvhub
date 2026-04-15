@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCMS } from '@/context/CMSContext';
-import Colors from '@/constants/Colors';
+import Colors from '@/constants/colors';
 import { 
     Clock, 
     Target, 
