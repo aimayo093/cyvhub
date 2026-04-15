@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Platform, useWindowDimensions, ActivityIndicator, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Truck, Clock, ShieldCheck, ArrowRight, Zap, Target, Search, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight, BarChart3, Plane, Globe } from 'lucide-react-native';
 import Head from 'expo-router/head';
@@ -7,6 +7,8 @@ import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PostcodeAutocomplete } from '@/components/shared/PostcodeAutocomplete';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const IconMap: any = {
     Truck, Clock, ShieldCheck, Zap, Target, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight, BarChart3, Plane, Globe

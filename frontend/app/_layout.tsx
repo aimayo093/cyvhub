@@ -13,8 +13,30 @@ import { LocationProvider } from "@/providers/LocationProvider";
 import WebOnlyGate from "@/components/WebOnlyGate";
 import Colors from "@/constants/colors";
 import { CMSProvider } from "@/context/CMSContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { API_URL } from "@/services/api";
 
-SplashScreen.preventAutoHideAsync();
+function validateEnvironment() {
+    if (Platform.OS !== 'web') return true;
+
+    const required = [
+        { key: 'EXPO_PUBLIC_API_URL', value: API_URL }
+    ];
+
+    const missing = required.filter(item => !item.value || item.value === 'undefined');
+
+    if (missing.length > 0) {
+        console.error('MISSING ENVIRONMENT VARIABLES:', missing.map(m => m.key));
+        return false;
+    }
+    return true;
+}
+
+if (typeof window !== 'undefined') {
+    (window as any).__CYVHUB_DIAGNOSTIC__ = "APP_LOADED_V3";
+}
+
+// SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
@@ -25,10 +47,16 @@ function RootLayoutNav() {
 
   const isWebOnlyRole = Platform.OS !== 'web' && userRole === 'admin';
 
+  // [DIAGNOSTIC] Track state transitions in production logs
+  useEffect(() => {
+    console.log('[RootLayoutNav] Status:', { isAuthenticated, isLoading, userRole, activeSegment: segments[0] });
+  }, [isAuthenticated, isLoading, userRole, segments]);
+
   useEffect(() => {
     if (isLoading) return;
 
     const seg = segments[0] as string;
+    console.log(`[RootLayoutNav] Routing guard evaluating segment: ${seg}`);
 
     const isPublicRoute = 
       seg === '(public)' || 
@@ -75,7 +103,7 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (!isLoading) {
-      SplashScreen.hideAsync();
+      // SplashScreen.hideAsync();
     }
   }, [isLoading]);
 
@@ -352,25 +380,38 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  if (!validateEnvironment()) {
+    return (
+        <View style={{ flex: 1, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 16 }}>Configuration Error</Text>
+            <Text style={{ textAlign: 'center', color: '#666' }}>
+                The application is missing critical configuration. Please ensure all environment variables are set in Vercel.
+            </Text>
+        </View>
+    );
+  }
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <CMSProvider>
-          <AuthProvider>
-            <LocationProvider>
-              <JobsProvider>
-                <DeliveriesProvider>
-                  <CarrierProvider>
-                    <PaymentProvider>
-                      <RootLayoutNav />
-                    </PaymentProvider>
-                  </CarrierProvider>
-                </DeliveriesProvider>
-              </JobsProvider>
-            </LocationProvider>
-          </AuthProvider>
-        </CMSProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <CMSProvider>
+            <AuthProvider>
+              <LocationProvider>
+                <JobsProvider>
+                  <DeliveriesProvider>
+                    <CarrierProvider>
+                      <PaymentProvider>
+                        <RootLayoutNav />
+                      </PaymentProvider>
+                    </CarrierProvider>
+                  </DeliveriesProvider>
+                </JobsProvider>
+              </LocationProvider>
+            </AuthProvider>
+          </CMSProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

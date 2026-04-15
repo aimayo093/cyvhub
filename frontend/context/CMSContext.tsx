@@ -145,19 +145,32 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const init = async () => {
+            console.log('[CMSContext] Initialization started...');
+            const timeout = setTimeout(() => {
+                if (!isLoaded) {
+                    console.warn('[CMSContext] Initialization took too long, firing safety fallback...');
+                    setIsLoaded(true);
+                }
+            }, 3000);
+
             try {
                 // 1. Load from Local Cache (Fast)
                 const cached = await AsyncStorage.getItem(`cms_${CMS_CONFIG_KEY}`);
                 if (cached) {
+                    console.log('[CMSContext] Found cached data');
                     applyData(JSON.parse(cached));
                 }
 
                 // 2. Refresh from Backend (Global Sync)
+                console.log('[CMSContext] Refreshing from backend...');
                 await refreshFromBackend();
+                console.log('[CMSContext] Backend refresh complete');
             } catch (error) {
                 console.error('[CMSContext] Initialization error:', error);
             } finally {
+                clearTimeout(timeout);
                 setIsLoaded(true);
+                console.log('[CMSContext] Initialization finished (isLoaded=true)');
             }
         };
 
