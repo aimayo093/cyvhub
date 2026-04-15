@@ -16,6 +16,7 @@ export default function PublicLayout() {
     const { header, footer } = useCMS();
     const insets = useSafeAreaInsets();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [hoveredMenuId, setHoveredMenuId] = useState<string | null>(null);
  
     const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
@@ -30,11 +31,13 @@ export default function PublicLayout() {
                 })
             ).start();
         }
-    }, [header.enableAnnouncement, slideAnim]);
+    }, [header.enableAnnouncement, slideAnim, SCREEN_WIDTH]);
  
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
+
+    const isWeb = Platform.OS === 'web';
 
     return (
         <View style={styles.container}>
@@ -54,7 +57,10 @@ export default function PublicLayout() {
             {/* HEADER */}
             <View style={[styles.header, { 
                 paddingTop: header.enableAnnouncement ? 0 : (insets.top || 16),
-                paddingHorizontal: SCREEN_WIDTH >= 1024 ? 40 : 20
+                paddingHorizontal: SCREEN_WIDTH >= 1024 ? 40 : 20,
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                zIndex: 100
             }]}>
                 <View style={styles.headerContent}>
                     <TouchableOpacity 
@@ -62,58 +68,94 @@ export default function PublicLayout() {
                         onPress={() => router.push('/')}
                         activeOpacity={0.7}
                     >
-                        {header.logoUrl ? (
-                            <Image 
-                                source={{ uri: header.logoUrl }} 
-                                style={styles.logoImage} 
-                                resizeMode="contain" 
-                            />
-                        ) : (
-                            <Image
-                                source={require('@/assets/images/logo-color-no-bg.png')}
-                                style={styles.logoImage}
-                                resizeMode="contain"
-                            />
-                        )}
+                        <Image
+                            source={require('@/assets/images/logo-color-no-bg.png')}
+                            style={styles.logoImage}
+                            resizeMode="contain"
+                        />
                     </TouchableOpacity>
 
-                    <View style={[styles.navLinks, SCREEN_WIDTH < 768 ? { display: 'none' } : null]}>
+                    <View style={[styles.navLinks, SCREEN_WIDTH < 1024 ? { display: 'none' } : null]}>
                         {header.menuItems?.map((item: any) => (
-                            <Link key={item.id} href={item.url as any} style={styles.navItemLink as any}>
-                                <Text style={styles.navText}>{item.label}</Text>
-                            </Link>
+                            <View 
+                                key={item.id} 
+                                style={[styles.navItemContainer]}
+                                {...(isWeb ? {
+                                    onMouseEnter: () => item.items ? setHoveredMenuId(item.id) : null,
+                                    onMouseLeave: () => setHoveredMenuId(null)
+                                } : {})}
+                            >
+                                <Link href={item.url as any} style={styles.navItemLink as any}>
+                                    <View style={styles.navLinkInner}>
+                                        <Text style={[styles.navText, hoveredMenuId === item.id && { color: Colors.primary }]}>{item.label}</Text>
+                                        {item.items && <View style={[styles.chevron, hoveredMenuId === item.id && { transform: [{ rotate: '180deg' }] }]} />}
+                                    </View>
+                                </Link>
+
+                                {item.items && hoveredMenuId === item.id && (
+                                    <View style={styles.megaMenu}>
+                                        <View style={styles.megaMenuInner}>
+                                            <View style={styles.megaMenuGrid}>
+                                                {item.items.map((subItem: any) => (
+                                                    <Link key={subItem.id} href={subItem.url as any} style={styles.megaMenuItem as any} onPress={() => setHoveredMenuId(null)}>
+                                                        <Text style={styles.megaMenuTitle}>{subItem.label}</Text>
+                                                    </Link>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
                         ))}
                     </View>
 
-                    <TouchableOpacity 
-                        style={[styles.loginBtn, SCREEN_WIDTH < 768 ? { display: 'none' } : null]} 
-                        activeOpacity={0.8}
-                        onPress={() => router.push(header.loginBtnUrl as any)}
-                    >
-                        <User size={18} color="#FFF" style={{ marginRight: 8 }} />
-                        <Text style={styles.loginBtnText}>{header.loginBtnText}</Text>
-                    </TouchableOpacity>
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity 
+                            style={[styles.loginBtn, SCREEN_WIDTH < 768 ? { display: 'none' } : null]} 
+                            activeOpacity={0.8}
+                            onPress={() => router.push(header.loginBtnUrl as any)}
+                        >
+                            <User size={18} color="#FFF" style={{ marginRight: 8 }} />
+                            <Text style={styles.loginBtnText}>{header.loginBtnText}</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity 
-                        style={[styles.menuIcon, SCREEN_WIDTH >= 768 ? { display: 'none' } : null]} 
-                        onPress={toggleMenu}
-                    >
-                        <Menu size={28} color={Colors.primary} />
-                    </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.menuIcon, SCREEN_WIDTH >= 1024 ? { display: 'none' } : null]} 
+                            onPress={toggleMenu}
+                        >
+                            {isMenuOpen ? <X size={28} color={Colors.primary} /> : <Menu size={28} color={Colors.primary} />}
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
 
-            {/* MOBILE ACCORDION MENU */}
+            {/* MOBILE NAVIGATION */}
             {isMenuOpen && (
-                <View style={styles.mobileMenu}>
-                    {header.menuItems?.map((item: any) => (
-                        <Link key={item.id} href={item.url as any} style={styles.mobileMenuItemLink as any} onPress={() => setIsMenuOpen(false)}>
-                            <Text style={styles.mobileMenuItemText}>{item.label}</Text>
-                        </Link>
-                    ))}
-                    <Link href={header.loginBtnUrl as any} style={styles.mobileMenuLoginBtn as any} onPress={() => setIsMenuOpen(false)}>
-                        <Text style={styles.mobileMenuLoginText}>{header.loginBtnText}</Text>
-                    </Link>
+                <View style={[styles.mobileMenu, { height: '100%' }]}>
+                    <ScrollView contentContainerStyle={styles.mobileMenuScroll}>
+                        {header.menuItems?.map((item: any) => (
+                            <View key={item.id} style={styles.mobileNavItem}>
+                                <Link href={item.url as any} style={styles.mobileMenuItemLink as any} onPress={() => !item.items && setIsMenuOpen(false)}>
+                                    <Text style={styles.mobileMenuItemText}>{item.label}</Text>
+                                </Link>
+                                {item.items && (
+                                    <View style={styles.mobileSubMenu}>
+                                        {item.items.map((sub: any) => (
+                                            <Link key={sub.id} href={sub.url as any} style={styles.mobileSubLink as any} onPress={() => setIsMenuOpen(false)}>
+                                                <Text style={styles.mobileSubText}>{sub.label}</Text>
+                                            </Link>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        ))}
+                        <TouchableOpacity 
+                            style={styles.mobileLoginBtn}
+                            onPress={() => { setIsMenuOpen(false); router.push(header.loginBtnUrl as any); }}
+                        >
+                            <Text style={styles.mobileLoginText}>{header.loginBtnText}</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
                 </View>
             )}
 
@@ -177,9 +219,7 @@ const styles = StyleSheet.create({
     },
     header: {
         backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        zIndex: 10,
+        zIndex: 100,
         ...Platform.select({
             web: {
                 position: 'sticky',
@@ -188,10 +228,9 @@ const styles = StyleSheet.create({
         })
     },
     announcementBar: {
-        backgroundColor: Colors.primary,
         paddingVertical: 10,
         paddingHorizontal: 20,
-        zIndex: 11,
+        zIndex: 101,
     },
     announcementInner: {
         alignItems: 'center',
@@ -213,56 +252,112 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 12,
-        maxWidth: 1200,
+        paddingVertical: 14,
+        maxWidth: 1400,
         width: '100%',
         alignSelf: 'center',
     },
     logoContainer: {
-        zIndex: 10,
+        zIndex: 110,
         flexShrink: 0,
-        height: 40,
-        minWidth: 140,
+        height: 44,
+        minWidth: 160,
     },
     logoImage: {
-        width: 150,
+        width: 160,
         height: '100%',
-    },
-    logoFallback: {
-        width: 140,
-        height: 60,
-        justifyContent: 'center',
-    },
-    logoFallbackText: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: Colors.primary,
-        letterSpacing: -1,
     },
     navLinks: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 32,
+        gap: 0,
+        height: '100%',
     },
-    navItem: {
-        paddingVertical: 8,
+    navItemContainer: {
+        position: 'relative',
+        height: '100%',
+        justifyContent: 'center',
     },
     navItemLink: {
-        paddingVertical: 8,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
         textDecorationLine: 'none',
     },
+    navLinkInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
     navText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
-        color: Colors.text,
+        color: Colors.navy,
+    },
+    chevron: {
+        width: 8,
+        height: 8,
+        borderLeftWidth: 1.5,
+        borderBottomWidth: 1.5,
+        borderColor: Colors.navyMedium,
+        transform: [{ rotate: '-45deg' }, { translateY: -2 }],
+    },
+    megaMenu: {
+        position: 'absolute',
+        top: '100%',
+        left: -100,
+        width: 600,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        borderWidth: 1,
+        borderColor: Colors.border,
+        zIndex: 120,
+        ...Platform.select({
+            web: {
+                marginTop: 10,
+            }
+        })
+    },
+    megaMenuInner: {
+        flex: 1,
+    },
+    megaMenuGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 16,
+    },
+    megaMenuItem: {
+        width: '47%',
+        padding: 12,
+        borderRadius: 8,
+        ...Platform.select({
+            web: {
+                transition: 'background-color 0.2s',
+                ':hover': {
+                    backgroundColor: '#F8FAFC',
+                }
+            }
+        })
+    },
+    megaMenuTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.navy,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
     },
     loginBtn: {
         backgroundColor: Colors.primary,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 10,
         flexDirection: 'row',
         alignItems: 'center',
+        boxShadow: '0 4px 6px -1px rgb(13 148 136 / 0.3)',
     },
     loginBtnText: {
         color: '#FFFFFF',
@@ -271,42 +366,59 @@ const styles = StyleSheet.create({
     },
     menuIcon: {
         padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#F8FAFC',
     },
     mobileMenu: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
         backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        zIndex: 9,
+        zIndex: 90,
+        paddingTop: 100, // Below header
     },
-    mobileMenuItem: {
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+    mobileMenuScroll: {
+        paddingHorizontal: 24,
+        paddingBottom: 60,
+    },
+    mobileNavItem: {
+        marginBottom: 24,
     },
     mobileMenuItemLink: {
-        display: 'flex',
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        paddingVertical: 12,
         textDecorationLine: 'none',
     },
     mobileMenuItemText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: Colors.text,
+        fontSize: 20,
+        fontWeight: '700',
+        color: Colors.navy,
     },
-    mobileMenuLoginBtn: {
-        marginTop: 20,
+    mobileSubMenu: {
+        marginTop: 12,
+        paddingLeft: 16,
+        borderLeftWidth: 2,
+        borderLeftColor: Colors.border,
+        gap: 16,
+    },
+    mobileSubLink: {
+        textDecorationLine: 'none',
+    },
+    mobileSubText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: Colors.textSecondary,
+    },
+    mobileLoginBtn: {
+        marginTop: 32,
         backgroundColor: Colors.primary,
-        paddingVertical: 14,
-        borderRadius: 8,
+        paddingVertical: 16,
+        borderRadius: 12,
         alignItems: 'center',
     },
-    mobileMenuLoginText: {
+    mobileLoginText: {
         color: '#FFFFFF',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '700',
     },
     main: {
@@ -317,7 +429,7 @@ const styles = StyleSheet.create({
     },
     footer: {
         backgroundColor: Colors.navy,
-        paddingTop: 60,
+        paddingTop: 80,
         paddingBottom: 40,
     },
     footerTop: {
@@ -327,41 +439,49 @@ const styles = StyleSheet.create({
         width: '100%',
         alignSelf: 'center',
         justifyContent: 'space-between',
-        gap: 32,
-        marginBottom: 40,
+        gap: 48,
+        marginBottom: 60,
     },
     footerColMain: {
         width: '100%',
-        minWidth: 280,
+        minWidth: 300,
     },
     footerLogoImage: {
-        width: 140,
-        height: 40,
-        marginBottom: 16,
+        width: 160,
+        height: 44,
+        marginBottom: 24,
     },
     footerTitle: {
         color: '#FFFFFF',
         fontSize: 18,
         fontWeight: '700',
-        marginBottom: 20,
+        marginBottom: 24,
     },
     footerDesc: {
         color: '#94A3B8',
-        fontSize: 15,
-        lineHeight: 24,
-        marginBottom: 24,
+        fontSize: 16,
+        lineHeight: 26,
+        marginBottom: 32,
     },
     socialRow: {
         flexDirection: 'row',
         gap: 16,
     },
     socialBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.05)',
         alignItems: 'center',
         justifyContent: 'center',
+        ...Platform.select({
+            web: {
+                transition: 'background-color 0.2s',
+                ':hover': {
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                }
+            }
+        })
     },
     footerCol: {
         width: '100%',
@@ -370,6 +490,15 @@ const styles = StyleSheet.create({
     footerLink: {
         color: '#94A3B8',
         fontSize: 15,
+        textDecorationLine: 'none',
+        ...Platform.select({
+            web: {
+                transition: 'color 0.2s',
+                ':hover': {
+                    color: '#FFFFFF',
+                }
+            }
+        })
     },
     footerBottom: {
         maxWidth: 1200,
@@ -377,7 +506,7 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         borderTopWidth: 1,
         borderTopColor: 'rgba(255,255,255,0.1)',
-        paddingTop: 24,
+        paddingTop: 32,
         alignItems: 'center',
     },
     copyright: {

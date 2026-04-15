@@ -1,7 +1,7 @@
 export default {
-  primary: '#11a7fa', // Exact CYVhub Logo Blue
-  primaryDark: '#0b82c7',
-  primaryLight: '#4ac1fc',
+  primary: '#0D9488', // Teal/Green Brand Primary
+  primaryDark: '#0F766E',
+  primaryLight: '#14B8A6',
   navy: '#0F172A',
   navyLight: '#1E293B',
   navyMedium: '#334155',

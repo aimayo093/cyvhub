@@ -3,6 +3,7 @@ export type HeaderMenuItem = {
     id: string;
     label: string;
     url: string;
+    items?: HeaderMenuItem[]; // For Mega-menus
 };
 
 export type HeaderConfig = {
@@ -187,6 +188,19 @@ export type ServiceDetailConfig = {
     imageUrl: string;
 };
 
+export type ServicePageDetail = {
+    slug: string;
+    title: string;
+    description: string;
+    longContent: string;
+    heroImageUrl: string;
+    features: { id: string; title: string; desc: string; icon: string }[];
+    benefits: string[];
+    process: { id: string; step: string; title: string; desc: string }[];
+    metaTitle: string;
+    metaDesc: string;
+};
+
 export type ServicesPageConfig = {
     heroTitle: string;
     heroSubtitle: string;
@@ -273,7 +287,38 @@ export const initialHeader: HeaderConfig = {
     announcementBgColor: '#1E40AF', // Colors.primary
     menuItems: [
         { id: '1', label: 'Home', url: '/' },
-        { id: '2', label: 'Services', url: '/services' },
+        { 
+            id: '2', 
+            label: 'Services', 
+            url: '/services',
+            items: [
+                { id: 's1', label: 'Same Day Delivery', url: '/services/same-day' },
+                { id: 's2', label: 'B2B Logistics', url: '/services/b2b' },
+                { id: 's3', label: 'AOG & Aviation', url: '/services/aviation-aog' },
+                { id: 's4', label: 'Medical & Healthcare', url: '/services/medical' },
+                { id: 's5', label: 'Scheduled Routes', url: '/services/scheduled' },
+                { id: 's6', label: 'Green Fleet', url: '/services/green-fleet' },
+                { id: 's7', label: 'Technical Logistics', url: '/services/technical' },
+                { id: 's8', label: 'International', url: '/services/international' },
+                { id: 's9', label: 'Warehouse & Storage', url: '/services/warehouse' },
+                { id: 's10', label: 'Exhibition & Events', url: '/services/events' },
+            ]
+        },
+        { 
+            id: 'industries', 
+            label: 'Industries', 
+            url: '/industries',
+            items: [
+                { id: 'i1', label: 'Construction & Trade', url: '/industries/construction' },
+                { id: 'i2', label: 'IT & Technology', url: '/industries/it-tech' },
+                { id: 'i3', label: 'Medical & Healthcare', url: '/industries/medical' },
+                { id: 'i4', label: 'Manufacturing', url: '/industries/manufacturing' },
+                { id: 'i5', label: 'Retail & E-commerce', url: '/industries/ecommerce' },
+                { id: 'i6', label: 'Public Sector', url: '/industries/public-sector' },
+                { id: 'i7', label: 'Aviation', url: '/industries/aviation' },
+                { id: 'i8', label: 'Legal & Finance', url: '/industries/legal-finance' },
+            ]
+        },
         { id: '3', label: 'About Us', url: '/about' },
         { id: '4', label: 'Contact', url: '/contact' },
     ],
@@ -950,5 +995,86 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
         caseStudyTitle: 'Case Study: Major Airline Recovery',
         caseStudyQuote: 'CYVhub delivered a critical engine component from Manchester to Heathrow in under 4 hours, saving us from a potential 24-hour grounded event.',
         caseStudyAuthor: 'Operations Director, Global Airways'
+    }
+};
+
+export const initialServiceDetails: Record<string, ServicePageDetail> = {
+    'same-day': {
+        slug: 'same-day',
+        title: 'Same Day Delivery',
+        description: 'Critical business-to-business same-day logistics across the UK.',
+        longContent: 'When tomorrow is too late, CYVhub provides guaranteed same-day delivery services for businesses of all sizes. From legal documents to heavy machinery, our network of over 5,000 drivers is ready to collect within 60 minutes.',
+        heroImageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8669966155',
+        features: [
+            { id: '1', title: '60 Min Collection', desc: 'Nationwide collection within 1 hour.', icon: 'Clock' },
+            { id: '2', title: 'Real-time Tracking', desc: 'Live GPS tracking from start to finish.', icon: 'Target' },
+            { id: '3', title: 'Direct Delivery', desc: 'No hubs, no delays, straight to the destination.', icon: 'Zap' },
+        ],
+        benefits: [
+            'Fully Insured (Goods in Transit)',
+            '24/7/365 availability',
+            'Electronic Proof of Delivery (ePOD)',
+            'Dedicated vehicle for every job'
+        ],
+        process: [
+            { id: 'p1', step: '01', title: 'Book Online', desc: 'Get an instant quote and book in seconds.' },
+            { id: 'p2', step: '02', title: 'Rapid Collection', desc: 'Nearest driver is dispatched immediately.' },
+            { id: 'p3', step: '03', title: 'Direct Transit', desc: 'Goods travel directly to the recipient.' },
+            { id: 'p4', step: '04', title: 'Instant POD', desc: 'Receive signature confirm via email.' },
+        ],
+        metaTitle: 'Guaranteed Same-Day Courier Service UK | CYVhub',
+        metaDesc: 'Looking for a reliable same-day courier? CYVhub offers UK-wide urgent delivery with 60-minute collection and real-time tracking. Book online now.'
+    },
+    'b2b': {
+        slug: 'b2b',
+        title: 'B2B Logistics',
+        description: 'Sophisticated supply chain solutions for corporate partners.',
+        longContent: 'CYVhub acts as an extension of your business. We handle complex logistics requirements, providing reliable contract-based transport and ad-hoc support for manufacturing, retail, and technology sectors.',
+        heroImageUrl: 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaad5b',
+        features: [
+            { id: '1', title: 'Volume Handling', desc: 'Capable of handling high-volume daily shipments.', icon: 'Package' },
+            { id: '2', title: 'Account Management', desc: 'Dedicated support for your logistics needs.', icon: 'Users' },
+            { id: '3', title: 'Flexible Pricing', desc: 'Contract rates tailored to your usage.', icon: 'FileText' },
+        ],
+        benefits: [
+            'Priority dispatch',
+            'Monthly invoicing & reporting',
+            'Custom API integrations',
+            'Range of vehicles from bikes to HGVs'
+        ],
+        process: [
+            { id: 'p1', step: '01', title: 'Requirements Audit', desc: 'We analyze your delivery patterns.' },
+            { id: 'p2', step: '02', title: 'Custom Solution', desc: 'Bespoke pricing and service levels.' },
+            { id: 'p3', step: '03', title: 'Integration', desc: 'Sync with your ERP or booking systems.' },
+            { id: 'p4', step: '04', title: 'Daily OPS', desc: 'Seamless management of your logistics.' },
+        ],
+        metaTitle: 'Professional B2B Logistics Solutions | CYVhub',
+        metaDesc: 'Optimize your supply chain with CYVhub B2B logistics. Tailored transport solutions for UK businesses with dedicated account management.'
+    },
+    'aviation-aog': {
+        slug: 'aviation-aog',
+        title: 'AOG & Aviation',
+        description: 'Mission-critical aerospace parts delivery 24/7.',
+        longContent: 'Aircraft on Ground (AOG) situations cost thousands per minute. CYVhub specializes in high-priority aerospace logistics, delivering critical parts to hangars and tarmac locations nationwide with absolute precision.',
+        heroImageUrl: 'https://images.unsplash.com/photo-1542296332-2e4473faf563',
+        features: [
+            { id: '1', title: 'Zero Delay', desc: 'Immediate dispatch with no stops allowed.', icon: 'Rocket' },
+            { id: '2', title: 'Airside Access', desc: 'Drivers trained for secure facility protocols.', icon: 'Shield' },
+            { id: '3', title: 'Wide Tracking', desc: 'Extensive status updates every 15 mins.', icon: 'Clock' },
+        ],
+        benefits: [
+            'AOG status priority',
+            'Dangerous goods capability',
+            'Full chain of custody',
+            'Expert aerospace handling'
+        ],
+        process: [
+            { id: 'p1', step: '01', title: 'Immediate Quote', desc: 'AOG pricing is generated instantly.' },
+            { id: 'p2', step: '02', title: 'Express Pickup', desc: 'Driver collects from stores or supplier.' },
+            { id: 'p3', step: '03', title: 'Direct Drive', desc: 'Shortest route used for maximum speed.' },
+            { id: 'p4', step: '04', title: 'Hangar Drop', desc: 'Coordination with ground crew for delivery.' },
+        ],
+        metaTitle: 'AOG Aviation Logistics | Aircraft Parts Courier | CYVhub',
+        metaDesc: 'Urgent aviation parts delivery. CYVhub manages AOG logistics with 24/7 availability and direct airside coordination.'
     }
 };

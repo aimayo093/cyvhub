@@ -1,125 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Truck, Clock, ShieldCheck, Leaf, ArrowRight, Zap, Target, Search, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight } from 'lucide-react-native';
+import { Truck, Clock, ShieldCheck, ArrowRight, Zap, Target, Search, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight, BarChart3, Plane, Globe } from 'lucide-react-native';
 import Head from 'expo-router/head';
-import Colors from '@/constants/colors';
+import Colors from '@/constants/Colors';
 import { useCMS } from '@/context/CMSContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PostcodeAutocomplete } from '@/components/shared/PostcodeAutocomplete';
 
-import {
-    initialHero,
-    initialHowItWorks,
-    initialWhyUs,
-    initialServices,
-    initialCta,
-    initialStats,
-    initialIndustries,
-    initialTestimonials,
-} from '@/constants/cmsDefaults';
+const IconMap: any = {
+    Truck, Clock, ShieldCheck, Zap, Target, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight, BarChart3, Plane, Globe
+};
 
-
+const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
+    const IconComponent = IconMap[name] || Package;
+    return <IconComponent size={size} color={color} />;
+};
 
 export default function PublicHome() {
-    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+    const { width: SCREEN_WIDTH } = useWindowDimensions();
     const router = useRouter();
+    const { homepageData, isLoaded } = useCMS();
+
+    // Widget states
     const [collection, setCollection] = useState<any>(null);
     const [delivery, setDelivery] = useState<any>(null);
     const [isReadyNow, setIsReadyNow] = useState(true);
     const [vehicleType, setVehicleType] = useState('Medium Van');
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-    // Widget states
     const [activeHeroTab, setActiveHeroTab] = useState<'quote' | 'track'>('quote');
     const [trackingNumber, setTrackingNumber] = useState('');
-    const [activeTestimonialIndex, setActiveTestimonialIndex] = useState(0);
-    const testimonialScrollRef = useRef<ScrollView>(null);
-    const industryScrollRef = useRef<ScrollView>(null);
-    const servicesScrollRef = useRef<ScrollView>(null);
-    const [activeIndustryIndex, setActiveIndustryIndex] = useState(0);
-    const industryIndexRef = useRef(0);
 
-    // CMS data from global context
-    const { homepageData } = useCMS();
-    const hero = homepageData['cms_heroConfig'] || initialHero;
-    const howItWorks = homepageData['cms_howItWorksConfig'] || initialHowItWorks;
-    const whyUs = homepageData['cms_whyUsConfig'] || initialWhyUs;
-    const services = homepageData['cms_servicesConfig'] || initialServices;
-    const cta = homepageData['cms_ctaConfig'] || initialCta;
-    const stats = homepageData['cms_statsConfig'] || initialStats;
-    const industries = homepageData['cms_industriesConfig'] || initialIndustries;
-    const testimonials = homepageData['cms_testimonialsConfig'] || initialTestimonials;
-
-    const scrollSlider = (ref: React.RefObject<ScrollView>, offset: number) => {
-        ref.current?.scrollTo({ x: offset, animated: true });
-    };
-
-    useEffect(() => {
-        if (!hero.bgImages || hero.bgImages.length === 0) return;
-        const interval = setInterval(() => {
-            setCurrentImageIndex((prev) => (prev + 1) % hero.bgImages.length);
-        }, 5000);
-        return () => clearInterval(interval);
-    }, [hero.bgImages]);
-
-    // Testimonial Auto-scroll
-    useEffect(() => {
-        if (!testimonials.testimonials || testimonials.testimonials.length <= 1) return;
-
-        const interval = setInterval(() => {
-            const nextIndex = (activeTestimonialIndex + 1) % testimonials.testimonials.length;
-
-            const cardWidth = 374; // 350 card + 24 gap
-            testimonialScrollRef.current?.scrollTo({
-                x: nextIndex * cardWidth,
-                animated: true
-            });
-            // We update state here so the next interval knows where to go
-            setActiveTestimonialIndex(nextIndex);
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [activeTestimonialIndex, testimonials.testimonials]);
-
-    // Industries Auto-scroll
-    useEffect(() => {
-        if (!industries.industries || industries.industries.length <= 1) return;
-
-        const interval = setInterval(() => {
-            industryIndexRef.current = (industryIndexRef.current + 1) % industries.industries.length;
-            const cardWidth = 324; // 300 card + 24 gap
-
-            industryScrollRef.current?.scrollTo({
-                x: industryIndexRef.current * cardWidth,
-                animated: true
-            });
-            setActiveIndustryIndex(industryIndexRef.current);
-        }, 6000);
-
-        return () => clearInterval(interval);
-    }, [industries.industries]);
-
-    const handleIndustryScroll = (event: any) => {
-        const scrollX = event.nativeEvent.contentOffset.x;
-        const cardWidth = 324;
-        const index = Math.round(scrollX / cardWidth);
-        const validIndex = Math.max(0, Math.min(index, industries.industries.length - 1));
-        if (validIndex !== activeIndustryIndex) {
-            industryIndexRef.current = validIndex;
-            setActiveIndustryIndex(validIndex);
-        }
-    };
-
-    const handleTestimonialScroll = (event: any) => {
-        const scrollX = event.nativeEvent.contentOffset.x;
-        const cardWidth = 374;
-        const index = Math.round(scrollX / cardWidth);
-        const validIndex = Math.max(0, Math.min(index, testimonials.testimonials.length - 1));
-        if (validIndex !== activeTestimonialIndex) {
-            setActiveTestimonialIndex(validIndex);
-        }
-    };
+    const isMobile = SCREEN_WIDTH < 768;
+    const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
 
     const handleContinue = async () => {
         if (!collection || !delivery) {
@@ -153,375 +65,245 @@ export default function PublicHome() {
         });
     };
 
-    const scrollToTop = () => {
-        if (Platform.OS === 'web') {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    };
+    if (!isLoaded) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
+    const hero = homepageData['cms_heroConfig'] || {};
+    const stats = homepageData['cms_statsConfig'] || { stats: [] };
+    const services = homepageData['cms_servicesConfig'] || { banners: [] };
+    const industries = homepageData['cms_industriesConfig'] || { industries: [] };
+    const whyUs = homepageData['cms_whyUsConfig'] || { cards: [] };
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             <Head>
-                <title>CYVhub — Same Day B2B Courier Network UK</title>
-                <meta name="description" content="CYVhub is the UK's smarter B2B same-day courier network. Instant quotes, live tracking, and 60-minute collections nationwide. Powered by Cyvrix Limited." />
-                <meta property="og:title" content="CYVhub — Same Day B2B Courier Network UK" />
-                <meta property="og:description" content="Instant quotes, live GPS tracking, and 60-minute collection across the UK. Join 1,200+ businesses already using CYVhub for mission-critical deliveries." />
-                <meta property="og:image" content="https://www.cyvhub.com/og-image.png" />
-                <meta property="og:url" content="https://www.cyvhub.com/" />
-                <meta property="og:type" content="website" />
-                <meta name="twitter:card" content="summary_large_image" />
-                <meta name="twitter:title" content="CYVhub — Same Day B2B Courier Network UK" />
-                <meta name="twitter:description" content="Instant quotes, live GPS tracking, and 60-minute collection across the UK." />
-                <meta name="twitter:image" content="https://www.cyvhub.com/og-image.png" />
+                <title>CYVhub | Smart B2B Same-Day Logistics & Courier Network UK</title>
+                <meta name="description" content="The UK's most reliable B2B logistics platform. 60-minute collections, real-time tracking, and specialized sector expertise. Get an instant quote today." />
             </Head>
-            {/* HERO SECTION */}
-            <View style={[styles.heroSection, { minHeight: SCREEN_WIDTH >= 1024 ? 620 : 700, paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
-                {hero.bgImages && hero.bgImages.length > 0 ? hero.bgImages.slice(0, 3).map((imgUrl: string, index: number) => (
-                    <Image
-                        key={index}
-                        source={{ uri: imgUrl }}
-                        style={[
-                            StyleSheet.absoluteFillObject,
-                            { opacity: index === currentImageIndex ? 1 : 0, width: '100%', height: '100%' },
-                        ]}
-                        resizeMode="cover"
-                    />
-                )) : null}
-                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(2, 6, 23, 0.6)' }]} />
-                <View style={[styles.heroContent, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column', justifyContent: 'space-between', alignItems: SCREEN_WIDTH >= 768 ? 'center' : 'stretch', gap: 40 }]}>
-                    <View style={{ flex: 1, alignItems: SCREEN_WIDTH >= 768 ? 'flex-start' : 'center', minWidth: 0 }}>
-                        <Text style={[styles.heroTitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center', fontSize: SCREEN_WIDTH >= 1024 ? 56 : SCREEN_WIDTH >= 768 ? 42 : 32 }]}>{hero.headline}</Text>
-                        <Text style={[styles.heroSubtitle, { textAlign: SCREEN_WIDTH >= 768 ? 'left' : 'center', fontSize: SCREEN_WIDTH >= 768 ? 20 : 18 }]}>{hero.subheading}</Text>
-                    </View>
 
-                    {/* DUAL WIDGET TABS */}
-                    {(hero.showGuestWidget || hero.showTrackWidget) && (
-                        <View style={styles.widgetContainer}>
-                            <View style={styles.widgetTabs}>
-                                {hero.showGuestWidget && (
-                                    <TouchableOpacity
-                                        style={[styles.widgetTab, activeHeroTab === 'quote' && styles.widgetTabActive]}
-                                        onPress={() => setActiveHeroTab('quote')}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Calculator size={18} color={activeHeroTab === 'quote' ? Colors.primary : Colors.textSecondary} />
-                                        <Text style={[styles.widgetTabText, activeHeroTab === 'quote' && styles.widgetTabTextActive]}>Get a Quote</Text>
-                                    </TouchableOpacity>
-                                )}
-                                {hero.showTrackWidget && (
-                                    <TouchableOpacity
-                                        style={[styles.widgetTab, activeHeroTab === 'track' && styles.widgetTabActive]}
-                                        onPress={() => setActiveHeroTab('track')}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Search size={18} color={activeHeroTab === 'track' ? Colors.primary : Colors.textSecondary} />
-                                        <Text style={[styles.widgetTabText, activeHeroTab === 'track' && styles.widgetTabTextActive]}>Track Parcel</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-
-                            <View style={styles.bookingWidget}>
-                                {activeHeroTab === 'quote' ? (
-                                    <>
-                                        <Text style={styles.bookingTitle}>{hero.guestWidgetTitle || 'Quick Quote & Book'}</Text>
-                                        {hero.guestWidgetSubtitle ? <Text style={{ color: Colors.textSecondary, marginBottom: 20 }}>{hero.guestWidgetSubtitle}</Text> : null}
-
-                                        <View style={styles.formContainer}>
-                                            <View style={styles.postcodeRow}>
-                                                <View style={styles.gridField}>
-                                                    <PostcodeAutocomplete 
-                                                        label="Collection address:" 
-                                                        onAddressSelect={setCollection} 
-                                                        initialValue={collection} 
-                                                    />
-                                                </View>
-
-                                                <View style={styles.gridField}>
-                                                    <PostcodeAutocomplete 
-                                                        label="Delivery address:" 
-                                                        onAddressSelect={setDelivery} 
-                                                        initialValue={delivery} 
-                                                    />
-                                                </View>
-                                            </View>
-
-                                            {hero.showVehicleSelection && (
-                                                <View style={styles.formRow}>
-                                                    <View style={[styles.gridField, { flex: 1 }]}>
-                                                        <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Vehicle Required:</Text>
-                                                        <View style={styles.vehicleOptions}>
-                                                            {['Small Van', 'Medium Van', 'Large Van', 'HGV'].map(van => (
-                                                                <TouchableOpacity key={van} style={[styles.vehicleOption, vehicleType === van && styles.vehicleOptionSelected]} onPress={() => setVehicleType(van)} activeOpacity={0.8}>
-                                                                    <Truck size={16} color={vehicleType === van ? Colors.primary : Colors.textMuted} />
-                                                                    <Text style={[styles.vehicleText, vehicleType === van && styles.vehicleTextSelected]}>{van}</Text>
-                                                                </TouchableOpacity>
-                                                            ))}
-                                                        </View>
-                                                    </View>
-                                                </View>
-                                            )}
-
-                                            {hero.showDateSelection && (
-                                                <View style={styles.formRow}>
-                                                    <View style={[styles.gridField, { flex: 1 }]}>
-                                                        <Text style={[styles.inputLabel, { marginBottom: 8 }]}>Collection Time:</Text>
-                                                        <View style={styles.vehicleOptions}>
-                                                            <TouchableOpacity style={[styles.vehicleOption, isReadyNow && styles.vehicleOptionSelected]} onPress={() => setIsReadyNow(true)} activeOpacity={0.8}>
-                                                                <Clock size={16} color={isReadyNow ? Colors.primary : Colors.textMuted} />
-                                                                <Text style={[styles.vehicleText, isReadyNow && styles.vehicleTextSelected]}>Ready Now</Text>
-                                                            </TouchableOpacity>
-                                                            <TouchableOpacity style={[styles.vehicleOption, !isReadyNow && styles.vehicleOptionSelected]} onPress={() => setIsReadyNow(false)} activeOpacity={0.8}>
-                                                                <Calculator size={16} color={!isReadyNow ? Colors.primary : Colors.textMuted} />
-                                                                <Text style={[styles.vehicleText, !isReadyNow && styles.vehicleTextSelected]}>Pre-book Later</Text>
-                                                            </TouchableOpacity>
-                                                        </View>
-                                                    </View>
-                                                </View>
-                                            )}
-
-                                            <TouchableOpacity
-                                                style={styles.fullWidthContinueBtn}
-                                                onPress={handleContinue}
-                                                activeOpacity={0.8}
-                                            >
-                                                <Text style={styles.continueBtnText}>{hero.guestWidgetButtonText || 'Get Instant Quote'}</Text>
-                                                <ArrowRight size={20} color="#FFF" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Text style={styles.bookingTitle}>{hero.trackWidgetTitle || 'Track a Parcel'}</Text>
-                                        {hero.trackWidgetSubtitle ? <Text style={{ color: Colors.textSecondary, marginBottom: 20 }}>{hero.trackWidgetSubtitle}</Text> : null}
-
-                                        <View style={styles.formRow}>
-                                            <Text style={styles.inputLabel}>Tracking Number: <Text style={styles.required}>*</Text></Text>
-                                            <View style={styles.inputIconWrapper}>
-                                                <Package size={18} color={Colors.textMuted} style={styles.inputIcon as any} />
-                                                <TextInput
-                                                    style={styles.inputWithIcon}
-                                                    value={trackingNumber}
-                                                    onChangeText={setTrackingNumber}
-                                                    placeholder="e.g. CYV12345678"
-                                                />
-                                            </View>
-                                        </View>
-
-                                        <TouchableOpacity
-                                            style={styles.continueBtn}
-                                            onPress={() => {
-                                                if (!trackingNumber) return alert('Please enter tracking number');
-                                                alert('Tracking functionality coming soon for guest portal.');
-                                            }}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Text style={styles.continueBtnText}>{hero.trackWidgetButtonText || 'Track Parcel'}</Text>
-                                        </TouchableOpacity>
-                                    </>
-                                )}
-                            </View>
+            {/* HERO & WIDGET SECTION */}
+            <View style={[styles.heroBg, { height: isMobile ? 850 : 700 }]}>
+                <Image 
+                    source={{ uri: hero.bgImages?.[0] || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop' }} 
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="cover"
+                />
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.7)' }]} />
+                
+                <View style={[styles.contentMax, styles.heroWrapper, { flexDirection: isMobile ? 'column' : 'row' }]}>
+                    <View style={styles.heroTextContent}>
+                        <View style={styles.heroBadge}>
+                            <Zap size={14} color="#FFF" />
+                            <Text style={styles.heroBadgeText}>UK'S SMARTEST B2B NETWORK</Text>
                         </View>
-                    )}
-                </View>
-            </View>
+                        <Text style={[styles.heroTitle, { fontSize: isMobile ? 40 : 64, lineHeight: isMobile ? 48 : 74 }]}>
+                            {hero.headline}
+                        </Text>
+                        <Text style={styles.heroSubtitle}>
+                            {hero.subheading}
+                        </Text>
+                        <View style={styles.heroLogos}>
+                            <Text style={styles.trustedBy}>TRUSTED BY LEADING ENTERPRISES ACROSS THE UK</Text>
+                        </View>
+                    </View>
 
-            {/* LIVE STATS BAR */}
-            {stats.stats && stats.stats.length > 0 && (
-                <View style={[styles.statsSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
-                    <View style={styles.statsInner}>
-                        {stats.stats.map((stat: any) => {
-                            const IconComponent = stat.icon === 'Package' ? Package : stat.icon === 'Users' ? Users : stat.icon === 'Clock' ? Clock : MapPin;
-                            return (
-                                <View key={stat.id} style={styles.statBox}>
-                                    <View style={styles.statIconContainer}>
-                                        <IconComponent size={28} color={Colors.primary} />
+                    <View style={styles.quoteWidget}>
+                        <View style={styles.widgetTabs}>
+                            <TouchableOpacity 
+                                style={[styles.widgetTab, activeHeroTab === 'quote' && styles.widgetTabActive]}
+                                onPress={() => setActiveHeroTab('quote')}
+                            >
+                                <Calculator size={18} color={activeHeroTab === 'quote' ? Colors.primary : '#64748B'} />
+                                <Text style={[styles.widgetTabText, activeHeroTab === 'quote' && styles.widgetTabTextActive]}>Quick Quote</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.widgetTab, activeHeroTab === 'track' && styles.widgetTabActive]}
+                                onPress={() => setActiveHeroTab('track')}
+                            >
+                                <Search size={18} color={activeHeroTab === 'track' ? Colors.primary : '#64748B'} />
+                                <Text style={[styles.widgetTabText, activeHeroTab === 'track' && styles.widgetTabTextActive]}>Track</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.widgetBody}>
+                            {activeHeroTab === 'quote' ? (
+                                <>
+                                    <PostcodeAutocomplete 
+                                        label="Collection" 
+                                        placeholder="Postcode or address"
+                                        onAddressSelect={setCollection} 
+                                        initialValue={collection} 
+                                    />
+                                    <View style={{ height: 16 }} />
+                                    <PostcodeAutocomplete 
+                                        label="Delivery" 
+                                        placeholder="Postcode or address"
+                                        onAddressSelect={setDelivery} 
+                                        initialValue={delivery} 
+                                    />
+                                    
+                                    <View style={styles.vehicleSelect}>
+                                        <Text style={styles.fieldLabel}>Vehicle Required</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehicleScroll}>
+                                            {['Small Van', 'Medium Van', 'Large Van', 'HGV'].map(v => (
+                                                <TouchableOpacity 
+                                                    key={v} 
+                                                    style={[styles.vOption, vehicleType === v && styles.vOptionActive]}
+                                                    onPress={() => setVehicleType(v)}
+                                                >
+                                                    <Text style={[styles.vOptionText, vehicleType === v && styles.vOptionTextActive]}>{v}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
                                     </View>
-                                    <Text style={styles.statValue}>{stat.value}</Text>
-                                    <Text style={styles.statLabel}>{stat.label}</Text>
-                                </View>
-                            )
-                        })}
-                    </View>
-                </View>
-            )}
 
-            {/* HOW IT WORKS */}
-            <View style={[styles.howItWorksSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{howItWorks.title}</Text>
-                    <Text style={styles.sectionSubtitle}>{howItWorks.subtitle}</Text>
-                </View>
-                <View style={[styles.stepsGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
-                    {howItWorks.steps?.map((step: any) => {
-                        const IconComponent = step.icon === 'Calculator' ? Calculator : step.icon === 'CheckCircle' ? CheckCircle : MapPin;
-                        return (
-                            <View key={step.id} style={styles.stepCard}>
-                                <View style={styles.stepIconBox}>
-                                    <IconComponent size={32} color={Colors.primary} />
+                                    <TouchableOpacity style={styles.quoteBtn} onPress={handleContinue}>
+                                        <Text style={styles.quoteBtnText}>Calculate Instant Quote</Text>
+                                        <ArrowRight size={20} color="#FFF" />
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                <View style={styles.trackContainer}>
+                                    <Text style={styles.fieldLabel}>Enter Tracking ID</Text>
+                                    <TextInput 
+                                        style={styles.trackInput}
+                                        placeholder="e.g. CYV-1234-5678"
+                                        value={trackingNumber}
+                                        onChangeText={setTrackingNumber}
+                                    />
+                                    <TouchableOpacity style={styles.quoteBtn} onPress={() => alert('Tracking available soon.')}>
+                                        <Text style={styles.quoteBtnText}>Locate Shipment</Text>
+                                        <Search size={20} color="#FFF" />
+                                    </TouchableOpacity>
                                 </View>
-                                <Text style={styles.stepNumber}>{step.num}</Text>
-                                <Text style={styles.stepTitle}>{step.title}</Text>
-                                <Text style={styles.stepDesc}>{step.desc}</Text>
-                            </View>
-                        );
-                    })}
-                </View>
-            </View>
-
-            {/* TESTIMONIALS SECTION */}
-            {testimonials.testimonials && testimonials.testimonials.length > 0 && (
-                <View style={styles.testimonialsSection}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30, paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>{testimonials.title}</Text>
-                        <Text style={[styles.sectionSubtitle, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>{testimonials.subtitle}</Text>
-                    </View>
-                    <ScrollView
-                        ref={testimonialScrollRef}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={[styles.testimonialsScroll, { paddingHorizontal: SCREEN_WIDTH >= 768 ? 0 : 20 }]}
-                        onScroll={handleTestimonialScroll}
-                        scrollEventThrottle={16}
-                        snapToInterval={374}
-                        snapToAlignment="start"
-                        decelerationRate="fast"
-                        pagingEnabled={Platform.OS !== 'web'}
-                    >
-                        {testimonials.testimonials.map((test: any) => (
-                            <View key={test.id} style={styles.testimonialCard}>
-                                <View style={styles.starsRow}>
-                                    {[...Array(test.rating)].map((_, i) => <Star key={i} size={16} color="#FBBF24" fill="#FBBF24" />)}
-                                </View>
-                                <Text style={styles.testimonialContent}>"{test.content}"</Text>
-                                <View style={styles.testimonialAuthorRow}>
-                                    {test.avatarUrl ? (
-                                        <Image source={{ uri: test.avatarUrl }} style={styles.avatarImg} />
-                                    ) : (
-                                        <View style={styles.avatarPlaceholder}>
-                                            <Text style={styles.avatarLetter}>{test.author.charAt(0)}</Text>
-                                        </View>
-                                    )}
-                                    <View>
-                                        <Text style={styles.testimonialAuthor}>{test.author}</Text>
-                                        <Text style={styles.testimonialRole}>{test.role}</Text>
-                                    </View>
-                                </View>
-                            </View>
-                        ))}
-                    </ScrollView>
-
-                    {/* Pagination Dots */}
-                    <View style={styles.paginationDots}>
-                        {testimonials.testimonials.map((_: any, i: number) => (
-                            <View
-                                key={i}
-                                style={[styles.dot, activeTestimonialIndex === i && styles.dotActive]}
-                            />
-                        ))}
-                    </View>
-                </View>
-            )}
-
-            {/* WHY CHOOSE US */}
-            <View style={[styles.whyChooseSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
-                <View style={[styles.whyChooseContent, { flexDirection: SCREEN_WIDTH >= 1024 ? 'row' : 'column' }]}>
-                    <View style={styles.sectionHeaderLeft}>
-                        <Text style={styles.sectionTag}>{whyUs.tag}</Text>
-                        <Text style={[styles.sectionTitleWhite, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>{whyUs.title}</Text>
-                    </View>
-                    <View style={styles.whyChooseGrid}>
-                        {whyUs.cards?.map((card: any) => {
-                            const IconComponent = card.icon === 'Zap' ? Zap : card.icon === 'ShieldCheck' ? ShieldCheck : card.icon === 'TrendingUp' ? TrendingUp : Headset;
-                            return (
-                                <View key={card.id} style={[styles.whyCard, { width: SCREEN_WIDTH >= 768 ? '31%' : '100%', flexBasis: 'auto' }]}>
-                                    <IconComponent size={28} color={Colors.primary} style={styles.whyIcon as any} />
-                                    <Text style={styles.whyCardTitle}>{card.title}</Text>
-                                    <Text style={styles.whyCardDesc}>{card.desc}</Text>
-                                </View>
-                            );
-                        })}
+                            )}
+                        </View>
                     </View>
                 </View>
             </View>
 
-            {/* SERVICES OVERVIEW */}
-            <View style={[styles.servicesSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{services.title}</Text>
-                    <Text style={styles.sectionSubtitle}>{services.subtitle}</Text>
-                </View>
-                <View style={styles.cardsGrid}>
-                    {services.banners?.map((banner: any) => (
-                        <TouchableOpacity
-                            key={banner.id}
-                            style={[styles.serviceBannerCard, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 640 ? '48%' : '100%' }]}
-                            activeOpacity={0.9}
-                            onPress={() => router.push(banner.link as any)}
-                        >
-                            <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFillObject} />
-                            <View style={styles.serviceOverlay} />
-                            <View style={styles.serviceBannerContent}>
-                                <Text style={styles.serviceBannerTitle}>{banner.title}</Text>
-                                <Text style={styles.serviceBannerDesc}>{banner.desc}</Text>
-                                <View style={styles.serviceBannerLink}>
-                                    <Text style={styles.serviceBannerLinkText}>Learn More</Text>
-                                    <ArrowRight size={16} color="#FFF" />
-                                </View>
-                            </View>
-                        </TouchableOpacity>
+            {/* TRUST BAR / STATS */}
+            <View style={styles.statsBar}>
+                <View style={[styles.contentMax, styles.statsInner]}>
+                    {stats.stats.map((stat: any) => (
+                        <View key={stat.id} style={styles.statItem}>
+                            <Text style={styles.statVal}>{stat.value}</Text>
+                            <Text style={styles.statLab}>{stat.label}</Text>
+                        </View>
                     ))}
                 </View>
             </View>
 
-            {/* INDUSTRIES SECTION */}
-            {industries.industries && industries.industries.length > 0 && (
-                <View style={[styles.industriesSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
+            {/* SERVICES SECTION */}
+            <View style={styles.section}>
+                <View style={styles.contentMax}>
                     <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{industries.title}</Text>
-                        <Text style={styles.sectionSubtitle}>{industries.subtitle}</Text>
+                        <Text style={styles.sectionTag}>WHAT WE DO</Text>
+                        <Text style={styles.sectionTitle}>Engineered for Excellence</Text>
+                        <Text style={styles.sectionDesc}>B2B logistics solutions tailored to the unique demands of modern commerce.</Text>
                     </View>
-                    <View style={styles.cardsGrid}>
-                        {industries.industries.map((ind: any) => (
-                            <TouchableOpacity
-                                key={ind.id}
-                                style={[styles.industryCard, { width: SCREEN_WIDTH >= 1024 ? '23%' : SCREEN_WIDTH >= 640 ? '48%' : '100%' }]}
-                                activeOpacity={0.9}
-                                onPress={() => router.push(`/services?industry=${ind.id}` as any)}
+
+                    <View style={styles.servicesGrid}>
+                        {services.banners?.slice(0, 4).map((service: any) => (
+                            <TouchableOpacity 
+                                key={service.id} 
+                                style={[styles.serviceCard, { width: SCREEN_WIDTH >= 1024 ? '23.5%' : isMobile ? '100%' : '48%' }]}
+                                onPress={() => router.push(service.link as any)}
+                            >
+                                <Image source={{ uri: service.imageUrl }} style={styles.serviceImg} />
+                                <View style={styles.serviceOverlay} />
+                                <View style={styles.serviceContent}>
+                                    <Text style={styles.serviceName}>{service.title}</Text>
+                                    <Text style={styles.serviceLiteDesc}>{service.desc}</Text>
+                                    <View style={styles.serviceLink}>
+                                        <Text style={styles.serviceLinkText}>View Details</Text>
+                                        <ArrowRight size={14} color="#FFF" />
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/services')}>
+                        <Text style={styles.viewAllBtnText}>Explore All Services</Text>
+                        <ArrowRight size={18} color={Colors.primary} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* INDUSTRIES SECTION */}
+            <View style={[styles.section, { backgroundColor: Colors.navy }]}>
+                <View style={styles.contentMax}>
+                    <View style={[styles.sectionHeader, { alignItems: 'flex-start' }]}>
+                        <Text style={styles.sectionTagPrimary}>SECTOR EXPERTISE</Text>
+                        <Text style={[styles.sectionTitle, { color: '#FFF' }]}>Specialized for Your Industry</Text>
+                        <Text style={[styles.sectionDesc, { textAlign: 'left', color: '#94A3B8' }]}>
+                            From mission-critical aviation components to time-sensitive medical supplies, we understand your unique pressure points.
+                        </Text>
+                    </View>
+
+                    <View style={styles.industryGrid}>
+                        {industries.industries?.map((ind: any) => (
+                            <TouchableOpacity 
+                                key={ind.id} 
+                                style={[styles.industryCard, { width: SCREEN_WIDTH >= 1024 ? '23.5%' : isMobile ? '100%' : '48%' }]}
+                                onPress={() => router.push(`/industries/${ind.id}` as any)}
                             >
                                 <Image source={{ uri: ind.imageUrl }} style={styles.industryImg} />
-                                <View style={styles.industryOverlay} />
-                                <View style={styles.industryContent}>
-                                    <View style={styles.industryHeader}>
-                                        <Text style={styles.industryTitle}>{ind.title}</Text>
-                                        <ArrowUpRight size={20} color="#FFFFFF" />
-                                    </View>
-                                    <Text style={styles.industryDesc}>{ind.desc}</Text>
+                                <View style={styles.industryOverlayDark} />
+                                <View style={styles.industryInfo}>
+                                    <Text style={styles.industryTitle}>{ind.title}</Text>
+                                    <ArrowUpRight size={20} color="#FFF" />
                                 </View>
                             </TouchableOpacity>
                         ))}
                     </View>
                 </View>
-            )}
+            </View>
 
-            {/* CTA SECTION */}
-            <View style={[styles.ctaSection, { paddingHorizontal: SCREEN_WIDTH >= 1024 ? 48 : SCREEN_WIDTH >= 768 ? 32 : 16 }]}>
-                <View style={styles.ctaContent}>
-                    <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 30 }]}>{cta.title}</Text>
-                    <Text style={styles.ctaDesc}>{cta.desc}</Text>
-                    <View style={styles.ctaActionRow}>
-                        <TouchableOpacity
-                            style={styles.ctaPrimaryBtn}
-                            activeOpacity={0.8}
-                            onPress={() => { scrollToTop(); router.push(cta.primaryBtnLink as any); }}
-                        >
-                            <Text style={styles.ctaPrimaryBtnText}>{cta.primaryBtnText}</Text>
+            {/* WHY CHOOSE US */}
+            <View style={styles.section}>
+                <View style={styles.contentMax}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTag}>THE CYVHUB ADVANTAGE</Text>
+                        <Text style={styles.sectionTitle}>Why Leading Businesses Choose Us</Text>
+                    </View>
+
+                    <View style={styles.whyGrid}>
+                        {whyUs.cards?.map((card: any) => (
+                            <View key={card.id} style={[styles.whyCard, { width: SCREEN_WIDTH >= 1024 ? '23.5%' : isMobile ? '100%' : '48%' }]}>
+                                <View style={styles.whyIconBox}>
+                                    <DynamicIcon name={card.icon} size={32} color={Colors.primary} />
+                                </View>
+                                <Text style={styles.whyTitle}>{card.title}</Text>
+                                <Text style={styles.whyText}>{card.desc}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            </View>
+
+            {/* FINAL CTA */}
+            <View style={styles.finalCta}>
+                <Image 
+                    source={{ uri: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=2075&auto=format&fit=crop' }} 
+                    style={StyleSheet.absoluteFillObject}
+                />
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(13, 148, 136, 0.9)' }]} />
+                <View style={[styles.contentMax, styles.ctaContent]}>
+                    <Text style={styles.ctaHeadline}>Ready to upgrade your logistics?</Text>
+                    <Text style={styles.ctaBody}>Join over 1,200 businesses relying on CYVhub for their most critical shipments.</Text>
+                    <View style={styles.ctaBtns}>
+                        <TouchableOpacity style={styles.ctaPrimary} onPress={() => router.push('/contact')}>
+                            <Text style={styles.ctaPrimaryText}>Open a Business Account</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.ctaSecondaryBtn}
-                            activeOpacity={0.8}
-                            onPress={() => router.push(cta.secondaryBtnLink as any)}
-                        >
-                            <Text style={styles.ctaSecondaryBtnText}>{cta.secondaryBtnText}</Text>
+                        <TouchableOpacity style={styles.ctaSecondary} onPress={() => router.push('/services')}>
+                            <Text style={styles.ctaSecondaryText}>View Our Fleet</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -532,87 +314,85 @@ export default function PublicHome() {
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
         backgroundColor: '#FFFFFF',
     },
-    heroSection: {
-        paddingVertical: 60,
-        paddingHorizontal: 20,
-        backgroundColor: Colors.navy,
-        alignItems: 'center',
+    loadingContainer: {
+        flex: 1,
         justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
+        alignItems: 'center',
+        minHeight: SCREEN_HEIGHT,
     },
-    heroContent: {
+    contentMax: {
         maxWidth: 1200,
-        alignItems: 'center',
-        zIndex: 2,
         width: '100%',
-        flexWrap: 'wrap',
+        alignSelf: 'center',
+        paddingHorizontal: 24,
     },
-    heroTitle: {
-        fontWeight: '800',
-        color: '#FFFFFF',
-        textAlign: 'center',
-        marginBottom: 20,
-        letterSpacing: -1,
-    },
-    heroSubtitle: {
-        color: '#94A3B8',
-        textAlign: 'center',
-        marginBottom: 40,
-        maxWidth: 600,
-        lineHeight: 28,
-    },
-    heroActionRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 16,
-        marginBottom: 60,
+    heroBg: {
+        position: 'relative',
         justifyContent: 'center',
     },
-    primaryBtn: {
-        backgroundColor: Colors.primary,
+    heroWrapper: {
+        zIndex: 1,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 60,
+    },
+    heroTextContent: {
+        flex: 1,
+    },
+    heroBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
         gap: 8,
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 12,
-    },
-    primaryBtnText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    secondaryBtn: {
         backgroundColor: 'rgba(255,255,255,0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 50,
+        alignSelf: 'flex-start',
+        marginBottom: 24,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.2)',
     },
-    secondaryBtnText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
+    heroBadgeText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '900',
+        letterSpacing: 1.5,
     },
-    widgetContainer: {
+    heroTitle: {
+        color: '#FFF',
+        fontWeight: '900',
+        marginBottom: 24,
+    },
+    heroSubtitle: {
+        color: '#CBD5E1',
+        fontSize: 20,
+        lineHeight: 32,
+        marginBottom: 40,
+    },
+    heroLogos: {
+        marginTop: 20,
+    },
+    trustedBy: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 2,
+    },
+    quoteWidget: {
+        backgroundColor: '#FFF',
         width: '100%',
         maxWidth: 480,
-        flexShrink: 1,
-        flexGrow: 0,
+        borderRadius: 32,
+        overflow: 'hidden',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
     },
-    // Consolidated bookingWidget at the bottom of the file
     widgetTabs: {
         flexDirection: 'row',
-        marginBottom: 16,
-        gap: 12,
-        zIndex: 2,
+        backgroundColor: '#F8FAFC',
+        padding: 6,
     },
     widgetTab: {
         flex: 1,
@@ -621,622 +401,335 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         paddingVertical: 14,
-        backgroundColor: '#F1F5F9',
-        borderRadius: 50,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
-        opacity: 0.8,
+        borderRadius: 26,
     },
     widgetTabActive: {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        opacity: 1,
+        backgroundColor: '#FFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     widgetTabText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: Colors.textSecondary,
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#64748B',
     },
     widgetTabTextActive: {
         color: Colors.primary,
+    },
+    widgetBody: {
+        padding: 32,
+    },
+    fieldLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: Colors.navy,
+        marginBottom: 8,
+    },
+    vehicleSelect: {
+        marginTop: 24,
+        marginBottom: 32,
+    },
+    vehicleScroll: {
+        gap: 10,
+    },
+    vOption: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+    },
+    vOptionActive: {
+        borderColor: Colors.primary,
+        backgroundColor: Colors.primary + '10',
+    },
+    vOptionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    vOptionTextActive: {
+        color: Colors.primary,
         fontWeight: '800',
     },
-    bookingTitle: {
-        fontSize: 22,
-        color: '#1e293b',
-        marginBottom: 16,
+    quoteBtn: {
+        backgroundColor: Colors.primary,
+        height: 60,
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    quoteBtnText: {
+        color: '#FFF',
+        fontSize: 18,
         fontWeight: '800',
     },
-    formRow: {
-        flexDirection: 'column',
-        width: '100%',
-        marginBottom: 16,
-        gap: 16,
+    trackContainer: {
+        gap: 20,
     },
-    gridField: {
+    trackInput: {
+        height: 60,
+        backgroundColor: '#F1F5F9',
+        borderRadius: 16,
+        paddingHorizontal: 20,
+        fontSize: 18,
+        fontWeight: '600',
+        color: Colors.navy,
+    },
+    statsBar: {
+        backgroundColor: '#FFF',
+        paddingVertical: 40,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    statsInner: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 30,
+    },
+    statItem: {
+        alignItems: 'center',
         flex: 1,
         minWidth: 120,
     },
-    inputLabel: {
-        fontSize: 14,
-        color: '#1a237e',
-        fontWeight: '500',
-    },
-    required: {
-        color: '#e53935',
-        fontWeight: '700',
-    },
-    input: {
-        flex: 1.5,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        borderRadius: 4,
-        height: 40,
-        paddingHorizontal: 10,
-        fontSize: 14,
-        color: Colors.text,
-    },
-    inputIconWrapper: {
-        flex: 1.5,
-        position: 'relative',
-        justifyContent: 'center',
-    },
-    inputIcon: {
-        position: 'absolute',
-        left: 12,
-        zIndex: 1,
-    },
-    inputWithIcon: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        borderRadius: 4,
-        height: 40,
-        paddingLeft: 36,
-        paddingRight: 10,
-        fontSize: 14,
-        color: Colors.text,
-    },
-    vehicleOptions: {
-        flex: 1.5,
-        gap: 12,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    vehicleOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderWidth: 1,
-        borderColor: '#CBD5E1',
-        borderRadius: 8,
-        backgroundColor: '#FFFFFF',
-    },
-    vehicleOptionSelected: {
-        borderColor: Colors.primary,
-        backgroundColor: '#E0E7FF', // Light primary tint
-    },
-    vehicleText: {
-        fontSize: 14,
-        color: Colors.textSecondary,
-        fontWeight: '500',
-    },
-    vehicleTextSelected: {
-        color: Colors.primary,
-        fontWeight: '700',
-    },
-    continueBtn: {
-        backgroundColor: Colors.primary,
-        alignSelf: 'flex-end',
-        paddingHorizontal: 32,
-        paddingVertical: 12,
-        borderRadius: 4,
-    },
-    continueBtnText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    formContainer: {
-        width: '100%',
-        gap: 24,
-    },
-    postcodeRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 20,
-        width: '100%',
-    },
-    optionsRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 24,
-        marginTop: 8,
-        width: '100%',
-    },
-    fullWidthContinueBtn: {
-        backgroundColor: Colors.primary,
-        width: '100%',
-        height: 56,
-        borderRadius: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        marginTop: 8,
-    },
-
-    // STATS SECTION
-    statsSection: {
-        backgroundColor: Colors.primary,
-        paddingVertical: 40,
-        paddingHorizontal: 20,
-    },
-    statsInner: {
-        maxWidth: 1200,
-        width: '100%',
-        alignSelf: 'center',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        gap: 40,
-    },
-    statBox: {
-        alignItems: 'center',
-    },
-    statIconContainer: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-    },
-    statValue: {
-        fontSize: 36,
+    statVal: {
+        fontSize: 40,
         fontWeight: '900',
-        color: '#FFFFFF',
-        marginBottom: 8,
+        color: Colors.primary,
+        marginBottom: 4,
     },
-    statLabel: {
-        fontSize: 14,
-        color: '#E2E8F0',
+    statLab: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#64748B',
         textTransform: 'uppercase',
-        letterSpacing: 1,
-        fontWeight: '600',
+        letterSpacing: 1.5,
     },
-
-    // HOW IT WORKS SECTION
-    howItWorksSection: {
+    section: {
         paddingVertical: 100,
-        paddingHorizontal: 20,
-        maxWidth: 1200,
-        width: '100%',
-        alignSelf: 'center',
-        backgroundColor: '#FFFFFF',
     },
     sectionHeader: {
         alignItems: 'center',
         marginBottom: 60,
     },
-    sectionTitle: {
-        fontSize: 36,
-        fontWeight: '800',
-        color: '#1a237e',
-        textAlign: 'center',
-        marginBottom: 16,
-    },
-    sectionSubtitle: {
-        fontSize: 18,
-        color: Colors.textSecondary,
-        textAlign: 'center',
-        maxWidth: 600,
-    },
-    stepsGrid: {
-        gap: 32,
-    },
-    stepCard: {
-        flex: 1,
-        alignItems: 'center',
-        textAlign: 'center',
-        padding: 32,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 24,
-        position: 'relative',
-    },
-    stepIconBox: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
-    },
-    stepNumber: {
-        position: 'absolute',
-        top: 24,
-        right: 24,
-        fontSize: 48,
-        fontWeight: '900',
-        color: '#E2E8F0',
-        opacity: 0.5,
-    },
-    stepTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#1a237e',
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    stepDesc: {
-        fontSize: 16,
-        color: Colors.textSecondary,
-        lineHeight: 24,
-        textAlign: 'center',
-    },
-
-    // TESTIMONIALS SECTION
-    testimonialsSection: {
-        paddingVertical: 100,
-        paddingHorizontal: 20,
-        backgroundColor: '#FFFFFF',
-    },
-    testimonialsScroll: {
-        paddingVertical: 20,
-        gap: 24,
-    },
-    testimonialCard: {
-        width: 350,
-        backgroundColor: '#F8FAFC',
-        padding: 32,
-        borderRadius: 16,
-    },
-    starsRow: {
-        flexDirection: 'row',
-        gap: 4,
-        marginBottom: 20,
-    },
-    testimonialContent: {
-        fontSize: 16,
-        color: Colors.textSecondary,
-        lineHeight: 24,
-        fontStyle: 'italic',
-        marginBottom: 24,
-    },
-    testimonialAuthorRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-    },
-    avatarImg: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-    },
-    avatarPlaceholder: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: Colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    avatarLetter: {
-        color: '#FFFFFF',
-        fontSize: 20,
-        fontWeight: '700',
-    },
-    testimonialAuthor: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1a237e',
-    },
-    testimonialRole: {
-        fontSize: 14,
-        color: Colors.textSecondary,
-    },
-    paginationDots: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 40,
-        gap: 10,
-    },
-    dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#E2E8F0',
-    },
-    dotActive: {
-        backgroundColor: Colors.primary,
-        width: 24,
-    },
-
-    // WHY CHOOSE US
-    whyChooseSection: {
-        backgroundColor: Colors.navy,
-        paddingVertical: 100,
-        paddingHorizontal: 20,
-    },
-    whyChooseContent: {
-        maxWidth: 1200,
-        width: '100%',
-        alignSelf: 'center',
-        gap: 60,
-        alignItems: 'center',
-    },
-    sectionHeaderLeft: {
-        flex: 1,
-    },
     sectionTag: {
+        fontSize: 13,
+        fontWeight: '900',
         color: Colors.primary,
-        fontSize: 14,
-        fontWeight: '700',
-        textTransform: 'uppercase',
         letterSpacing: 2,
         marginBottom: 16,
     },
-    sectionTitleWhite: {
-        fontWeight: '800',
-        color: '#FFFFFF',
-        lineHeight: 50,
+    sectionTagPrimary: {
+        fontSize: 13,
+        fontWeight: '900',
+        color: '#FFF',
+        backgroundColor: Colors.primary,
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderRadius: 4,
+        letterSpacing: 2,
+        marginBottom: 16,
     },
-    whyChooseGrid: {
-        flex: 2,
+    sectionTitle: {
+        fontSize: 36,
+        fontWeight: '900',
+        color: Colors.navy,
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    sectionDesc: {
+        fontSize: 18,
+        color: 'gray',
+        textAlign: 'center',
+        maxWidth: 700,
+        lineHeight: 28,
+    },
+    servicesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 24,
+    },
+    serviceCard: {
+        height: 380,
+        borderRadius: 24,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    serviceImg: {
+        width: '100%',
+        height: '100%',
+    },
+    serviceOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    },
+    serviceContent: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 30,
+        zIndex: 2,
+    },
+    serviceName: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: '#FFF',
+        marginBottom: 8,
+    },
+    serviceLiteDesc: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 14,
+        marginBottom: 20,
+        lineHeight: 20,
+    },
+    serviceLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    serviceLinkText: {
+        color: '#FFF',
+        fontWeight: '700',
+    },
+    viewAllBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        marginTop: 60,
+    },
+    viewAllBtnText: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: Colors.primary,
+    },
+    industryGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 20,
+    },
+    industryCard: {
+        height: 250,
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    industryImg: {
+        width: '100%',
+        height: '100%',
+    },
+    industryOverlayDark: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    },
+    industryInfo: {
+        position: 'absolute',
+        bottom: 24,
+        left: 24,
+        right: 24,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    industryTitle: {
+        color: '#FFF',
+        fontSize: 20,
+        fontWeight: '800',
+    },
+    whyGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 24,
     },
     whyCard: {
-        flexBasis: Platform.OS === 'web' ? '46%' : '100%',
-        backgroundColor: '#FFFFFF',
-        padding: 32,
+        backgroundColor: '#F8FAFC',
+        padding: 40,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    whyIconBox: {
+        width: 64,
+        height: 64,
         borderRadius: 16,
+        backgroundColor: '#FFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
     },
-    whyIcon: {
-        marginBottom: 20,
-    },
-    whyCardTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1a237e',
+    whyTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: Colors.navy,
         marginBottom: 12,
     },
-    whyCardDesc: {
+    whyText: {
         fontSize: 16,
-        color: Colors.textSecondary,
+        color: 'gray',
         lineHeight: 24,
     },
-
-    // INDUSTRIES SECTION
-    industriesSection: {
-        paddingVertical: 100,
-        paddingHorizontal: 20,
-        backgroundColor: '#F8FAFC',
-    },
-    industriesScroll: {
-        paddingVertical: 20,
-        gap: 24,
-    },
-    industryImg: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    industryOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(26, 35, 126, 0.4)',
-    },
-    industryContent: {
-        ...StyleSheet.absoluteFillObject,
-        padding: 24,
-        justifyContent: 'flex-end',
-    },
-    industryHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    finalCta: {
+        height: 500,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 8,
-    },
-    industryTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#FFFFFF',
-        marginBottom: 8,
-    },
-    industryDesc: {
-        fontSize: 16,
-        color: '#E2E8F0',
-        lineHeight: 24,
-    },
-
-    // SERVICES
-    servicesSection: {
-        paddingVertical: 100,
-        paddingHorizontal: 20,
-        backgroundColor: '#FFFFFF',
-    },
-    servicesScroll: {
-        paddingVertical: 20,
-        gap: 24,
-    },
-    serviceOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(26, 35, 126, 0.6)',
-    },
-    serviceBannerContent: {
-        ...StyleSheet.absoluteFillObject,
-        padding: 32,
-        justifyContent: 'flex-end',
-    },
-    serviceBannerTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#FFFFFF',
-        marginBottom: 8,
-    },
-    serviceBannerDesc: {
-        fontSize: 16,
-        color: '#E2E8F0',
-        marginBottom: 24,
-    },
-    serviceBannerLink: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    serviceBannerLinkText: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-        fontSize: 16,
-    },
-
-    // CTA SECTION
-    ctaSection: {
-        backgroundColor: '#F8FAFC',
-        paddingVertical: 100,
-        paddingHorizontal: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#E2E8F0',
+        position: 'relative',
     },
     ctaContent: {
-        maxWidth: 800,
-        width: '100%',
-        alignSelf: 'center',
+        zIndex: 1,
         alignItems: 'center',
         textAlign: 'center',
     },
-    ctaTitle: {
-        fontSize: 36,
-        fontWeight: '800',
-        color: '#1a237e',
-        marginBottom: 16,
+    ctaHeadline: {
+        fontSize: SCREEN_WIDTH >= 768 ? 48 : 36,
+        fontWeight: '900',
+        color: '#FFF',
         textAlign: 'center',
-    },
-    ctaDesc: {
-        fontSize: 18,
-        color: Colors.textSecondary,
-        marginBottom: 40,
-        textAlign: 'center',
-        maxWidth: 600,
-    },
-    ctaActionRow: {
-        flexDirection: 'row',
-        gap: 16,
-    },
-    ctaPrimaryBtn: {
-        backgroundColor: Colors.primary,
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 12,
-    },
-    ctaPrimaryBtnText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    ctaSecondaryBtn: {
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: Colors.primary,
-    },
-    ctaSecondaryBtnText: {
-        color: Colors.primary,
-        fontSize: 16,
-        fontWeight: '700',
-    },
-
-    // SLIDER NAV
-    sliderContainer: {
-        position: 'relative',
-        width: '100%',
-    },
-    sliderNavBtn: {
-        position: 'absolute',
-        top: '50%',
-        marginTop: -25,
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#FFFFFF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 5,
-        zIndex: 10,
-    },
-    sliderNavLeft: {
-        left: -25,
-    },
-    sliderNavRight: {
-        right: -25,
-    },
-    // NEW GRID STYLES
-    cardsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: 24,
-        width: '100%',
-        maxWidth: 1200,
-        alignSelf: 'center',
-        paddingVertical: 40,
-    },
-    serviceBannerCard: {
-        flexGrow: 1,
-        height: 350,
-        borderRadius: 20,
-        overflow: 'hidden',
-        position: 'relative',
-        backgroundColor: '#F8FAFC',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-        elevation: 5,
-    },
-    industryCard: {
-        flexGrow: 1,
-        height: 380,
-        borderRadius: 24,
-        overflow: 'hidden',
-        position: 'relative',
         marginBottom: 24,
     },
-    bookingWidget: {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: 24,
-        padding: 32,
-        width: '100%',
-        marginHorizontal: 'auto',
-        alignSelf: 'center',
-        maxWidth: 672,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.15,
-        shadowRadius: 30,
-        elevation: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
-        ...Platform.select({
-            web: {
-                backdropFilter: 'blur(20px)',
-            }
-        })
+    ctaBody: {
+        fontSize: 20,
+        color: 'rgba(255,255,255,0.9)',
+        textAlign: 'center',
+        maxWidth: 700,
+        lineHeight: 32,
+        marginBottom: 48,
     },
+    ctaBtns: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 20,
+        justifyContent: 'center',
+    },
+    ctaPrimary: {
+        backgroundColor: '#FFF',
+        paddingHorizontal: 40,
+        paddingVertical: 20,
+        borderRadius: 12,
+    },
+    ctaPrimaryText: {
+        color: Colors.primary,
+        fontSize: 18,
+        fontWeight: '900',
+    },
+    ctaSecondary: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 40,
+        paddingVertical: 20,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
+    },
+    ctaSecondaryText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: '900',
+    }
 });

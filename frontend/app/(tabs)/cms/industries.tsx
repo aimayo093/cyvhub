@@ -24,38 +24,33 @@ import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
 import { IndustryDetail, initialIndustryDetails } from '@/constants/cmsDefaults';
 import { useCMS } from '@/context/CMSContext';
+import { ActivityIndicator } from 'react-native';
 
 export default function IndustriesCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { setIndustryDetails } = useCMS();
+    const { industryDetails, setIndustryDetails, isLoaded } = useCMS();
     const [industries, setIndustries] = useState<Record<string, IndustryDetail>>(initialIndustryDetails);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const loadData = async () => {
-            try {
-                const saved = await AsyncStorage.getItem('cms_industryDetails');
-                if (saved) {
-                    setIndustries({ ...initialIndustryDetails, ...JSON.parse(saved) });
-                }
-            } catch (e) {
-                console.error('Failed to load industry CMS:', e);
-            }
-        };
-        loadData();
-    }, []);
+        if (isLoaded && industryDetails) {
+            setIndustries(prev => ({ ...prev, ...industryDetails }));
+            setLoading(false);
+        }
+    }, [isLoaded, industryDetails]);
 
     const handleSave = async () => {
         try {
-            await AsyncStorage.setItem('cms_industryDetails', JSON.stringify(industries));
-            setIndustryDetails(industries); // Broadcast to global context
+            await batchUpdateAndSync({ industryDetails: industries }, true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setHasUnsavedChanges(false);
-            Alert.alert('Success', 'Industry pages published!');
+            Alert.alert('✅ Success', 'Industry pages published!');
         } catch (e) {
-            Alert.alert('Error', 'Failed to save changes.');
+            console.error('[IndustriesCMS] Save Error:', e);
+            Alert.alert('❌ Error', 'Failed to save changes.');
         }
     };
 
@@ -149,7 +144,12 @@ export default function IndustriesCMS() {
                 </View>
             </View>
 
-            <ScrollView style={styles.content} contentContainerStyle={styles.contentPadding}>
+            {loading ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={Colors.adminPrimary} />
+                </View>
+            ) : (
+                <ScrollView style={styles.content} contentContainerStyle={styles.contentPadding}>
                 {!activeId ? (
                     // INDUSTRY LIST VIEW
                     <View>
@@ -340,6 +340,7 @@ export default function IndustriesCMS() {
                     </View>
                 ) : null}
             </ScrollView>
+            )}
         </View>
     );
 }

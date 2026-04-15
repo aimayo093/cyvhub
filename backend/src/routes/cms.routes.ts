@@ -7,8 +7,8 @@ import {
     deletePage,
     getConfig,
     upsertConfig,
-    getRevisions,
-    restoreRevision
+    restoreRevision,
+    syncCMSData
 } from '../controllers/cms.controller';
 
 const router = Router();
@@ -23,6 +23,7 @@ router.get('/config/:key', getConfig);
 // --- Admin-only endpoints ---
 router.post('/pages', authenticate, upsertPage);
 router.post('/config', authenticate, upsertConfig);
+router.post('/sync', authenticate, syncCMSData);
 router.delete('/pages/:id', authenticate, deletePage);
 
 // --- Revision endpoints ---

@@ -264,3 +264,68 @@ export const restoreRevision = async (req: AuthenticatedRequest, res: Response) 
     }
 };
 
+export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (req.user?.role !== 'admin') {
+            return res.status(403).json({ error: 'Forbidden. Admin access required.' });
+        }
+
+        const { data } = req.body; // Expects { "homepage": {...}, "serviceDetails": {...}, "industryDetails": {...} }
+        
+        if (!data) {
+            return res.status(400).json({ error: 'No data provided for sync' });
+        }
+
+        console.log('[CMSController] Batch syncing CMS data...');
+
+        // We'll iterate and update each part. 
+        // Homepage is usually stored as 'cms_heroConfig', 'cms_statsConfig', etc.
+        // But the sync format from frontend might be different. Let's handle 'homepageData'
+        
+        const updates = [];
+
+        // 1. Handle Homepage Data (flattened configs)
+        if (data.homepage) {
+            for (const [key, config] of Object.entries(data.homepage)) {
+                updates.push(
+                    prisma.globalConfig.upsert({
+                        where: { key },
+                        create: { key, config: config as any, updatedBy: req.user.userId },
+                        update: { config: config as any, updatedBy: req.user.userId, updatedAt: new Date() }
+                    })
+                );
+            }
+        }
+
+        // 2. Handle Service Details
+        if (data.serviceDetails) {
+            updates.push(
+                prisma.globalConfig.upsert({
+                    where: { key: 'cms_serviceDetails' },
+                    create: { key: 'cms_serviceDetails', config: data.serviceDetails as any, updatedBy: req.user.userId },
+                    update: { config: data.serviceDetails as any, updatedBy: req.user.userId, updatedAt: new Date() }
+                })
+            );
+        }
+
+        // 3. Handle Industry Details
+        if (data.industryDetails) {
+            updates.push(
+                prisma.globalConfig.upsert({
+                    where: { key: 'cms_industryDetails' },
+                    create: { key: 'cms_industryDetails', config: data.industryDetails as any, updatedBy: req.user.userId },
+                    update: { config: data.industryDetails as any, updatedBy: req.user.userId, updatedAt: new Date() }
+                })
+            );
+        }
+
+        if (updates.length > 0) {
+            await prisma.$transaction(updates);
+        }
+
+        res.json({ message: 'CMS data synchronized successfully', count: updates.length });
+    } catch (error) {
+        console.error('[CMSController] Sync CMS Data Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};

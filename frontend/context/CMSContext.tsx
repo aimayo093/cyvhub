@@ -18,12 +18,14 @@ import {
     initialContactPage,
     initialServicesPage,
     initialIndustryDetails,
+    initialServiceDetails,
     HeaderConfig,
     FooterConfig,
     AboutPageConfig,
     ContactPageConfig,
     ServicesPageConfig,
     IndustryDetail,
+    ServicePageDetail,
     initialHomepageData,
 } from '@/constants/cmsDefaults';
 
@@ -46,6 +48,7 @@ interface CMSContextValue {
     setContactPage: (v: ContactPageConfig, sync?: boolean) => Promise<void>;
     setServicesPage: (v: ServicesPageConfig, sync?: boolean) => Promise<void>;
     setIndustryDetails: (v: Record<string, IndustryDetail>, sync?: boolean) => Promise<void>;
+    setServiceDetails: (v: Record<string, ServicePageDetail>, sync?: boolean) => Promise<void>;
     setHomepageSection: (key: string, value: any, sync?: boolean) => Promise<void>;
     setHomepageSections: (updates: Record<string, any>, sync?: boolean) => Promise<void>;
     
@@ -56,6 +59,7 @@ interface CMSContextValue {
         contactPage: ContactPageConfig;
         servicesPage: ServicesPageConfig;
         industryDetails: Record<string, IndustryDetail>;
+        serviceDetails: Record<string, ServicePageDetail>;
         homepageData: Record<string, any>;
     }>, sync?: boolean) => Promise<void>;
 
@@ -74,6 +78,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const [contactPage, setContactPageState] = useState<ContactPageConfig>(initialContactPage);
     const [servicesPage, setServicesPageState] = useState<ServicesPageConfig>(initialServicesPage);
     const [industryDetails, setIndustryDetailsState] = useState<Record<string, IndustryDetail>>(initialIndustryDetails);
+    const [serviceDetails, setServiceDetailsState] = useState<Record<string, ServicePageDetail>>(initialServiceDetails);
     const [homepageData, setHomepageData] = useState<Record<string, any>>(initialHomepageData);
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -85,6 +90,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         if (data.contactPage) setContactPageState(data.contactPage);
         if (data.servicesPage) setServicesPageState(data.servicesPage);
         if (data.industryDetails) setIndustryDetailsState(data.industryDetails);
+        if (data.serviceDetails) setServiceDetailsState(data.serviceDetails);
         if (data.homepageData) setHomepageData(data.homepageData);
     }, []);
 
@@ -109,23 +115,30 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         }
     }, [applyData]);
 
-    const syncToBackend = useCallback(async (fullData: any) => {
+    const syncToBackend = useCallback(async (data: any) => {
         try {
-            await apiClient('/cms/config', {
+            // Use the new granular sync endpoint
+            await apiClient('/cms/sync', {
                 method: 'POST',
                 body: JSON.stringify({
-                    key: CMS_CONFIG_KEY,
-                    config: fullData
+                    data: {
+                        homepage: data.homepageData,
+                        serviceDetails: data.serviceDetails,
+                        industryDetails: data.industryDetails,
+                        header: data.header,
+                        footer: data.footer
+                    }
                 })
             });
-            // Update local cache
-            await AsyncStorage.setItem(`cms_${CMS_CONFIG_KEY}`, JSON.stringify(fullData));
-            // Invalidate the 5-minute throttle so next load re-fetches fresh data
+            
+            // Also keep the legacy bulk sync for backward compatibility if needed, 
+            // but we're shifting to granular. Let's just update local cache.
+            await AsyncStorage.setItem(`cms_${CMS_CONFIG_KEY}`, JSON.stringify(data));
             await AsyncStorage.removeItem(`cms_last_fetch_${CMS_CONFIG_KEY}`);
-            console.log('[CMSContext] Config synced to backend and cache invalidated.');
+            console.log('[CMSContext] CMS Data synchronized via /cms/sync');
         } catch (e) {
             console.error('[CMSContext] Failed to sync to backend:', e);
-            throw e; // Re-throw so callers can catch and show user-facing errors
+            throw e;
         }
     }, []);
 
@@ -179,8 +192,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     }, [refreshFromBackend, applyData]);
 
     const getFullState = useCallback(() => ({
-        header, footer, aboutPage, contactPage, servicesPage, industryDetails, homepageData
-    }), [header, footer, aboutPage, contactPage, servicesPage, industryDetails, homepageData]);
+        header, footer, aboutPage, contactPage, servicesPage, industryDetails, serviceDetails, homepageData
+    }), [header, footer, aboutPage, contactPage, servicesPage, industryDetails, serviceDetails, homepageData]);
 
     const batchUpdateAndSync = async (updates: Partial<{
         header: HeaderConfig;
@@ -189,6 +202,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         contactPage: ContactPageConfig;
         servicesPage: ServicesPageConfig;
         industryDetails: Record<string, IndustryDetail>;
+        serviceDetails: Record<string, ServicePageDetail>;
         homepageData: Record<string, any>;
     }>, sync = true) => {
         const payload = { ...getFullState(), ...updates };
@@ -200,6 +214,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         if (updates.contactPage) setContactPageState(updates.contactPage);
         if (updates.servicesPage) setServicesPageState(updates.servicesPage);
         if (updates.industryDetails) setIndustryDetailsState(updates.industryDetails);
+        if (updates.serviceDetails) setServiceDetailsState(updates.serviceDetails);
         if (updates.homepageData) setHomepageData(updates.homepageData);
 
         if (sync) {
@@ -213,6 +228,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const setContactPage = async (v: ContactPageConfig, sync = false) => batchUpdateAndSync({ contactPage: v }, sync);
     const setServicesPage = async (v: ServicesPageConfig, sync = false) => batchUpdateAndSync({ servicesPage: v }, sync);
     const setIndustryDetails = async (v: Record<string, IndustryDetail>, sync = false) => batchUpdateAndSync({ industryDetails: v }, sync);
+    const setServiceDetails = async (v: Record<string, ServicePageDetail>, sync = false) => batchUpdateAndSync({ serviceDetails: v }, sync);
 
     const setHomepageSection = async (key: string, value: any, sync = false) => {
         const newHpData = { ...homepageData, [key]: value };
@@ -230,9 +246,11 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     return (
         <CMSContext.Provider value={{
             header, footer, aboutPage, contactPage, servicesPage,
-            industryDetails, homepageData,
+            industryDetails, setIndustryDetails,
+            serviceDetails, setServiceDetails,
+            homepageData,
             setHeader, setFooter, setAboutPage, setContactPage, setServicesPage,
-            setIndustryDetails, setHomepageSection, setHomepageSections,
+            setHomepageSection, setHomepageSections,
             batchUpdateAndSync,
             isLoaded,
             refreshFromBackend

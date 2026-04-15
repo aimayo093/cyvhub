@@ -24,7 +24,10 @@ import {
     Zap,
     Package,
     Layout,
+    X,
+    CheckCircle2,
 } from 'lucide-react-native';
+import { Modal } from 'react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
 import { ServicesPageConfig, initialServicesPage, ServiceDetailConfig } from '@/constants/cmsDefaults';
@@ -33,26 +36,37 @@ import { useCMS } from '@/context/CMSContext';
 export default function ServicesCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { servicesPage, setServicesPage, isLoaded } = useCMS();
+    const { servicesPage, setServicesPage, serviceDetails, setServiceDetails, isLoaded } = useCMS();
     const [config, setConfig] = useState<ServicesPageConfig>(initialServicesPage);
+    const [details, setDetails] = useState<Record<string, ServicePageDetail>>({});
+    const [editingSlug, setEditingSlug] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     useEffect(() => {
         if (isLoaded && servicesPage) {
             setConfig(servicesPage);
-            setLoading(false);
         }
-    }, [isLoaded, servicesPage]);
+        if (isLoaded && serviceDetails) {
+            setDetails(serviceDetails);
+        }
+        if (isLoaded) setLoading(false);
+    }, [isLoaded, servicesPage, serviceDetails]);
 
     const handleSave = async () => {
         try {
-            await setServicesPage(config, true); // Sync to backend & global context
+            // Use batchUpdateAndSync to save both page layout and service details at once
+            await batchUpdateAndSync({
+                servicesPage: config,
+                serviceDetails: details
+            }, true);
+            
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setHasUnsavedChanges(false);
-            Alert.alert('Success', 'Services Page content published globally!');
+            Alert.alert('✅ Success', 'Services content published globally!');
         } catch (e) {
-            Alert.alert('Error', 'Failed to save changes.');
+            console.error('[ServicesCMS] Save Error:', e);
+            Alert.alert('❌ Error', 'Failed to save changes. Please check your connection.');
         }
     };
 
@@ -225,6 +239,21 @@ export default function ServicesCMS() {
                                     placeholder="Feature 1&#10;Feature 2"
                                 />
                             </View>
+                            <View style={[styles.row, { marginTop: 12 }]}>
+                                <TouchableOpacity 
+                                    style={[styles.editDetailsBtn, { flex: 1 }]} 
+                                    onPress={() => setEditingSlug(service.id)}
+                                >
+                                    <Layout size={16} color={Colors.primary} />
+                                    <Text style={styles.editDetailsText}>Edit Page Details</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={[styles.previewBtnSmall, { width: 44 }]} 
+                                    onPress={() => router.push(`/(public)/services/${service.id}` as any)}
+                                >
+                                    <Eye size={16} color={Colors.primary} />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     ))}
                 </View>
@@ -338,6 +367,81 @@ export default function ServicesCMS() {
                         <Text style={styles.unsavedSaveText}>Save Now</Text>
                     </TouchableOpacity>
                 </View>
+            )}
+
+            {/* DETAILS EDITOR MODAL */}
+            {editingSlug && (
+                <Modal visible={!!editingSlug} animationType="slide" presentationStyle="pageSheet">
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <TouchableOpacity onPress={() => setEditingSlug(null)} style={styles.modalClose}>
+                                <X size={24} color={Colors.text} />
+                            </TouchableOpacity>
+                            <Text style={styles.modalTitle}>Service Detail Editor</Text>
+                            <TouchableOpacity 
+                                onPress={() => setEditingSlug(null)} 
+                                style={styles.modalDone}
+                            >
+                                <Text style={styles.modalDoneText}>Done</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            {(() => {
+                                const d = details[editingSlug] || {
+                                    title: '', description: '', longContent: '', heroImageUrl: '',
+                                    metaTitle: '', metaDesc: '', benefits: [], features: [], process: []
+                                };
+                                const updateDetail = (up: Partial<ServicePageDetail>) => {
+                                    setDetails(prev => ({
+                                        ...prev,
+                                        [editingSlug]: { ...d, ...up }
+                                    }));
+                                    setHasUnsavedChanges(true);
+                                };
+
+                                return (
+                                    <View style={{ padding: 20 }}>
+                                        <Text style={styles.sectionTitle}>Main Content</Text>
+                                        <View style={styles.card}>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Hero Title</Text>
+                                                <TextInput style={styles.input} value={d.title} onChangeText={t => updateDetail({ title: t })} />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Hero Image URL</Text>
+                                                <TextInput style={styles.input} value={d.heroImageUrl} onChangeText={t => updateDetail({ heroImageUrl: t })} />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Short Description</Text>
+                                                <TextInput style={[styles.input, { height: 60 }]} multiline value={d.description} onChangeText={t => updateDetail({ description: t })} />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Long Overview Content</Text>
+                                                <TextInput style={[styles.input, { height: 120 }]} multiline value={d.longContent} onChangeText={t => updateDetail({ longContent: t })} />
+                                            </View>
+                                        </View>
+
+                                        <Text style={styles.sectionTitle}>SEO Meta Data</Text>
+                                        <View style={styles.card}>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Meta Title</Text>
+                                                <TextInput style={styles.input} value={d.metaTitle} onChangeText={t => updateDetail({ metaTitle: t })} />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Meta Description</Text>
+                                                <TextInput style={[styles.input, { height: 80 }]} multiline value={d.metaDesc} onChangeText={t => updateDetail({ metaDesc: t })} />
+                                            </View>
+                                        </View>
+
+                                        {/* Benefits, Features, Process lists could be added here similarly */}
+                                        <Text style={styles.infoText}>Tip: Benefits and Process steps can be expanded in the next CMS update. Currently using defaults for new services.</Text>
+                                    </View>
+                                );
+                            })()}
+                        </ScrollView>
+                    </View>
+                </Modal>
             )}
         </View>
     );
@@ -535,4 +639,69 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: '700',
     },
+    editDetailsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: Colors.primary + '10',
+        paddingVertical: 10,
+        borderRadius: 10,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: Colors.primary + '20',
+    },
+    editDetailsText: {
+        color: Colors.primary,
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    previewBtnSmall: {
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        backgroundColor: Colors.primary + '10',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: Colors.primary + '20',
+    },
+    modalContainer: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 20,
+        backgroundColor: '#FFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+    },
+    modalClose: {
+        width: 40,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: Colors.navy,
+    },
+    modalDone: {
+        width: 60,
+        alignItems: 'flex-end',
+    },
+    modalDoneText: {
+        color: Colors.primary,
+        fontWeight: '800',
+    },
+    modalBody: {
+        flex: 1,
+    },
+    infoText: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+        textAlign: 'center',
+        fontStyle: 'italic',
+        marginTop: 10,
+    }
 });
