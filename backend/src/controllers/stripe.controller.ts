@@ -387,8 +387,8 @@ export class StripeController {
 
             // 2. Trigger Automated Dispatch Engine
             try {
-                const { DispatchService } = require('../services/dispatch.service');
-                await DispatchService.dispatchJob(jobId);
+                const { DispatchEngineService } = require('../services/dispatch.service');
+                await DispatchEngineService.dispatchJob(jobId);
                 console.log(`[Stripe Fulfill] Step 2 Complete: Dispatch triggered.`);
             } catch (dispatchErr) {
                 console.error(`[Stripe Fulfill] WARNING: Dispatch failed but payment was completed.`, dispatchErr);
