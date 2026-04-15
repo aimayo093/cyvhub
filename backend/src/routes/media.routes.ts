@@ -49,7 +49,15 @@ const upload = multer({
 
 // Routes
 router.get('/', authenticate, MediaController.getMedia);
-router.post('/upload', authenticate, upload.single('media'), MediaController.uploadMedia);
+router.post('/upload', authenticate, (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    upload.single('media')(req, res, (err: any) => {
+        if (err) {
+            console.error('[MediaRoute] Multer/Cloudinary error:', err);
+            return res.status(400).json({ error: err.message || 'Error occurred during file upload.' });
+        }
+        next();
+    });
+}, MediaController.uploadMedia);
 router.delete('/:id', authenticate, MediaController.deleteMedia);
 
 export default router;

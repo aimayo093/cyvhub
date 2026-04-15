@@ -133,9 +133,10 @@ export default function HomepageCMS() {
 
             setHasUnsavedChanges(false);
             alert('✅ Homepage Content Published Globally!');
-        } catch (error) {
+        } catch (error: any) {
             console.error('[CMS] Failed to save homepage data:', error);
-            alert('❌ Error saving to backend. Please check your connection and try again.');
+            const errMsg = error?.message || 'Please check your connection and try again.';
+            alert(`❌ Error saving to backend: ${errMsg}`);
         }
     };
 
