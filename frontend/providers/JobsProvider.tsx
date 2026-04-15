@@ -31,7 +31,7 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState(false);
   const [pendingOffer, setPendingOffer] = useState<DispatchAttempt | null>(null);
   const [isOnline, setIsOnlineState] = useState(false);
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, userRole } = useAuth();
   const router = useRouter();
   const offerPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastOfferIdRef = useRef<string | null>(null);
@@ -84,7 +84,7 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
   }, [router]);
 
   useEffect(() => {
-    const isDriverOrCarrier = user?.role === 'driver' || user?.role === 'carrier';
+    const isDriverOrCarrier = userRole === 'driver' || userRole === 'carrier';
     if (!isAuthenticated || !isOnline || !isDriverOrCarrier) {
       if (offerPollRef.current) {
         clearInterval(offerPollRef.current);
@@ -99,7 +99,7 @@ export const [JobsProvider, useJobs] = createContextHook(() => {
     return () => {
       if (offerPollRef.current) clearInterval(offerPollRef.current);
     };
-  }, [isAuthenticated, isOnline, user?.role, pollForOffer]);
+  }, [isAuthenticated, isOnline, userRole, pollForOffer]);
 
   // ─── Availability Toggle ──────────────────────────────────────────────────
   const setOnline = useCallback(async (online: boolean) => {

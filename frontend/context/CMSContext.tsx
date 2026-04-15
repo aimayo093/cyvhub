@@ -39,6 +39,7 @@ interface CMSContextValue {
     contactPage: ContactPageConfig;
     servicesPage: ServicesPageConfig;
     industryDetails: Record<string, IndustryDetail>;
+    serviceDetails: Record<string, ServicePageDetail>;
     homepageData: Record<string, any>;
 
     // Setters (with optional backend sync)
@@ -179,7 +180,9 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
                 .subscribe();
 
             return () => {
-                supabase.removeChannel(channel);
+                if (supabase) {
+                    supabase.removeChannel(channel);
+                }
             };
         };
 

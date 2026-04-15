@@ -300,7 +300,7 @@ export default function DeliveryDetailScreen() {
 
   // Defensive Lookups: Fallback to PENDING/ON_TRACK if backend returns specific Job statuses or missing SLA
   const statusConfig = STATUS_CONFIG[delivery.status as DeliveryStatus] || STATUS_CONFIG.PENDING;
-  const slaConfig = delivery.slaStatus ? (SLA_CONFIG[delivery.slaStatus] || SLA_CONFIG.ON_TRACK) : SLA_CONFIG.ON_TRACK;
+  const slaConfig = delivery.slaStatus ? ((SLA_CONFIG as any)[delivery.slaStatus] || SLA_CONFIG.ON_TRACK) : SLA_CONFIG.ON_TRACK;
   const SlaIcon = slaConfig.icon;
   const currentStepIndex = STATUS_STEPS.indexOf(delivery.status);
   const canCancel = ['PENDING_PAYMENT', 'PENDING', 'CONFIRMED'].includes(delivery.status);
@@ -568,9 +568,9 @@ export default function DeliveryDetailScreen() {
               <View style={styles.infoRow}>
                 <Package size={16} color={Colors.customerPrimary} />
                 <Text style={styles.infoLabel}>Items</Text>
-                <Text style={styles.infoValue}>{delivery.parcels.reduce((sum, p) => sum + p.quantity, 0)} Total</Text>
+                <Text style={styles.infoValue}>{delivery.parcels.reduce((sum: number, p: any) => sum + p.quantity, 0)} Total</Text>
               </View>
-              {delivery.parcels.map((parcel, idx) => (
+              {delivery.parcels.map((parcel: any, idx: number) => (
                 <View key={idx} style={styles.parcelMiniItem}>
                   <Text style={styles.parcelMiniText}>
                     {parcel.quantity}x {parcel.description || 'Parcel'} ({parcel.lengthCm}x{parcel.widthCm}x{parcel.heightCm}cm, {parcel.weightKg}kg)
@@ -1343,21 +1343,6 @@ const styles = StyleSheet.create({
   paymentBadgeText: {
     fontSize: 12,
     fontWeight: '700' as const,
-  },
-  payNowBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.customerPrimary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    gap: 8,
-    marginBottom: 16,
-  },
-  payNowBtnText: {
-    fontSize: 15,
-    fontWeight: '700' as const,
-    color: '#fff',
   },
   parcelsSubSection: {
     borderBottomWidth: 1,

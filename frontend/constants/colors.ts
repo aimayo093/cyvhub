@@ -14,6 +14,7 @@ export default {
   adminPrimary: '#DC2626',
   adminPrimaryDark: '#B91C1C',
   adminPrimaryLight: '#EF4444',
+  adminSecondary: '#334155',
   adminAccent: '#F97316',
 
   businessPrimary: '#7C3AED',
@@ -25,6 +26,10 @@ export default {
   carrierPrimaryDark: '#C2410C',
   carrierPrimaryLight: '#F97316',
   carrierAccent: '#0EA5E9',
+
+  driverPrimary: '#EA580C',
+  driverPrimaryDark: '#C2410C',
+  driverPrimaryLight: '#F97316',
 
   background: '#F1F5F9',
   surface: '#FFFFFF',

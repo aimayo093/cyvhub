@@ -8,6 +8,7 @@ import {
     getConfig,
     upsertConfig,
     restoreRevision,
+    getRevisions,
     syncCMSData
 } from '../controllers/cms.controller';
 

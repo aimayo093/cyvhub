@@ -29,7 +29,7 @@ import { ActivityIndicator } from 'react-native';
 export default function IndustriesCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { industryDetails, setIndustryDetails, isLoaded } = useCMS();
+    const { industryDetails, setIndustryDetails, isLoaded, batchUpdateAndSync } = useCMS();
     const [industries, setIndustries] = useState<Record<string, IndustryDetail>>(initialIndustryDetails);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);

@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
         elevation: 2,
       }
     }),
-  },
+  } as any,
   input: {
     flex: 1,
     height: '100%',
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
       web: {
         outlineStyle: 'none',
       }
-    })
+    }) as any
   },
   inputError: {
     borderColor: Colors.danger,

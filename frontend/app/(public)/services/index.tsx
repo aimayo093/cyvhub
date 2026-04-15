@@ -43,10 +43,10 @@ export default function ServicesHubPage() {
         );
     }
 
-    const categories = ['All', ...new Set(servicesPage.services.map(s => s.category))];
+    const categories = ['All', ...new Set(servicesPage.mainServices.map((s: any) => s.category || 'Specialist'))];
     const filteredServices = activeCategory === 'All' 
-        ? servicesPage.services 
-        : servicesPage.services.filter(s => s.category === activeCategory);
+        ? servicesPage.mainServices 
+        : servicesPage.mainServices.filter((s: any) => (s.category || 'Specialist') === activeCategory);
 
     const isMobile = SCREEN_WIDTH < 768;
 
@@ -95,23 +95,23 @@ export default function ServicesHubPage() {
             <View style={styles.section}>
                 <View style={styles.contentMax}>
                     <View style={styles.servicesGrid}>
-                        {filteredServices.map((service) => (
+                        {filteredServices.map((service: any) => (
                             <TouchableOpacity 
                                 key={service.id} 
                                 style={[styles.serviceCard, { width: SCREEN_WIDTH >= 1024 ? '31%' : isMobile ? '100%' : '47%' }]}
-                                onPress={() => router.push(service.url as any)}
+                                onPress={() => router.push(`/services/${service.id}` as any)}
                                 activeOpacity={0.9}
                             >
                                 <View style={styles.cardImageContainer}>
-                                    <Image source={{ uri: service.image }} style={styles.cardImage} resizeMode="cover" />
+                                    <Image source={{ uri: service.imageUrl }} style={styles.cardImage} resizeMode="cover" />
                                     <View style={styles.cardIconOverlay}>
                                         <DynamicIcon name={service.icon} size={28} color="#FFF" />
                                     </View>
                                 </View>
                                 <View style={styles.cardContent}>
-                                    <Text style={styles.categoryTag}>{service.category}</Text>
+                                    <Text style={styles.categoryTag}>{service.category || 'Specialist'}</Text>
                                     <Text style={styles.serviceTitle}>{service.title}</Text>
-                                    <Text style={styles.serviceDesc}>{service.desc}</Text>
+                                    <Text style={styles.serviceDesc}>{service.description}</Text>
                                     <View style={styles.learnMore}>
                                         <Text style={styles.learnMoreText}>Explore Service</Text>
                                         <ArrowRight size={16} color={Colors.primary} />

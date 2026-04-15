@@ -30,13 +30,13 @@ import {
 import { Modal } from 'react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
-import { ServicesPageConfig, initialServicesPage, ServiceDetailConfig } from '@/constants/cmsDefaults';
+import { ServicesPageConfig, initialServicesPage, ServiceDetailConfig, ServicePageDetail } from '@/constants/cmsDefaults';
 import { useCMS } from '@/context/CMSContext';
 
 export default function ServicesCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { servicesPage, setServicesPage, serviceDetails, setServiceDetails, isLoaded } = useCMS();
+    const { servicesPage, setServicesPage, serviceDetails, setServiceDetails, isLoaded, batchUpdateAndSync } = useCMS();
     const [config, setConfig] = useState<ServicesPageConfig>(initialServicesPage);
     const [details, setDetails] = useState<Record<string, ServicePageDetail>>({});
     const [editingSlug, setEditingSlug] = useState<string | null>(null);
