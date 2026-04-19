@@ -8,6 +8,8 @@ import { useCMS } from '@/context/CMSContext';
 import { initialHomepageData } from '@/constants/cmsDefaults';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PostcodeAutocomplete } from '@/components/shared/PostcodeAutocomplete';
+import { useQuoteStore } from '@/hooks/useQuoteStore';
+import { apiClient } from '@/services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -26,12 +28,27 @@ export default function PublicHome() {
     const { homepageData, isLoaded } = useCMS();
 
     // Widget states
+    const { fromAddress, fromPostcode, senderPhone, toAddress, toPostcode, receiverPhone, setStep1, setDistance } = useQuoteStore();
     const [collection, setCollection] = useState<any>(null);
     const [delivery, setDelivery] = useState<any>(null);
+    const [sPhone, setSPhone] = useState(senderPhone);
+    const [rPhone, setRPhone] = useState(receiverPhone);
+    const [phoneErrors, setPhoneErrors] = useState({ sender: '', receiver: '' });
+    const [isCalculating, setIsCalculating] = useState(false);
+
     const [isReadyNow, setIsReadyNow] = useState(true);
     const [vehicleType, setVehicleType] = useState('Medium Van');
     const [activeHeroTab, setActiveHeroTab] = useState<'quote' | 'track'>('quote');
     const [trackingNumber, setTrackingNumber] = useState('');
+
+    useEffect(() => {
+        if (fromPostcode) setCollection({ postcode: fromPostcode, formatted: fromAddress });
+        if (toPostcode) setDelivery({ postcode: toPostcode, formatted: toAddress });
+    }, []);
+
+    const UK_PHONE_REGEX = /^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$|^(\+44\s?[12]\d{2,4}|\(?0[12]\d{2,4}\)?)\s?\d{3,4}\s?\d{3,4}$/;
+
+    const validatePhone = (phone: string) => UK_PHONE_REGEX.test(phone.trim());
 
     const servicesScrollRef = useRef<ScrollView>(null);
     const industriesScrollRef = useRef<ScrollView>(null);
@@ -48,13 +65,12 @@ export default function PublicHome() {
     const scrollSlider = (ref: React.RefObject<ScrollView> | null, direction: 'left' | 'right', type: 'services' | 'industries') => {
         if (!ref || !ref.current) return;
 
-        const cardWidth = 340; // width + margin
+        const stride = cardStride; // computed from responsive layout
         const currentOffset = type === 'services' ? servicesOffset : industriesOffset;
         const setOffset = type === 'services' ? setServicesOffset : setIndustriesOffset;
 
-        let newOffset = direction === 'left' ? currentOffset - cardWidth : currentOffset + cardWidth;
+        let newOffset = direction === 'left' ? currentOffset - stride : currentOffset + stride;
 
-        // Basic bounds check (optional, but good for UX)
         if (newOffset < 0) newOffset = 0;
 
         ref.current.scrollTo({
@@ -111,10 +127,17 @@ export default function PublicHome() {
     const isMobile = SCREEN_WIDTH < 768;
     const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
 
+    // Responsive slider config
+    const spaceBetween = SCREEN_WIDTH < 480 ? 16 : SCREEN_WIDTH < 768 ? 16 : SCREEN_WIDTH < 1280 ? 20 : 24;
+    const visibleCards = SCREEN_WIDTH < 480 ? 1 : SCREEN_WIDTH < 768 ? 2 : SCREEN_WIDTH < 1280 ? 3 : 4;
+    // Available width for slider: contentMax has maxWidth 1200, padded 24px each side
+    const contentWidth = Math.min(SCREEN_WIDTH - 48, 1200 - 48);
+    const cardWidth = Math.floor((contentWidth - spaceBetween * (visibleCards - 1)) / visibleCards);
+    const cardStride = cardWidth + spaceBetween;
+
     // Calculate current index for dot indicators
-    const cardWidth = 340;
-    const servicesCurrentIndex = Math.round(servicesOffset / cardWidth);
-    const industriesCurrentIndex = Math.round(industriesOffset / cardWidth);
+    const servicesCurrentIndex = Math.round(servicesOffset / cardStride);
+    const industriesCurrentIndex = Math.round(industriesOffset / cardStride);
 
     const handleContinue = async () => {
         if (!collection || !delivery) {
@@ -122,30 +145,48 @@ export default function PublicHome() {
             return;
         }
 
-        try {
-            await AsyncStorage.setItem('last_quote_params', JSON.stringify({
-                collection,
-                delivery,
-                ready: isReadyNow.toString(),
-                vehicle: vehicleType
-            }));
-        } catch (e) {
-            console.error('Failed to save quote params', e);
+        const senderValid = validatePhone(sPhone);
+        const receiverValid = validatePhone(rPhone);
+
+        if (!senderValid || !receiverValid) {
+            setPhoneErrors({
+                sender: senderValid ? '' : 'Please enter a valid UK phone number',
+                receiver: receiverValid ? '' : 'Please enter a valid UK phone number'
+            });
+            return;
         }
 
-        router.push({
-            pathname: '/quote-details' as any,
-            params: {
-                pickupPostcode: collection.postcode,
-                pickupAddress: JSON.stringify(collection),
-                dropoffPostcode: delivery.postcode,
-                dropoffAddress: JSON.stringify(delivery),
-                pickupCoords: JSON.stringify({ lat: collection.latitude, lng: collection.longitude }),
-                dropoffCoords: JSON.stringify({ lat: delivery.latitude, lng: delivery.longitude }),
-                ready: isReadyNow.toString(),
-                vehicle: vehicleType
-            }
-        });
+        setIsCalculating(true);
+        try {
+            // Calculate distance immediately before advancing
+            const response = await apiClient('/quotes/calculate', {
+                method: 'POST',
+                body: JSON.stringify({
+                    pickupPostcode: collection.postcode,
+                    dropoffPostcode: delivery.postcode,
+                    items: [{ lengthCm: 10, widthCm: 10, heightCm: 10, weightKg: 1, quantity: 1 }] // Dummy item for distance calc
+                })
+            });
+
+            const distMiles = response?.distanceMiles || null;
+            
+            setStep1({
+                fromAddress: collection.formatted || collection.line1 || collection.postcode,
+                fromPostcode: collection.postcode,
+                senderPhone: sPhone,
+                toAddress: delivery.formatted || delivery.line1 || delivery.postcode,
+                toPostcode: delivery.postcode,
+                receiverPhone: rPhone
+            });
+            setDistance(distMiles);
+
+            router.push('/quote-details' as any);
+        } catch (e) {
+            console.error('Failed to calculate distance or save quote params', e);
+            alert('Unable to calculate distance. Please try again.');
+        } finally {
+            setIsCalculating(false);
+        }
     };
 
     const hero = homepageData['cms_heroConfig'] || {};
@@ -236,6 +277,19 @@ export default function PublicHome() {
                                         onAddressSelect={setCollection} 
                                         initialValue={collection} 
                                     />
+                                    <View style={styles.phoneInputRow}>
+                                        <Text style={styles.fieldLabelSmall}>Sender Contact Number</Text>
+                                        <TextInput
+                                            style={[styles.smallInput, phoneErrors.sender && styles.inputError]}
+                                            placeholder="e.g. 07700 900123"
+                                            value={sPhone}
+                                            onChangeText={(v) => { setSPhone(v); setPhoneErrors(prev => ({ ...prev, sender: '' })); }}
+                                            keyboardType="phone-pad"
+                                            onBlur={() => !validatePhone(sPhone) && setPhoneErrors(prev => ({ ...prev, sender: 'Please enter a valid UK phone number' }))}
+                                        />
+                                        {phoneErrors.sender ? <Text style={styles.errorTextSmall}>{phoneErrors.sender}</Text> : null}
+                                    </View>
+
                                     <View style={{ height: 16 }} />
                                     <PostcodeAutocomplete 
                                         label="Delivery" 
@@ -243,6 +297,18 @@ export default function PublicHome() {
                                         onAddressSelect={setDelivery} 
                                         initialValue={delivery} 
                                     />
+                                    <View style={styles.phoneInputRow}>
+                                        <Text style={styles.fieldLabelSmall}>Receiver Contact Number</Text>
+                                        <TextInput
+                                            style={[styles.smallInput, phoneErrors.receiver && styles.inputError]}
+                                            placeholder="e.g. 07700 900456"
+                                            value={rPhone}
+                                            onChangeText={(v) => { setRPhone(v); setPhoneErrors(prev => ({ ...prev, receiver: '' })); }}
+                                            keyboardType="tel"
+                                            onBlur={() => !validatePhone(rPhone) && setPhoneErrors(prev => ({ ...prev, receiver: 'Please enter a valid UK phone number' }))}
+                                        />
+                                        {phoneErrors.receiver ? <Text style={styles.errorTextSmall}>{phoneErrors.receiver}</Text> : null}
+                                    </View>
                                     
                                     <View style={styles.vehicleSelect}>
                                         <Text style={styles.fieldLabel}>Vehicle Required</Text>
@@ -259,9 +325,17 @@ export default function PublicHome() {
                                         </ScrollView>
                                     </View>
 
-                                    <TouchableOpacity style={styles.quoteBtn} onPress={handleContinue}>
-                                        <Text style={styles.quoteBtnText}>Calculate Instant Quote</Text>
-                                        <ArrowRight size={20} color="#FFF" />
+                                    <TouchableOpacity 
+                                        style={[styles.quoteBtn, (isCalculating || !sPhone || !rPhone) && { opacity: 0.7 }]} 
+                                        onPress={handleContinue}
+                                        disabled={isCalculating || !sPhone || !rPhone}
+                                    >
+                                        {isCalculating ? <ActivityIndicator color="#FFF" /> : (
+                                            <>
+                                                <Text style={styles.quoteBtnText}>Calculate Instant Quote</Text>
+                                                <ArrowRight size={20} color="#FFF" />
+                                            </>
+                                        )}
                                     </TouchableOpacity>
                                 </>
                             ) : (
@@ -311,7 +385,7 @@ export default function PublicHome() {
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.sliderContent}
-                            snapToInterval={isMobile ? SCREEN_WIDTH - 48 : 340}
+                            snapToInterval={cardStride}
                             decelerationRate="fast"
                             scrollEventThrottle={16}
                             onScroll={(e) => handleScroll(e, 'services')}
@@ -319,7 +393,7 @@ export default function PublicHome() {
                             {dynamicServices.map((service: any) => (
                                 <TouchableOpacity
                                     key={service.id}
-                                    style={[styles.serviceCard, { width: 320, marginRight: 20 }]}
+                                    style={[styles.serviceCard, { width: cardWidth, marginRight: spaceBetween }]}
                                     onPress={() => router.push(`/services/${service.slug}` as any)}
                                 >
                                     <Image source={{ uri: service.heroImageUrl || service.imageUrl }} style={styles.serviceImg} />
@@ -335,16 +409,14 @@ export default function PublicHome() {
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
-                        {!isMobile && (
-                            <View style={styles.sliderControls}>
-                                <TouchableOpacity style={styles.sliderArrow} onPress={() => scrollSlider(servicesScrollRef as React.RefObject<ScrollView>, 'left', 'services')}>
-                                    <ArrowRight size={20} color={Colors.navy} style={{ transform: [{ rotate: '180deg' }] }} />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.sliderArrow} onPress={() => scrollSlider(servicesScrollRef as React.RefObject<ScrollView>, 'right', 'services')}>
-                                    <ArrowRight size={20} color={Colors.navy} />
-                                </TouchableOpacity>
-                            </View>
-                        )}
+                        <View style={styles.sliderControls}>
+                            <TouchableOpacity style={styles.sliderArrow} onPress={() => scrollSlider(servicesScrollRef as React.RefObject<ScrollView>, 'left', 'services')}>
+                                <ArrowRight size={20} color={Colors.navy} style={{ transform: [{ rotate: '180deg' }] }} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.sliderArrow} onPress={() => scrollSlider(servicesScrollRef as React.RefObject<ScrollView>, 'right', 'services')}>
+                                <ArrowRight size={20} color={Colors.navy} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Dot indicators for services */}
@@ -386,7 +458,7 @@ export default function PublicHome() {
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.sliderContent}
-                            snapToInterval={isMobile ? SCREEN_WIDTH - 48 : 340}
+                            snapToInterval={cardStride}
                             decelerationRate="fast"
                             scrollEventThrottle={16}
                             onScroll={(e) => handleScroll(e, 'industries')}
@@ -394,7 +466,7 @@ export default function PublicHome() {
                             {dynamicIndustries.map((ind: any) => (
                                 <TouchableOpacity
                                     key={ind.id}
-                                    style={[styles.industryCard, { width: 320, marginRight: 20 }, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
+                                    style={[styles.industryCard, { width: cardWidth, marginRight: spaceBetween }, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
                                     onPress={() => router.push(`/industries/${ind.slug || ind.id}` as any)}
                                 >
                                     <Image source={{ uri: ind.heroImageUrl || ind.imageUrl }} style={styles.industryImg} />
@@ -406,16 +478,14 @@ export default function PublicHome() {
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
-                        {!isMobile && (
-                            <View style={styles.sliderControls}>
-                                <TouchableOpacity style={[styles.sliderArrow, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => scrollSlider(industriesScrollRef as React.RefObject<ScrollView>, 'left', 'industries')}>
-                                    <ArrowRight size={20} color="#FFF" style={{ transform: [{ rotate: '180deg' }] }} />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.sliderArrow, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => scrollSlider(industriesScrollRef as React.RefObject<ScrollView>, 'right', 'industries')}>
-                                    <ArrowRight size={20} color="#FFF" />
-                                </TouchableOpacity>
-                            </View>
-                        )}
+                        <View style={styles.sliderControls}>
+                            <TouchableOpacity style={[styles.sliderArrow, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => scrollSlider(industriesScrollRef as React.RefObject<ScrollView>, 'left', 'industries')}>
+                                <ArrowRight size={20} color="#FFF" style={{ transform: [{ rotate: '180deg' }] }} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.sliderArrow, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => scrollSlider(industriesScrollRef as React.RefObject<ScrollView>, 'right', 'industries')}>
+                                <ArrowRight size={20} color="#FFF" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Dot indicators for industries */}
@@ -649,6 +719,36 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
     },
+    phoneInputRow: {
+        marginTop: 10,
+        marginBottom: 5,
+    },
+    smallInput: {
+        height: 45,
+        backgroundColor: '#f8fafc',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        paddingHorizontal: 15,
+        fontSize: 14,
+        color: '#1e293b',
+        marginTop: 5,
+    },
+    fieldLabelSmall: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#64748b',
+        marginLeft: 4,
+    },
+    errorTextSmall: {
+        color: '#ef4444',
+        fontSize: 11,
+        marginTop: 4,
+        marginLeft: 4,
+    },
+    inputError: {
+        borderColor: '#ef4444',
+    },
     trackContainer: {
     },
     trackInput: {
@@ -734,8 +834,9 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
     },
     sliderWrapper: {
-        width: SCREEN_WIDTH,
-        marginLeft: -24,
+        width: '100%',
+        overflow: 'hidden',
+        position: 'relative',
     },
     sliderContent: {
         paddingHorizontal: 24,
@@ -952,13 +1053,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 32,
-        gap: 8,
     },
     dot: {
         width: 8,
         height: 8,
         borderRadius: 4,
         backgroundColor: 'rgba(15, 23, 42, 0.2)',
+        marginHorizontal: 4,
     },
     dotActive: {
         backgroundColor: Colors.primary,
@@ -969,13 +1070,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 32,
-        gap: 8,
     },
     dotPrimary: {
         width: 8,
         height: 8,
         borderRadius: 4,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        marginHorizontal: 4,
     },
     dotPrimaryActive: {
         backgroundColor: '#FFF',

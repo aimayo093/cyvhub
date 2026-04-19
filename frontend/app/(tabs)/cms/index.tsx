@@ -24,6 +24,7 @@ import {
     Star,
     Factory,
     Bell,
+    Briefcase,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
@@ -120,6 +121,28 @@ export default function CMSDashboard() {
                             <View style={styles.menuText}>
                                 <Text style={styles.menuTitle}>Industries Manager</Text>
                                 <Text style={styles.menuSubtitle}>Edit industry-specific detail pages</Text>
+                            </View>
+                            <ChevronRight size={20} color={Colors.textMuted} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.menuItem} onPress={() => handleNav('/(tabs)/cms/menu')} activeOpacity={0.7}>
+                            <View style={[styles.menuIcon, { backgroundColor: Colors.info + '15' }]}>
+                                <Settings size={20} color={Colors.info} />
+                            </View>
+                            <View style={styles.menuText}>
+                                <Text style={styles.menuTitle}>Menu Editor</Text>
+                                <Text style={styles.menuSubtitle}>Manage navigation links and structure</Text>
+                            </View>
+                            <ChevronRight size={20} color={Colors.textMuted} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.menuItem} onPress={() => handleNav('/(tabs)/cms/careers')} activeOpacity={0.7}>
+                            <View style={[styles.menuIcon, { backgroundColor: Colors.success + '15' }]}>
+                                <Briefcase size={20} color={Colors.success} />
+                            </View>
+                            <View style={styles.menuText}>
+                                <Text style={styles.menuTitle}>Careers Manager</Text>
+                                <Text style={styles.menuSubtitle}>Job openings and recruitment content</Text>
                             </View>
                             <ChevronRight size={20} color={Colors.textMuted} />
                         </TouchableOpacity>

@@ -37,6 +37,10 @@ import paypalRoutes from './routes/paypal.routes';
 import stripeConnectRoutes from './routes/stripe-connect.routes';
 import disputeRoutes from './routes/dispute.routes';
 import dispatchRoutes from './routes/dispatch.routes';
+import serviceRoutes from './routes/service.routes';
+import industryRoutes from './routes/industry.routes';
+import menuRoutes from './routes/menu.routes';
+import careerRoutes from './routes/career.routes';
 
 dotenv.config();
 
@@ -277,6 +281,12 @@ app.use('/api/disputes', disputeRoutes);
 
 // Automated Dispatch Engine
 app.use('/api/dispatch', dispatchRoutes);
+
+// CMS Content Routes — Services, Industries, Menu, Careers
+app.use('/api/services', serviceRoutes);
+app.use('/api/industries', industryRoutes);
+app.use('/api/menu', menuRoutes);
+app.use('/api/careers', careerRoutes);
 
 console.log('✅ All routes registered.');
 

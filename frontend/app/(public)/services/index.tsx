@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCMS } from '@/context/CMSContext';
 import Colors from '@/constants/colors';
@@ -16,12 +16,18 @@ import {
     Truck,
     Plane,
     Globe,
-    ArrowRight
+    ArrowRight,
+    Calendar,
+    Map,
+    Briefcase,
+    ArrowLeftRight,
+    ShieldCheck,
+    Settings
 } from 'lucide-react-native';
 import Head from 'expo-router/head';
 
 const IconMap: any = {
-    Clock, Target, Zap, Shield, Package, Users, FileText, Rocket, BarChart3, Truck, Plane, Globe
+    Clock, Target, Zap, Shield, Package, Users, FileText, Rocket, BarChart3, Truck, Plane, Globe, Calendar, Map, Briefcase, ArrowLeftRight, ShieldCheck, Settings
 };
 
 const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
@@ -30,10 +36,9 @@ const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
 };
 
 export default function ServicesHubPage() {
-    const { servicesPage, isLoaded } = useCMS();
+    const { servicesPage, serviceDetails, isLoaded } = useCMS();
     const { width: SCREEN_WIDTH } = useWindowDimensions();
     const router = useRouter();
-    const [activeCategory, setActiveCategory] = useState('All');
 
     if (!isLoaded) {
         return (
@@ -43,22 +48,27 @@ export default function ServicesHubPage() {
         );
     }
 
-    const categories = ['All', ...new Set(servicesPage.mainServices.map((s: any) => s.category || 'Specialist'))];
-    const filteredServices = activeCategory === 'All' 
-        ? servicesPage.mainServices 
-        : servicesPage.mainServices.filter((s: any) => (s.category || 'Specialist') === activeCategory);
+    // Sort published services by order - ULTRA DEFENSIVE mapping
+    const publishedServices = Object.entries(serviceDetails || {})
+        .filter(([, s]) => s && typeof s === 'object' && s.publishStatus)
+        .map(([slug, s]) => {
+            if (typeof s !== 'object') return null;
+            return { slug, ...s };
+        })
+        .filter((s): s is any => s !== null)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const isMobile = SCREEN_WIDTH < 768;
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             <Head>
-                <title>Logistics Services | Same Day, B2B & Specialized Courier | CYVhub</title>
-                <meta name="description" content="Explore CYVhub's comprehensive range of logistics services including same-day delivery, B2B logistics, AOG, medical transport, and specialized freight solutions." />
+                <title>{servicesPage?.title || 'Our Services'} | CYVhub Logistics Solutions</title>
+                <meta name="description" content={servicesPage?.introSection?.substring(0, 160) || 'Our professional logistics services.'} />
             </Head>
 
             {/* HERO SECTION */}
-            <View style={[styles.heroSection, { height: isMobile ? 350 : 450 }]}>
+            <View style={[styles.heroSection, { height: isMobile ? 400 : 500 }]}>
                 <Image
                     source={{ uri: servicesPage.heroImageUrl }}
                     style={StyleSheet.absoluteFillObject}
@@ -66,54 +76,54 @@ export default function ServicesHubPage() {
                 />
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.75)' }]} />
                 <View style={[styles.contentMax, styles.heroContent]}>
-                    <Text style={styles.heroTag}>Our Solutions</Text>
-                    <Text style={[styles.titleText, { fontSize: isMobile ? 44 : 64, lineHeight: isMobile ? 52 : 72 }]}>
-                        {servicesPage.heroTitle}
+                    <Text style={styles.heroTag}>Logistics Excellence</Text>
+                    <Text style={[styles.titleText, { fontSize: isMobile ? 40 : 64, lineHeight: isMobile ? 48 : 72 }]}>
+                        {servicesPage.heroHeading}
                     </Text>
-                    <Text style={styles.heroSubtitle}>{servicesPage.heroSubtitle}</Text>
+                    <Text style={styles.heroSubtitle}>{servicesPage.heroSubtext}</Text>
                 </View>
             </View>
 
-            {/* FILTER SECTION */}
-            <View style={styles.filterBar}>
-                <View style={[styles.contentMax, styles.filterInner]}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-                        {categories.map(cat => (
-                            <TouchableOpacity 
-                                key={cat} 
-                                style={[styles.filterBtn, activeCategory === cat && styles.filterBtnActive]}
-                                onPress={() => setActiveCategory(cat)}
-                            >
-                                <Text style={[styles.filterBtnText, activeCategory === cat && styles.filterBtnTextActive]}>{cat}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+            {/* INTRO SECTION */}
+            <View style={styles.introSection}>
+                <View style={styles.contentMax}>
+                    <View style={[styles.introContentInner, { flexDirection: isMobile ? 'column' : 'row' }]}>
+                        <View style={styles.introTextCol}>
+                            <Text style={styles.sectionHeading}>A Flexible Approach to Logistics</Text>
+                            <Text style={styles.introDescription}>{servicesPage.introSection}</Text>
+                        </View>
+                        <View style={styles.introCardCol}>
+                            <View style={styles.glassCard}>
+                                <Text style={styles.glassCardText}>{servicesPage.cardIntroText}</Text>
+                            </View>
+                        </View>
+                    </View>
                 </View>
             </View>
 
             {/* SERVICES GRID */}
-            <View style={styles.section}>
+            <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
                 <View style={styles.contentMax}>
+                    <Text style={styles.gridTitle}>Our Specialist Services</Text>
                     <View style={styles.servicesGrid}>
-                        {filteredServices.map((service: any) => (
+                        {publishedServices.map((service) => (
                             <TouchableOpacity 
                                 key={service.id} 
                                 style={[styles.serviceCard, { width: SCREEN_WIDTH >= 1024 ? '31%' : isMobile ? '100%' : '47%' }]}
-                                onPress={() => router.push(`/services/${service.id}` as any)}
+                                onPress={() => router.push(`/services/${service.slug}` as any)}
                                 activeOpacity={0.9}
                             >
                                 <View style={styles.cardImageContainer}>
-                                    <Image source={{ uri: service.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                                    <Image source={{ uri: service.heroImageUrl }} style={styles.cardImage} resizeMode="cover" />
                                     <View style={styles.cardIconOverlay}>
                                         <DynamicIcon name={service.icon} size={28} color="#FFF" />
                                     </View>
                                 </View>
                                 <View style={styles.cardContent}>
-                                    <Text style={styles.categoryTag}>{service.category || 'Specialist'}</Text>
                                     <Text style={styles.serviceTitle}>{service.title}</Text>
-                                    <Text style={styles.serviceDesc}>{service.description}</Text>
+                                    <Text style={styles.serviceDesc} numberOfLines={3}>{service.summary}</Text>
                                     <View style={styles.learnMore}>
-                                        <Text style={styles.learnMoreText}>Explore Service</Text>
+                                        <Text style={styles.learnMoreText}>View Resource</Text>
                                         <ArrowRight size={16} color={Colors.primary} />
                                     </View>
                                 </View>
@@ -127,10 +137,10 @@ export default function ServicesHubPage() {
             <View style={styles.ctaSection}>
                 <View style={styles.contentMax}>
                     <View style={[styles.ctaCard, { padding: isMobile ? 40 : 80 }]}>
-                        <Text style={styles.ctaTitle}>Don't see what you need?</Text>
-                        <Text style={styles.ctaDesc}>We specialize in bespoke logistics for high-value and complex cargo. Talk to our solutions team today.</Text>
+                        <Text style={styles.ctaTitle}>{servicesPage.ctaHeading}</Text>
+                        <Text style={styles.ctaDesc}>{servicesPage.ctaText}</Text>
                         <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push('/contact')}>
-                            <Text style={styles.primaryBtnText}>Get a Custom Solution</Text>
+                            <Text style={styles.primaryBtnText}>{servicesPage.ctaButton}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -138,7 +148,6 @@ export default function ServicesHubPage() {
         </ScrollView>
     );
 }
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -148,20 +157,15 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: 400,
-    },
-    contentMax: {
-        maxWidth: 1200,
-        width: '100%',
-        alignSelf: 'center',
-        paddingHorizontal: 24,
     },
     heroSection: {
-        position: 'relative',
+        width: '100%',
         justifyContent: 'center',
+        overflow: 'hidden',
     },
     heroContent: {
-        zIndex: 1,
+        zIndex: 10,
+        paddingHorizontal: 20,
     },
     heroTag: {
         color: Colors.primary,
@@ -172,69 +176,92 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     titleText: {
-        fontWeight: '900', 
-        color: '#FFF', 
-        marginBottom: 20,
+        color: '#FFFFFF',
+        fontWeight: '900',
+        marginBottom: 24,
     },
     heroSubtitle: {
-        fontSize: 20,
-        color: 'rgba(255,255,255,0.7)',
-        lineHeight: 32,
-        maxWidth: 700,
+        fontSize: 18,
+        color: 'rgba(255,255,255,0.8)',
+        lineHeight: 28,
+        maxWidth: 600,
     },
-    filterBar: {
-        backgroundColor: '#F8FAFC',
-        paddingVertical: 24,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
+    contentMax: {
+        maxWidth: 1280,
+        width: '100%',
+        alignSelf: 'center',
+        paddingHorizontal: 20,
     },
-    filterInner: {
-        paddingHorizontal: 12,
-    },
-    filterScroll: {
-        gap: 12,
-    },
-    filterBtn: {
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 30,
+    introSection: {
+        paddingVertical: 100,
         backgroundColor: '#FFFFFF',
+    },
+    introContentInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    introTextCol: {
+        flex: 1.5,
+        marginRight: Platform.OS === 'web' ? 60 : 0,
+    },
+    sectionHeading: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: Colors.navy,
+        marginBottom: 24,
+    },
+    introDescription: {
+        fontSize: 18,
+        color: '#64748B',
+        lineHeight: 30,
+    },
+    introCardCol: {
+        flex: 1,
+    },
+    glassCard: {
+        backgroundColor: Colors.primary + '05',
+        padding: 40,
+        borderRadius: 32,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.primary + '10',
     },
-    filterBtnActive: {
-        backgroundColor: Colors.primary,
-        borderColor: Colors.primary,
-    },
-    filterBtnText: {
-        fontSize: 15,
+    glassCardText: {
+        fontSize: 20,
         fontWeight: '700',
-        color: Colors.navyMedium,
-    },
-    filterBtnTextActive: {
-        color: '#FFFFFF',
+        color: Colors.primary,
+        lineHeight: 32,
+        fontStyle: 'italic',
     },
     section: {
-        paddingVertical: 80,
+        paddingVertical: 100,
+    },
+    gridTitle: {
+        fontSize: 36,
+        fontWeight: '900',
+        color: Colors.navy,
+        textAlign: 'center',
+        marginBottom: 60,
     },
     servicesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 32,
-        justifyContent: 'center',
     },
     serviceCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#F1F5F9',
-        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)',
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
+        margin: 12,
     },
     cardImageContainer: {
         height: 200,
         width: '100%',
-        position: 'relative',
     },
     cardImage: {
         width: '100%',
@@ -242,82 +269,110 @@ const styles = StyleSheet.create({
     },
     cardIconOverlay: {
         position: 'absolute',
-        bottom: 20,
-        right: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 16,
+        bottom: 12,
+        right: 12,
+        width: 48,
+        height: 48,
+        borderRadius: 12,
         backgroundColor: Colors.primary,
-        alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-        zIndex: 2,
+        alignItems: 'center',
     },
     cardContent: {
         padding: 24,
     },
-    categoryTag: {
-        fontSize: 12,
-        fontWeight: '800',
-        color: Colors.primary,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 12,
-    },
     serviceTitle: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
         color: Colors.navy,
         marginBottom: 12,
     },
     serviceDesc: {
-        fontSize: 16,
-        color: 'gray',
+        fontSize: 15,
+        color: '#64748B',
         lineHeight: 24,
-        marginBottom: 24,
+        marginBottom: 20,
     },
     learnMore: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
     },
     learnMoreText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '700',
         color: Colors.primary,
+        marginRight: 8,
     },
     ctaSection: {
-        paddingVertical: 80,
+        paddingVertical: 100,
+        backgroundColor: '#FFFFFF',
     },
     ctaCard: {
         backgroundColor: Colors.navy,
         borderRadius: 40,
         alignItems: 'center',
-        textAlign: 'center',
     },
     ctaTitle: {
         fontSize: 32,
         fontWeight: '900',
         color: '#FFFFFF',
+        textAlign: 'center',
         marginBottom: 16,
     },
     ctaDesc: {
         fontSize: 18,
-        color: '#94A3B8',
-        lineHeight: 28,
-        marginBottom: 40,
-        maxWidth: 700,
+        color: 'rgba(255,255,255,0.7)',
         textAlign: 'center',
+        marginBottom: 40,
+        maxWidth: 600,
     },
     primaryBtn: {
         backgroundColor: Colors.primary,
-        paddingHorizontal: 40,
-        paddingVertical: 20,
-        borderRadius: 12,
+        paddingHorizontal: 32,
+        paddingVertical: 18,
+        borderRadius: 16,
     },
     primaryBtnText: {
         color: '#FFFFFF',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
-    }
+    },
+    ctaSection: {
+        paddingVertical: 100,
+        backgroundColor: '#FFFFFF',
+    },
+    ctaCard: {
+        backgroundColor: Colors.navy,
+        borderRadius: 40,
+        alignItems: 'center',
+    },
+    ctaTitle: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    ctaDesc: {
+        fontSize: 18,
+        color: 'rgba(255,255,255,0.7)',
+        textAlign: 'center',
+        marginBottom: 40,
+        maxWidth: 600,
+    },
+    primaryBtn: {
+        backgroundColor: Colors.primary,
+        paddingHorizontal: 32,
+        paddingVertical: 18,
+        borderRadius: 16,
+    },
+    primaryBtnText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    ctaBarSubtitle: {
+        fontSize: 18,
+        color: 'rgba(255,255,255,0.8)',
+    },
 });

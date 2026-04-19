@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
+import { useQuoteStore } from '@/hooks/useQuoteStore';
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
     return (
@@ -22,15 +23,19 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
 };
 
 export default function GuestCheckoutPage() {
-    const params = useLocalSearchParams();
+    const { 
+        fromAddress, fromPostcode, senderPhone, 
+        toAddress, toPostcode, receiverPhone,
+        estimatedPrice, selectedServiceType 
+    } = useQuoteStore();
     const router = useRouter();
 
     const [email, setEmail] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
 
-    const [collectionAddress, setCollectionAddress] = useState(params.collection as string || '');
-    const [deliveryAddress, setDeliveryAddress] = useState(params.delivery as string || '');
+    const [collectionAddress, setCollectionAddress] = useState(fromAddress);
+    const [deliveryAddress, setDeliveryAddress] = useState(toAddress);
 
     const handleContinue = () => {
         if (!email.trim() || !firstName.trim() || !lastName.trim() || !collectionAddress.trim() || !deliveryAddress.trim()) {
@@ -41,7 +46,6 @@ export default function GuestCheckoutPage() {
         router.push({
             pathname: '/guest-review',
             params: {
-                ...params,
                 email,
                 firstName,
                 lastName,
@@ -130,10 +134,10 @@ export default function GuestCheckoutPage() {
                 <View style={styles.summaryRibbon}>
                     <View>
                         <Text style={styles.ribbonLight}>Selected Service</Text>
-                        <Text style={styles.ribbonDark}>{params.serviceType} - {params.vehicleType}</Text>
+                        <Text style={styles.ribbonDark}>{selectedServiceType} - Standard Vehicle</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.ribbonDark}>£{Number(params.price).toFixed(2)}</Text>
+                        <Text style={styles.ribbonDark}>£{Number(estimatedPrice || 0).toFixed(2)}</Text>
                         <Text style={styles.ribbonLight}>excl. VAT</Text>
                     </View>
                 </View>
@@ -229,10 +233,11 @@ const styles = StyleSheet.create({
     },
     formRowMulti: {
         flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-        gap: 20,
     },
     inputGroup: {
         flexDirection: 'column',
+        marginRight: Platform.OS === 'web' ? 20 : 0,
+        marginBottom: Platform.OS === 'web' ? 0 : 20,
     },
     label: {
         fontSize: 14,

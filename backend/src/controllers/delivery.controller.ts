@@ -58,7 +58,8 @@ export class DeliveryController {
                 // Legacy fields (fallback)
                 weightKg, lengthCm, widthCm, heightCm, quantity,
                 // Additional Fields
-                jobType, pickupWindow, deliveryWindow
+                jobType, pickupWindow, deliveryWindow,
+                senderPhone, receiverPhone
             } = payload;
 
             // Validate foundational required fields
@@ -97,7 +98,9 @@ export class DeliveryController {
                     stairs: specialInstructions?.toLowerCase().includes('stairs'),
                     isReturnTrip: isReturnTrip === true || isReturnTrip === 'true',
                     extraStops: parseInt(extraStops, 10) || 0
-                }
+                },
+                senderPhone,
+                receiverPhone
             });
 
             // HARD ENFORCEMENT: Reject immediately if load is overweight/unsuitable
@@ -155,6 +158,7 @@ export class DeliveryController {
                     dropoffWindowStart: dropoffWindowStart || defaultStart,
                     dropoffWindowEnd: dropoffWindowEnd || defaultEnd,
                     vehicleType, specialInstructions, goodsDescription,
+                    senderPhone, receiverPhone,
                     calculatedPrice: quoteResult.quote.customerTotal,
                     quantity: quoteResult.additionalMetrics?.quantity || 1,
                     basePrice: quoteResult.additionalMetrics?.basePrice,

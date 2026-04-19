@@ -111,11 +111,11 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     grid: {
-        gap: 60,
         alignItems: 'center',
     },
     textCol: {
         flex: 1.2,
+        marginRight: Platform.OS === 'web' ? 60 : 0,
     },
     imageCol: {
         flex: 1,
@@ -136,17 +136,17 @@ const styles = StyleSheet.create({
     featureList: {
         marginTop: 16,
         marginBottom: 40,
-        gap: 16,
     },
     featureRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
+        marginBottom: 16,
     },
     featureText: {
         fontSize: 18,
         fontWeight: '600',
         color: Colors.text,
+        marginLeft: 16,
     },
     sideImage: {
         width: '100%',
@@ -161,7 +161,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         paddingVertical: 16,
         borderRadius: 12,
-        gap: 12,
     },
     ctaBtnText: {
         color: '#FFFFFF',

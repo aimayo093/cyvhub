@@ -98,7 +98,7 @@ export default function ContactPage() {
                                             <Text style={styles.deptName}>{dept.name}</Text>
                                         </View>
                                         <Text style={styles.deptDesc}>{dept.desc}</Text>
-                                        <View style={[styles.deptContact, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column', gap: SCREEN_WIDTH >= 768 ? 24 : 8 }]}>
+                                        <View style={[styles.deptContact, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                                             <Text style={styles.deptInfo}>{dept.email}</Text>
                                             <Text style={styles.deptInfo}>{dept.phone}</Text>
                                         </View>
@@ -292,7 +292,6 @@ const styles = StyleSheet.create({
         letterSpacing: -1,
     },
     splitLayout: {
-        gap: 80,
     },
     infoSide: {
         flex: 1,
@@ -305,17 +304,16 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
     },
     methodsGrid: {
-        gap: 16,
     },
     methodCard: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        gap: 20,
         padding: 24,
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         borderWidth: 1,
         borderColor: '#E2E8F0',
+        marginBottom: 16,
     },
     methodIcon: {
         width: 52,
@@ -323,6 +321,7 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
+        marginRight: 20,
     },
     methodText: {
         flex: 1,
@@ -346,7 +345,6 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
     },
     deptList: {
-        gap: 20,
     },
     deptCard: {
         backgroundColor: '#F8FAFC',
@@ -354,11 +352,11 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         borderWidth: 1,
         borderColor: '#E2E8F0',
+        marginBottom: 20,
     },
     deptHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
         marginBottom: 12,
     },
     deptIconBox: {
@@ -373,6 +371,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
         color: Colors.navy,
+        marginLeft: 12,
     },
     deptDesc: {
         fontSize: 15,
@@ -386,6 +385,8 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         color: Colors.primary,
+        marginRight: 24,
+        marginBottom: 8,
     },
     formSide: {
         flex: 1.4,
@@ -410,12 +411,12 @@ const styles = StyleSheet.create({
         lineHeight: 26,
     },
     inputRow: {
-        gap: 20,
         marginBottom: 20,
     },
     inputGroup: {
         flex: 1,
         marginBottom: 20,
+        marginHorizontal: 10,
     },
     label: {
         fontSize: 14,
@@ -444,7 +445,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 18,
         borderRadius: 16,
-        gap: 12,
         marginTop: 20,
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 8 },
@@ -456,11 +456,11 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '800',
         color: '#FFF',
+        marginRight: 12,
     },
     hubsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 24,
     },
     hubCard: {
         flex: 1,
@@ -470,6 +470,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.1)',
+        margin: 12,
     },
     hubCity: {
         fontSize: 22,
@@ -514,7 +515,6 @@ const styles = StyleSheet.create({
         maxWidth: 800,
         width: '100%',
         alignSelf: 'center',
-        gap: 16,
     },
     faqItem: {
         backgroundColor: '#FFFFFF',
@@ -522,6 +522,7 @@ const styles = StyleSheet.create({
         padding: 24,
         borderWidth: 1,
         borderColor: '#E2E8F0',
+        marginBottom: 16,
     },
     faqExpanded: {
         borderColor: Colors.primary,

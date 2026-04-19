@@ -515,7 +515,13 @@ export default function DeliveryDetailScreen() {
               <Text style={styles.routeLabel}>PICKUP</Text>
               <Text style={styles.routeAddress}>{delivery.pickupAddress}</Text>
               <Text style={styles.routeCity}>{delivery.pickupCity}, {delivery.pickupPostcode}</Text>
-              <Text style={styles.routeContact}>{delivery.pickupContact}</Text>
+              <Text style={styles.routeContact}>{delivery.pickupContactName || delivery.pickupContact}</Text>
+              {(delivery.senderPhone || delivery.pickupContactPhone) && (
+                <TouchableOpacity onPress={() => handleCall(delivery.senderPhone || delivery.pickupContactPhone)} style={styles.phoneAction}>
+                  <Phone size={12} color={Colors.customerPrimary} style={{ marginRight: 4 }} />
+                  <Text style={styles.phoneActionText}>{delivery.senderPhone || delivery.pickupContactPhone}</Text>
+                </TouchableOpacity>
+              )}
               {delivery.estimatedPickup && (
                 <View style={styles.routeMeta}>
                   <Clock size={12} color={Colors.textMuted} />
@@ -541,7 +547,13 @@ export default function DeliveryDetailScreen() {
               <Text style={styles.routeLabel}>DROPOFF</Text>
               <Text style={styles.routeAddress}>{delivery.dropoffAddress}</Text>
               <Text style={styles.routeCity}>{delivery.dropoffCity}, {delivery.dropoffPostcode}</Text>
-              <Text style={styles.routeContact}>{delivery.dropoffContact}</Text>
+              <Text style={styles.routeContact}>{delivery.dropoffContactName || delivery.dropoffContact}</Text>
+              {(delivery.receiverPhone || delivery.dropoffContactPhone) && (
+                <TouchableOpacity onPress={() => handleCall(delivery.receiverPhone || delivery.dropoffContactPhone)} style={styles.phoneAction}>
+                  <Phone size={12} color={Colors.customerPrimary} style={{ marginRight: 4 }} />
+                  <Text style={styles.phoneActionText}>{delivery.receiverPhone || delivery.dropoffContactPhone}</Text>
+                </TouchableOpacity>
+              )}
               {delivery.estimatedDelivery && (
                 <View style={styles.routeMeta}>
                   <Clock size={12} color={Colors.textMuted} />
@@ -1155,6 +1167,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     marginTop: 4,
+  },
+  phoneAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  phoneActionText: {
+    fontSize: 12,
+    color: Colors.customerPrimary,
+    fontWeight: '600',
   },
   routeMeta: {
     flexDirection: 'row',

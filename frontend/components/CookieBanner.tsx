@@ -101,7 +101,6 @@ const styles = StyleSheet.create({
         flexDirection: Platform.OS === 'web' ? 'row' : 'column',
         alignItems: Platform.OS === 'web' ? 'center' : 'flex-start',
         justifyContent: 'space-between',
-        gap: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.2,
@@ -115,6 +114,8 @@ const styles = StyleSheet.create({
     },
     textBlock: {
         flex: 1,
+        marginRight: Platform.OS === 'web' ? 24 : 0,
+        marginBottom: Platform.OS === 'web' ? 0 : 16,
     },
     title: {
         fontSize: 16,
@@ -133,7 +134,6 @@ const styles = StyleSheet.create({
     },
     actions: {
         flexDirection: 'row',
-        gap: 12,
         alignItems: 'center',
     },
     declineBtn: {
@@ -142,6 +142,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.2)',
+        marginRight: 12,
     },
     declineText: {
         color: '#94A3B8',

@@ -218,7 +218,6 @@ const styles = StyleSheet.create({
         marginBottom: 48,
     },
     heroActionRow: {
-        gap: 20,
     },
     primaryBtn: {
         backgroundColor: Colors.primary,
@@ -227,7 +226,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 40,
         paddingVertical: 20,
         borderRadius: 16,
-        gap: 12,
     },
     primaryBtnText: {
         color: '#FFFFFF',
@@ -268,7 +266,6 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 32,
         justifyContent: 'center',
     },
     card: {
@@ -304,7 +301,6 @@ const styles = StyleSheet.create({
         lineHeight: 24,
     },
     splitRow: {
-        gap: 80,
         alignItems: 'center',
     },
     splitText: {
@@ -332,7 +328,6 @@ const styles = StyleSheet.create({
     },
     stepRow: {
         flexDirection: 'row',
-        gap: 24,
         marginBottom: 40,
     },
     stepNum: {
@@ -390,13 +385,14 @@ const styles = StyleSheet.create({
         marginBottom: 56,
     },
     ctaActions: {
-        gap: 20,
     },
     ctaPrimaryBtn: {
         backgroundColor: '#FFFFFF',
         paddingHorizontal: 48,
         paddingVertical: 20,
         borderRadius: 16,
+        marginRight: Platform.OS === 'web' ? 20 : 0,
+        marginBottom: Platform.OS === 'web' ? 0 : 20,
     },
     ctaPrimaryBtnText: {
         color: '#0F172A',

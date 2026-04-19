@@ -144,6 +144,8 @@ model Job {
   vehicleType         String
   specialInstructions String?
   goodsDescription    String?
+  senderPhone         String?
+  receiverPhone       String?
   calculatedPrice     Float
   distanceKm          Float?
 
@@ -456,6 +458,8 @@ model Quote {
 
   parcels Parcel[]
 
+  senderPhone         String?
+  receiverPhone       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -856,6 +860,8 @@ model QuoteRequest {
   actualWeightKg     Float
   volumetricWeightKg Float
   chargeableWeightKg Float
+  senderPhone        String?
+  receiverPhone      String?
 
   // Selected vs Recommended
   recommendedVehicleId String
@@ -956,6 +962,73 @@ model CMSSection {
   @@index([pageId])
   @@index([type])
   @@unique([pageId, type])
+}
+
+// ==== CYVhub CMS models ====
+model Service {
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  tagline          String?
+  shortDescription String
+  fullDescription  String   @db.Text
+  keyBenefits      Json
+  featureBlocks    Json
+  heroImage        String?
+  icon             String?
+  seoTitle         String?
+  seoDescription   String?
+  displayOrder     Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@map("services")
+}
+
+model Industry {
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  tagline          String?
+  shortDescription String
+  fullDescription  String   @db.Text
+  keyBenefits      Json
+  featureBlocks    Json
+  heroImage        String?
+  icon             String?
+  seoTitle         String?
+  seoDescription   String?
+  displayOrder     Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@map("industries")
+}
+
+model MenuItem {
+  id           String  @id @default(cuid())
+  label        String
+  url          String?
+  type         String  @default("link") // "link"|"services"|"industries"
+  displayOrder Int     @default(0)
+  isVisible    Boolean @default(true)
+  location     String  @default("header") // "header"|"footer"
+}
+
+model JobPosting {
+  id              String    @id @default(cuid())
+  title           String
+  department      String
+  location        String
+  employmentType  String
+  salaryRange     String?
+  shortSummary    String
+  fullDescription String   @db.Text
+  applicationUrl  String?
+  isActive        Boolean   @default(true)
+  closingDate     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model GlobalConfig {
@@ -1138,4 +1211,31 @@ model DispatchAttempt {
   @@index([driverId])
   @@index([status])
   @@index([offerExpiresAt])
+}
+
+// ==========================================
+// CAREERS & RECRUITMENT
+// ==========================================
+
+model JobOpening {
+  id              String   @id @default(uuid())
+  title           String
+  department      String
+  location        String
+  employmentType  String   // "FULL_TIME" | "PART_TIME" | "CONTRACT" | "REMOTE"
+  summary         String   @db.Text
+  description     String   @db.Text
+  responsibilities String  @db.Text
+  requirements    String   @db.Text
+  salaryInfo      String?
+  applicationUrl  String?  // External link or "internal" for default flow
+  status          String   @default("OPEN") // "OPEN" | "CLOSED" | "HIDDEN"
+  isPublished     Boolean  @default(false)
+  displayOrder    Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@index([isPublished])
 }

@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, ActivityIndicator, Dimensions, useWindowDimensions } from 'react-native';
-import { Link, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     Truck, Clock, ShieldCheck, Zap, ArrowRight, Package, Map,
@@ -8,9 +8,10 @@ import {
     Monitor, AlertTriangle, Eye, ArrowLeftRight, HardHat, Building2,
     Settings, Factory, Recycle, ArrowLeft, ChevronRight, Quote
 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCMS } from '@/context/CMSContext';
 import Colors from '@/constants/colors';
-import { IndustryDetail, initialIndustryDetails } from '@/constants/cmsDefaults';
+import { IndustryDetail } from '@/constants/cmsDefaults';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Removed static Dimensions
 const IconMap: any = {
@@ -25,45 +26,15 @@ const DynamicIcon = ({ name, size = 24, color = Colors.primary, style = {} }: an
     return <IconComponent size={size} color={color} style={style} />;
 };
 
-export default function IndustryDetailPage() {
+function IndustryDetailPage() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
-    const [detail, setDetail] = useState<IndustryDetail | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { industryDetails, isLoaded } = useCMS();
     const { width: SCREEN_WIDTH } = useWindowDimensions();
 
-    useFocusEffect(
-        useCallback(() => {
-            const loadData = async () => {
-                try {
-                    const industryId = id as string;
+    const detail = industryDetails[id as string];
 
-                    // Try CMS data first, fallback to defaults
-                    const saved = await AsyncStorage.getItem('cms_industryDetails');
-                    if (saved) {
-                        const allIndustries = JSON.parse(saved);
-                        if (allIndustries[industryId]) {
-                            setDetail(allIndustries[industryId]);
-                            return;
-                        }
-                    }
-
-                    // Fallback to initial defaults
-                    const industryData = initialIndustryDetails[industryId];
-                    if (industryData) {
-                        setDetail(industryData);
-                    }
-                } catch (e) {
-                    console.error('Failed to load industry detail:', e);
-                } finally {
-                    setLoading(false);
-                }
-            };
-            loadData();
-        }, [id])
-    );
-
-    if (loading) {
+    if (!isLoaded) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={Colors.primary} />
@@ -74,7 +45,7 @@ export default function IndustryDetailPage() {
     if (!detail) {
         return (
             <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>Industry not found</Text>
+                <Text style={styles.errorText}>Industry not found: {id}</Text>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                     <Text style={styles.backBtnText}>Go Back</Text>
                 </TouchableOpacity>
@@ -113,7 +84,7 @@ export default function IndustryDetailPage() {
             <View style={styles.statsBar}>
                 <View style={styles.contentMax}>
                     <View style={styles.statsInner}>
-                        {detail.stats.map((stat, index) => (
+                        {detail.stats && Array.isArray(detail.stats) && detail.stats.map((stat, index) => (
                             <View key={index} style={styles.statItem}>
                                 <Text style={styles.statValue}>{stat.value}</Text>
                                 <Text style={styles.statLabel}>{stat.label}</Text>
@@ -138,8 +109,12 @@ export default function IndustryDetailPage() {
                             <View style={styles.iconBox}>
                                 <Zap size={32} color={Colors.primary} />
                             </View>
-                            <Text style={styles.blockTitle}>{detail.solutionTitle}</Text>
-                            <Text style={styles.blockText}>{detail.solutionContent}</Text>
+                            <Text style={styles.blockTitle}>{detail?.solutionTitle || ''}</Text>
+                            {(detail?.solutionContent || '').split('\n\n').map((para, i) => (
+                                <Text key={i} style={[styles.blockText, i > 0 && { marginTop: 16 }]}>
+                                    {para.trim()}
+                                </Text>
+                            ))}
                         </View>
                     </View>
                 </View>
@@ -150,7 +125,7 @@ export default function IndustryDetailPage() {
                 <View style={styles.contentMax}>
                     <Text style={[styles.sectionHeading, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>Bespoke Fleet & Capability</Text>
                     <View style={styles.equipmentGrid}>
-                        {detail.equipment.map((item, index) => (
+                        {detail?.equipment && Array.isArray(detail.equipment) && detail.equipment.map((item: any, index: number) => (
                             <View key={index} style={[styles.equipmentCard, { width: SCREEN_WIDTH >= 1024 ? '31%' : '100%' }]}>
                                 <View style={styles.equipmentIconBox}>
                                     <DynamicIcon name={item.icon} size={32} color={Colors.primary} />
@@ -168,7 +143,7 @@ export default function IndustryDetailPage() {
                 <View style={styles.contentMax}>
                     <Text style={[styles.sectionHeading, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>Our Logistics Workflow</Text>
                     <View style={[styles.processSteps, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
-                        {detail.processSteps.map((step, index) => (
+                        {detail?.processSteps && Array.isArray(detail.processSteps) && detail.processSteps.map((step: any, index: number) => (
                             <View key={index} style={styles.processItem}>
                                 <View style={styles.processNumber}>
                                     <Text style={styles.processNumberText}>{index + 1}</Text>
@@ -177,7 +152,7 @@ export default function IndustryDetailPage() {
                                     <Text style={styles.processTitle}>{step.title}</Text>
                                     <Text style={styles.processDesc}>{step.desc}</Text>
                                 </View>
-                                {index < detail.processSteps.length - 1 && SCREEN_WIDTH >= 768 && (
+                                {index < (detail.processSteps?.length || 0) - 1 && SCREEN_WIDTH >= 768 && (
                                     <View style={styles.processLine} />
                                 )}
                             </View>
@@ -191,7 +166,7 @@ export default function IndustryDetailPage() {
                 <View style={styles.contentMax}>
                     <Text style={[styles.sectionHeading, { color: '#FFF', fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>Industry-Leading Standards</Text>
                     <View style={styles.featuresGrid}>
-                        {detail.features.map((feature, index) => (
+                        {detail?.whyChooseUs?.map((feature: string, index: number) => (
                             <View key={index} style={[styles.featureItem, { width: SCREEN_WIDTH >= 1024 ? '47%' : '100%' }]}>
                                 <View style={styles.checkIcon}>
                                     <ShieldCheck size={20} color={Colors.primary} />
@@ -202,6 +177,25 @@ export default function IndustryDetailPage() {
                     </View>
                 </View>
             </LinearGradient>
+
+            {/* SERVICES STRIP */}
+            {detail?.typicalServices && detail.typicalServices.length > 0 && (
+                <View style={[styles.contentSection, { backgroundColor: '#F8FAFC' }]}>
+                    <View style={styles.contentMax}>
+                        <Text style={[styles.sectionHeading, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36, marginBottom: 40 }]}>Services We Use for This Industry</Text>
+                        <View style={styles.servicesStrip}>
+                            {detail.typicalServices.map((service: string, index: number) => (
+                                <Link key={index} href="/services" asChild>
+                                    <TouchableOpacity style={styles.servicePill}>
+                                        <Text style={styles.servicePillText}>{service}</Text>
+                                        <ArrowRight size={16} color={Colors.primary} />
+                                    </TouchableOpacity>
+                                </Link>
+                            ))}
+                        </View>
+                    </View>
+                </View>
+            )}
 
             {/* CASE STUDY SECTION */}
             <View style={styles.caseStudySection}>
@@ -227,17 +221,25 @@ export default function IndustryDetailPage() {
             {/* CTA SECTION */}
             <LinearGradient colors={['#1e293b', Colors.navy]} style={styles.ctaSection}>
                 <View style={styles.ctaContent}>
-                    <Text style={styles.ctaTitle}>Ready to streamline your {detail.id} logistics?</Text>
+                    <Text style={styles.ctaTitle}>Ready to streamline your {detail?.id || 'logistics'}?</Text>
                     <Text style={styles.ctaDesc}>Get in touch with our specialist sector team today for a bespoke consultation.</Text>
-                    <Link href="/contact" asChild>
+                    <Link href="/quote" asChild>
                         <TouchableOpacity style={styles.ctaBtn}>
-                            <Text style={styles.ctaBtnText}>Request a Consultation</Text>
+                            <Text style={styles.ctaBtnText}>Get a Tailored Quote</Text>
                             <ArrowRight size={20} color={Colors.primary} />
                         </TouchableOpacity>
                     </Link>
                 </View>
             </LinearGradient>
         </ScrollView>
+    );
+}
+
+export default function IndustryDetailPageWithBoundary() {
+    return (
+        <ErrorBoundary>
+            <IndustryDetailPage />
+        </ErrorBoundary>
     );
 }
 
@@ -256,11 +258,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         flexWrap: 'wrap',
-        gap: 30,
     },
     statItem: {
         alignItems: 'center',
         paddingHorizontal: 20,
+        margin: 15,
     },
     statValue: {
         fontSize: 48,
@@ -278,7 +280,6 @@ const styles = StyleSheet.create({
     equipmentGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 30,
         justifyContent: 'center',
         marginTop: 20,
     },
@@ -290,6 +291,7 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
         alignItems: 'center',
         textAlign: 'center',
+        margin: 15,
     },
     equipmentIconBox: {
         width: 80,
@@ -315,13 +317,13 @@ const styles = StyleSheet.create({
     },
     processSteps: {
         justifyContent: 'space-between',
-        gap: 40,
         marginTop: 40,
     },
     processItem: {
         flex: 1,
         alignItems: 'center',
         position: 'relative',
+        marginVertical: 20,
     },
     processNumber: {
         width: 60,
@@ -411,12 +413,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 40,
-        gap: 8,
     },
     backLinkText: {
         color: '#FFF',
         fontSize: 14,
         fontWeight: '600',
+        marginLeft: 8,
     },
     badge: {
         backgroundColor: Colors.primary,
@@ -448,7 +450,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     dualGrid: {
-        gap: 60,
     },
     contentBlock: {
         flex: 1,
@@ -462,6 +463,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 20,
         elevation: 2,
+        margin: 30,
     },
     iconBox: {
         width: 72,
@@ -492,18 +494,17 @@ const styles = StyleSheet.create({
     featuresGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 30,
         justifyContent: 'center',
     },
     featureItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 20,
         backgroundColor: 'rgba(255,255,255,0.05)',
         padding: 32,
         borderRadius: 24,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
+        margin: 15,
     },
     checkIcon: {
         width: 44,
@@ -518,6 +519,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#FFF',
         flex: 1,
+        marginLeft: 20,
     },
     caseStudySection: {
         paddingVertical: 140,
@@ -599,7 +601,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 50,
         paddingVertical: 24,
         borderRadius: 20,
-        gap: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,
@@ -610,5 +611,33 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '900',
         color: '#FFF',
+        marginRight: 16,
+    },
+    servicesStrip: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+    },
+    servicePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        borderRadius: 100,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+        margin: 8,
+    },
+    servicePillText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.navy,
+        marginRight: 12,
     }
 });

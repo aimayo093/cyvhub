@@ -342,7 +342,6 @@ const styles = StyleSheet.create({
   },
   manualRow: {
     flexDirection: 'row',
-    gap: 8,
   },
   manualInput: {
     flex: 1,
@@ -353,6 +352,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     paddingHorizontal: 12,
     fontSize: 14,
+    marginRight: 8,
   },
   manualBtn: {
     backgroundColor: Colors.success,
@@ -360,7 +360,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     borderRadius: 10,
-    gap: 6,
   },
   manualBtnText: {
     color: '#FFF',
@@ -369,7 +368,6 @@ const styles = StyleSheet.create({
   },
   autoFillSummary: {
     flexDirection: 'row',
-    gap: 12,
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
@@ -379,5 +377,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     fontStyle: 'italic',
+    marginRight: 12,
   }
 });

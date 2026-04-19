@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, useWind
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuoteStore } from '@/hooks/useQuoteStore';
 import { GuestQuoteConfig, initialGuestQuote } from '@/constants/cmsDefaults';
 import { useCMS } from '@/context/CMSContext';
 
@@ -52,8 +53,8 @@ const VehicleCard = ({ title, dimensions, weight, priceEx, priceInc, originalPer
                         <Text style={styles.bulkBadgeText}>Bulk Saving: £{discountApplied.toFixed(2)}</Text>
                     </View>
                 )}
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
-                    {isBulk && <Text style={styles.strikethroughPrice}>£{baseTotal}</Text>}
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                    {isBulk && <Text style={[styles.strikethroughPrice, { marginRight: 8 }]}>£{baseTotal}</Text>}
                     <Text style={styles.priceEx}>£{priceEx.toFixed(2)}</Text>
                 </View>
                 <Text style={styles.priceTaxLabel}>excl. VAT ({quantity} {quantity === 1 ? 'parcel' : 'parcels'})</Text>
@@ -77,7 +78,7 @@ import { apiClient } from '@/services/api';
 
 export default function GuestQuotePage() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
-    const { collection, delivery, ready, vehicle, parcels } = useLocalSearchParams();
+    const { fromAddress, toAddress, fromPostcode, toPostcode, parcels: storedParcels, totalDistanceMiles, setStep3 } = useQuoteStore();
     const router = useRouter();
 
     // CMS config from global context (live, synced with backend)
@@ -92,33 +93,7 @@ export default function GuestQuotePage() {
 
     useEffect(() => {
         const fetchQuotes = async () => {
-            let activeCollection = collection;
-            let activeDelivery = delivery;
-            let activeParcels = parcels ? JSON.parse(parcels as string) : [];
-
-            // Recovery Logic: If URL params are missing, check AsyncStorage
-            if (!activeCollection || !activeDelivery || activeParcels.length === 0) {
-                try {
-                    const q1 = await AsyncStorage.getItem('last_quote_params');
-                    const q2 = await AsyncStorage.getItem('last_quote_details');
-                    if (q1 && q2) {
-                        const p1 = JSON.parse(q1);
-                        const p2 = JSON.parse(q2);
-                        activeCollection = p1.collection;
-                        activeDelivery = p1.delivery;
-                        activeParcels = p2.parcels || [];
-                        setRetrievedParams({ 
-                            collection: activeCollection, 
-                            delivery: activeDelivery, 
-                            parcels: activeParcels
-                        });
-                    }
-                } catch (e) {
-                    console.error('State recovery failed', e);
-                }
-            }
-
-            if (!activeCollection || !activeDelivery || activeParcels.length === 0) {
+            if (!fromPostcode || !toPostcode || storedParcels.length === 0) {
                 setIsLoading(false);
                 return;
             }
@@ -126,19 +101,16 @@ export default function GuestQuotePage() {
             try {
                 // 1. CMS config is now sourced from the global CMSContext (set at top of component)
 
-                // 2. Fetch Dynamic Pricing from Backend
                 const response = await apiClient('/quotes/calculate', {
                     method: 'POST',
                     body: JSON.stringify({
-                        pickupPostcode: typeof activeCollection === 'object' ? (activeCollection as any).postcode : activeCollection,
-                        dropoffPostcode: typeof activeDelivery === 'object' ? (activeDelivery as any).postcode : activeDelivery,
-                        pickupCoords: typeof activeCollection === 'object' ? { lat: (activeCollection as any).latitude, lng: (activeCollection as any).longitude } : undefined,
-                        dropoffCoords: typeof activeDelivery === 'object' ? { lat: (activeDelivery as any).latitude, lng: (activeDelivery as any).longitude } : undefined,
-                        items: activeParcels.map((p: any) => ({
-                            lengthCm: Number(p.length),
-                            widthCm: Number(p.width),
-                            heightCm: Number(p.height),
-                            weightKg: Number(p.weight),
+                        pickupPostcode: fromPostcode,
+                        dropoffPostcode: toPostcode,
+                        items: storedParcels.map((p: any) => ({
+                            lengthCm: Number(p.lengthCm),
+                            widthCm: Number(p.widthCm),
+                            heightCm: Number(p.heightCm),
+                            weightKg: Number(p.weightKg),
                             quantity: Number(p.quantity) || 1
                         }))
                     })
@@ -167,27 +139,16 @@ export default function GuestQuotePage() {
         };
 
         fetchQuotes();
-    }, [collection, delivery, parcels]);
+    }, [fromPostcode, toPostcode, storedParcels]);
 
-    // Use either URL params or recovered params
-    const finalCollection = collection || retrievedParams?.collection;
-    const finalDelivery = delivery || retrievedParams?.delivery;
-    const finalParcels = parcels ? JSON.parse(parcels as string) : (retrievedParams?.parcels || []);
-
-    const hasAnyParams = !!(finalCollection && finalDelivery && finalParcels.length > 0);
+    const hasAnyParams = !!(fromPostcode && toPostcode && storedParcels.length > 0);
 
     const handleBook = (tier: string, vehicleName: string, price: number) => {
-        router.push({
-            pathname: '/guest-checkout',
-            params: {
-                collection: finalCollection as string,
-                delivery: finalDelivery as string,
-                serviceType: tier,
-                vehicleType: vehicleName,
-                price: price.toString(),
-                parcels: JSON.stringify(finalParcels)
-            }
+        setStep3({
+            estimatedPrice: price,
+            selectedServiceType: tier
         });
+        router.push('/(public)/guest-checkout' as any);
     };
 
     if (isLoading) {
@@ -230,18 +191,22 @@ export default function GuestQuotePage() {
                 <Text style={styles.quoteValidity}>{parsedValidityText}</Text>
 
                 <View style={styles.summaryBox}>
+                    <View style={styles.distanceHighlight}>
+                        <Truck size={24} color="#FFF" style={{ marginRight: 12 }} />
+                        <Text style={styles.distanceText}>Total Distance: <Text style={{ fontWeight: '800' }}>{totalDistanceMiles?.toFixed(1) || '—'}</Text> miles</Text>
+                    </View>
                     <View style={styles.summaryRow}>
                         <MapPin size={16} color={Colors.primary} style={{ marginRight: 8 }} />
                         <Text style={styles.summaryLabel}>Route:</Text>
-                        <Text style={styles.summaryValue}>
-                            {typeof finalCollection === 'object' ? `${finalCollection.line1}, ${finalCollection.townCity}` : finalCollection} → {typeof finalDelivery === 'object' ? `${finalDelivery.line1}, ${finalDelivery.townCity}` : finalDelivery} ({distance} miles)
+                        <Text style={styles.summaryValue} numberOfLines={1}>
+                            {fromAddress} → {toAddress}
                         </Text>
                     </View>
                     <View style={styles.summaryRow}>
                         <Package size={16} color={Colors.primary} style={{ marginRight: 8 }} />
                         <Text style={styles.summaryLabel}>Items:</Text>
                         <Text style={styles.summaryValue}>
-                            {finalParcels.length} parcel type(s) · {finalParcels.reduce((acc: number, p: any) => acc + (parseInt(p.quantity, 10) || 0), 0)} total units
+                            {storedParcels.length} parcel type(s) · {storedParcels.reduce((acc: number, p: any) => acc + (p.quantity || 0), 0)} total units
                         </Text>
                     </View>
                     <TouchableOpacity style={styles.changeBtn} activeOpacity={0.8} onPress={() => router.back()}>
@@ -372,6 +337,19 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#E2E8F0',
     },
+    distanceHighlight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.primary,
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 20,
+    },
+    distanceText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: '600',
+    },
     summaryRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -427,7 +405,6 @@ const styles = StyleSheet.create({
     cardGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 20,
         justifyContent: 'center',
     },
     vehicleCard: {
@@ -439,6 +416,7 @@ const styles = StyleSheet.create({
         padding: 24,
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
+        margin: 10,
     },
     vehicleIconWrapper: {
         marginBottom: 16,
@@ -564,7 +542,6 @@ const styles = StyleSheet.create({
         borderColor: '#e2e8f0',
     },
     rejectedList: {
-        gap: 12,
     },
     rejectedItem: {
         flexDirection: 'row',
@@ -574,7 +551,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1,
         borderColor: '#fee2e2',
-        gap: 12,
+        marginBottom: 12,
     },
     rejectedBadge: {
         backgroundColor: '#ef4444',
@@ -583,6 +560,7 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         minWidth: 100,
         alignItems: 'center',
+        marginRight: 12,
     },
     rejectedBadgeText: {
         color: '#FFFFFF',

@@ -19,14 +19,22 @@ import {
     initialServicesPage,
     initialIndustryDetails,
     initialServiceDetails,
+    initialIndustriesPage,
+    initialHomepageData,
+    initialMenuConfig,
+    initialCareersPage,
+    initialJobOpenings,
     HeaderConfig,
     FooterConfig,
     AboutPageConfig,
     ContactPageConfig,
     ServicesPageConfig,
+    IndustriesPageConfig,
     IndustryDetail,
     ServicePageDetail,
-    initialHomepageData,
+    MenuConfig,
+    CareersPageConfig,
+    JobOpening
 } from '@/constants/cmsDefaults';
 
 // ─────────────────────────────────────────────
@@ -38,9 +46,13 @@ interface CMSContextValue {
     aboutPage: AboutPageConfig;
     contactPage: ContactPageConfig;
     servicesPage: ServicesPageConfig;
+    industriesPage: IndustriesPageConfig;
     industryDetails: Record<string, IndustryDetail>;
     serviceDetails: Record<string, ServicePageDetail>;
     homepageData: Record<string, any>;
+    menuConfig: MenuConfig;
+    careersPage: CareersPageConfig;
+    jobOpenings: JobOpening[];
 
     // Setters (with optional backend sync)
     setHeader: (v: HeaderConfig, sync?: boolean) => Promise<void>;
@@ -48,11 +60,16 @@ interface CMSContextValue {
     setAboutPage: (v: AboutPageConfig, sync?: boolean) => Promise<void>;
     setContactPage: (v: ContactPageConfig, sync?: boolean) => Promise<void>;
     setServicesPage: (v: ServicesPageConfig, sync?: boolean) => Promise<void>;
+    setIndustriesPage: (v: IndustriesPageConfig, sync?: boolean) => Promise<void>;
     setIndustryDetails: (v: Record<string, IndustryDetail>, sync?: boolean) => Promise<void>;
     setServiceDetails: (v: Record<string, ServicePageDetail>, sync?: boolean) => Promise<void>;
     setHomepageSection: (key: string, value: any, sync?: boolean) => Promise<void>;
     setHomepageSections: (updates: Record<string, any>, sync?: boolean) => Promise<void>;
     
+    setMenuConfig: (v: MenuConfig, sync?: boolean) => Promise<void>;
+    setCareersPage: (v: CareersPageConfig, sync?: boolean) => Promise<void>;
+    setJobOpenings: (v: JobOpening[], sync?: boolean) => Promise<void>;
+
     batchUpdateAndSync: (updates: Partial<{
         header: HeaderConfig;
         footer: FooterConfig;
@@ -62,6 +79,9 @@ interface CMSContextValue {
         industryDetails: Record<string, IndustryDetail>;
         serviceDetails: Record<string, ServicePageDetail>;
         homepageData: Record<string, any>;
+        menuConfig: MenuConfig;
+        careersPage: CareersPageConfig;
+        jobOpenings: JobOpening[];
     }>, sync?: boolean) => Promise<void>;
 
     isLoaded: boolean;
@@ -79,21 +99,90 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const [aboutPage, setAboutPageState] = useState<AboutPageConfig>(initialAboutPage);
     const [contactPage, setContactPageState] = useState<ContactPageConfig>(initialContactPage);
     const [servicesPage, setServicesPageState] = useState<ServicesPageConfig>(initialServicesPage);
+    const [industriesPage, setIndustriesPageState] = useState<IndustriesPageConfig>(initialIndustriesPage);
     const [industryDetails, setIndustryDetailsState] = useState<Record<string, IndustryDetail>>(initialIndustryDetails);
     const [serviceDetails, setServiceDetailsState] = useState<Record<string, ServicePageDetail>>(initialServiceDetails);
     const [homepageData, setHomepageData] = useState<Record<string, any>>(initialHomepageData);
+    const [menuConfig, setMenuConfigState] = useState<MenuConfig>(initialMenuConfig);
+    const [careersPage, setCareersPageState] = useState<CareersPageConfig>(initialCareersPage);
+    const [jobOpenings, setJobOpeningsState] = useState<JobOpening[]>(initialJobOpenings);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    const applyData = useCallback((data: any) => {
-        if (!data) return;
-        if (data.header) setHeaderState(data.header);
-        if (data.footer) setFooterState(data.footer);
-        if (data.aboutPage) setAboutPageState(data.aboutPage);
-        if (data.contactPage) setContactPageState(data.contactPage);
-        if (data.servicesPage) setServicesPageState(data.servicesPage);
-        if (data.industryDetails) setIndustryDetailsState(data.industryDetails);
-        if (data.serviceDetails) setServiceDetailsState(data.serviceDetails);
-        if (data.homepageData) setHomepageData(data.homepageData);
+    const isObject = (item: any) => item && typeof item === 'object' && !Array.isArray(item);
+
+    const mergeMenuItems = (local: any[], remote: any[]) => {
+        if (!Array.isArray(remote)) return local;
+        const merged = [...local];
+        remote.forEach(remoteItem => {
+            const index = merged.findIndex(m => m.id === remoteItem.id);
+            if (index !== -1) {
+                merged[index] = { ...merged[index], ...remoteItem };
+            } else {
+                merged.push(remoteItem);
+            }
+        });
+        return merged;
+    };
+
+    const applyData = useCallback((incomingData: any) => {
+        if (!incomingData) return;
+        
+        // Handle bundle structure: if incomingData.config exists, it's a global bundle.
+        let data = { ...incomingData };
+        if (incomingData.config && typeof incomingData.config === 'object') {
+            Object.entries(incomingData.config).forEach(([key, value]) => {
+                data[key] = value;
+                // Also provide a clean key for top-level states
+                const cleanKey = key.replace(/^cms_/, '');
+                data[cleanKey] = value;
+            });
+        }
+
+        // Defensive guards: only update if the new data contains valid content
+        if (isObject(data.header)) {
+            setHeaderState(prev => {
+                const updated = { ...prev, ...data.header };
+                if (data.header.menuItems) {
+                    updated.menuItems = mergeMenuItems(prev.menuItems, data.header.menuItems);
+                }
+                return updated;
+            });
+        }
+        if (isObject(data.footer)) setFooterState(prev => ({ ...prev, ...data.footer }));
+        if (isObject(data.aboutPage)) setAboutPageState(prev => ({ ...prev, ...data.aboutPage }));
+        if (isObject(data.contactPage)) setContactPageState(prev => ({ ...prev, ...data.contactPage }));
+        if (isObject(data.servicesPage)) setServicesPageState(prev => ({ ...prev, ...data.servicesPage }));
+        if (isObject(data.industriesPage)) setIndustriesPageState(prev => ({ ...prev, ...data.industriesPage }));
+        if (isObject(data.menuConfig)) setMenuConfigState(prev => ({ ...prev, ...data.menuConfig }));
+        if (isObject(data.careersPage)) setCareersPageState(prev => ({ ...prev, ...data.careersPage }));
+        if (Array.isArray(data.jobOpenings)) setJobOpeningsState(data.jobOpenings);
+        
+        if (isObject(data.industryDetails)) setIndustryDetailsState(prev => {
+            const merged = { ...prev };
+            Object.entries(data.industryDetails).forEach(([k, v]) => {
+                if (isObject(v)) merged[k] = { ...merged[k], ...(v as any) };
+            });
+            return merged;
+        });
+        
+        if (isObject(data.serviceDetails)) setServiceDetailsState(prev => {
+            const merged = { ...prev };
+            Object.entries(data.serviceDetails).forEach(([k, v]) => {
+                if (isObject(v)) merged[k] = { ...merged[k], ...(v as any) };
+            });
+            return merged;
+        });
+        
+        // Update homepageData from any cms_*Config keys found in the bundle
+        setHomepageData(prev => {
+            const next = { ...prev };
+            Object.keys(prev).forEach(key => {
+                if (isObject(data[key])) {
+                    next[key] = { ...next[key], ...data[key] };
+                }
+            });
+            return next;
+        });
     }, []);
 
     const refreshFromBackend = useCallback(async (force = false) => {
@@ -131,7 +220,11 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
                         footer: data.footer,
                         aboutPage: data.aboutPage,
                         contactPage: data.contactPage,
-                        servicesPage: data.servicesPage
+                        servicesPage: data.servicesPage,
+                        industriesPage: data.industriesPage,
+                        menuConfig: data.menuConfig,
+                        careersPage: data.careersPage,
+                        jobOpenings: data.jobOpenings
                     }
                 })
             });
@@ -212,8 +305,9 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     }, [refreshFromBackend, applyData]);
 
     const getFullState = useCallback(() => ({
-        header, footer, aboutPage, contactPage, servicesPage, industryDetails, serviceDetails, homepageData
-    }), [header, footer, aboutPage, contactPage, servicesPage, industryDetails, serviceDetails, homepageData]);
+        header, footer, aboutPage, contactPage, servicesPage, industriesPage, industryDetails, serviceDetails, homepageData,
+        menuConfig, careersPage, jobOpenings
+    }), [header, footer, aboutPage, contactPage, servicesPage, industriesPage, industryDetails, serviceDetails, homepageData, menuConfig, careersPage, jobOpenings]);
 
     const batchUpdateAndSync = async (updates: Partial<{
         header: HeaderConfig;
@@ -224,6 +318,10 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         industryDetails: Record<string, IndustryDetail>;
         serviceDetails: Record<string, ServicePageDetail>;
         homepageData: Record<string, any>;
+        industriesPage: IndustriesPageConfig;
+        menuConfig: MenuConfig;
+        careersPage: CareersPageConfig;
+        jobOpenings: JobOpening[];
     }>, sync = true) => {
         const payload = { ...getFullState(), ...updates };
         
@@ -233,9 +331,13 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         if (updates.aboutPage) setAboutPageState(updates.aboutPage);
         if (updates.contactPage) setContactPageState(updates.contactPage);
         if (updates.servicesPage) setServicesPageState(updates.servicesPage);
+        if (updates.industriesPage) setIndustriesPageState(updates.industriesPage);
         if (updates.industryDetails) setIndustryDetailsState(updates.industryDetails);
         if (updates.serviceDetails) setServiceDetailsState(updates.serviceDetails);
         if (updates.homepageData) setHomepageData(updates.homepageData);
+        if (updates.menuConfig) setMenuConfigState(updates.menuConfig);
+        if (updates.careersPage) setCareersPageState(updates.careersPage);
+        if (updates.jobOpenings) setJobOpeningsState(updates.jobOpenings);
 
         if (sync) {
             await syncToBackend(payload);
@@ -247,8 +349,13 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     const setAboutPage = async (v: AboutPageConfig, sync = false) => batchUpdateAndSync({ aboutPage: v }, sync);
     const setContactPage = async (v: ContactPageConfig, sync = false) => batchUpdateAndSync({ contactPage: v }, sync);
     const setServicesPage = async (v: ServicesPageConfig, sync = false) => batchUpdateAndSync({ servicesPage: v }, sync);
+    const setIndustriesPage = async (v: IndustriesPageConfig, sync = false) => batchUpdateAndSync({ industriesPage: v }, sync);
     const setIndustryDetails = async (v: Record<string, IndustryDetail>, sync = false) => batchUpdateAndSync({ industryDetails: v }, sync);
     const setServiceDetails = async (v: Record<string, ServicePageDetail>, sync = false) => batchUpdateAndSync({ serviceDetails: v }, sync);
+    
+    const setMenuConfig = async (v: MenuConfig, sync = false) => batchUpdateAndSync({ menuConfig: v }, sync);
+    const setCareersPage = async (v: CareersPageConfig, sync = false) => batchUpdateAndSync({ careersPage: v }, sync);
+    const setJobOpenings = async (v: JobOpening[], sync = false) => batchUpdateAndSync({ jobOpenings: v }, sync);
 
     const setHomepageSection = async (key: string, value: any, sync = false) => {
         const newHpData = { ...homepageData, [key]: value };
@@ -267,8 +374,12 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         <CMSContext.Provider value={{
             header, footer, aboutPage, contactPage, servicesPage,
             industryDetails, setIndustryDetails,
+            industriesPage, setIndustriesPage,
             serviceDetails, setServiceDetails,
             homepageData,
+            menuConfig, setMenuConfig,
+            careersPage, setCareersPage,
+            jobOpenings, setJobOpenings,
             setHeader, setFooter, setAboutPage, setContactPage, setServicesPage,
             setHomepageSection, setHomepageSections,
             batchUpdateAndSync,

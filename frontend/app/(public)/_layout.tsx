@@ -1,22 +1,65 @@
 import { Slot, Link, useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, useWindowDimensions, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, useWindowDimensions, Dimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'react-native';
-import { Truck, Navigation, Facebook, Twitter, Linkedin, Instagram, Menu, X, User } from 'lucide-react-native';
+import { 
+    Truck, Navigation, Facebook, Twitter, Linkedin, Instagram, Menu, X, User, 
+    BriefcaseMedical, Monitor, Factory, Plane, Recycle, Settings, Utensils, ChevronRight, ChevronDown,
+    Clock, Target, Zap, Shield, Package, Users, FileText, Rocket, BarChart3, Calendar, Map, Briefcase, ArrowLeftRight, ShieldCheck
+} from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 import CookieBanner from '@/components/CookieBanner';
 
-
-
 export default function PublicLayout() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
     const router = useRouter();
-    const { header, footer } = useCMS();
+    const { header, footer, industryDetails, serviceDetails, menuConfig, isLoaded } = useCMS();
     const insets = useSafeAreaInsets();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [hoveredMenuId, setHoveredMenuId] = useState<string | null>(null);
+    const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleMouseEnter = (id: string) => {
+        if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current);
+            closeTimeoutRef.current = null;
+        }
+        setHoveredMenuId(id);
+    };
+
+    const handleMouseLeave = () => {
+        closeTimeoutRef.current = setTimeout(() => {
+            setHoveredMenuId(null);
+        }, 300); // 300ms grace period
+    };
+
+    useEffect(() => {
+        return () => {
+            if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+        };
+    }, []);
+ 
+    const IconMap: any = {
+        BriefcaseMedical, Monitor, Factory, Plane, Recycle, Settings, Utensils, Truck,
+        Clock, Target, Zap, Shield, Package, Users, FileText, Rocket, BarChart3, Calendar, Map, Briefcase, ArrowLeftRight, ShieldCheck
+    };
+
+    const getIconComponent = (label: string, iconName?: string) => {
+        if (iconName && IconMap[iconName]) return IconMap[iconName];
+        
+        const lowerLabel = label.toLowerCase();
+        if (lowerLabel.includes('medical')) return BriefcaseMedical;
+        if (lowerLabel.includes('construction')) return Truck;
+        if (lowerLabel.includes('it') || lowerLabel.includes('tech')) return Monitor;
+        if (lowerLabel.includes('manufacturing')) return Factory;
+        if (lowerLabel.includes('aviation') || lowerLabel.includes('aog')) return Plane;
+        if (lowerLabel.includes('reverse')) return Recycle;
+        if (lowerLabel.includes('automotive')) return Settings;
+        if (lowerLabel.includes('hospitality')) return Utensils;
+        return Truck;
+    };
  
     const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
 
@@ -39,6 +82,56 @@ export default function PublicLayout() {
 
     const isWeb = Platform.OS === 'web';
 
+    // Dynamically inject published industries and services into the menu
+    const baseMenuItems = [
+        ...(menuConfig?.items || [])
+    ];
+
+    const menuItems = baseMenuItems.map((item: any) => {
+        if ((item.id === 'industries' || item.label.toLowerCase() === 'industries') && industryDetails) {
+            const dynamicItems = Object.entries(industryDetails)
+                .filter(([, ind]) => ind.publishStatus)
+                .sort(([, a], [, b]) => (a.order || 0) - (b.order || 0))
+                .map(([slug, ind]) => ({
+                    id: slug,
+                    label: ind.title,
+                    url: `/industries/${slug}`,
+                    description: ind.description || ind.subtitle,
+                    icon: ind.icon
+                }));
+            return { ...item, url: '/industries', items: dynamicItems };
+        }
+        if ((item.id === 'services' || item.label.toLowerCase() === 'services') && serviceDetails) {
+            const dynamicItems = Object.values(serviceDetails)
+                .filter((s) => s.publishStatus)
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((s) => ({
+                    id: s.id,
+                    label: s.title,
+                    url: `/services/${s.slug}`,
+                    description: s.summary,
+                    icon: s.icon
+                }));
+            return { ...item, url: '/services', items: dynamicItems };
+        }
+        // If it already has static children (from CMS), map them to 'items' for the UI logic
+        if (item.children && item.children.length > 0) {
+            return { ...item, items: item.children };
+        }
+        return item;
+    });
+
+    const headerItems = menuItems.filter(i => i.showHeader !== false);
+    const footerItems = menuItems.filter(i => i.showFooter !== false);
+
+    if (!isLoaded) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' }}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             {/* ANNOUNCEMENT BAR */}
@@ -59,7 +152,11 @@ export default function PublicLayout() {
                 paddingTop: header.enableAnnouncement ? 0 : (insets.top || 16),
                 paddingHorizontal: SCREEN_WIDTH >= 1024 ? 40 : 20,
                 backgroundColor: '#FFFFFF',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 6,
+                elevation: 4,
                 zIndex: 100
             }]}>
                 <View style={styles.headerContent}>
@@ -76,31 +173,75 @@ export default function PublicLayout() {
                     </TouchableOpacity>
 
                     <View style={[styles.navLinks, SCREEN_WIDTH < 1024 ? { display: 'none' } : null]}>
-                        {header.menuItems?.map((item: any) => (
+                        {headerItems.map((item: any) => (
                             <View 
                                 key={item.id} 
                                 style={[styles.navItemContainer]}
                                 {...(isWeb ? {
-                                    onMouseEnter: () => item.items ? setHoveredMenuId(item.id) : null,
-                                    onMouseLeave: () => setHoveredMenuId(null)
+                                    onMouseEnter: () => item.items ? handleMouseEnter(item.id) : null,
+                                    onMouseLeave: handleMouseLeave
                                 } : {})}
                             >
                                 <Link href={item.url as any} style={styles.navItemLink as any}>
                                     <View style={styles.navLinkInner}>
                                         <Text style={[styles.navText, hoveredMenuId === item.id && { color: Colors.primary }]}>{item.label}</Text>
-                                        {item.items && <View style={[styles.chevron, hoveredMenuId === item.id && { transform: [{ rotate: '180deg' }] }]} />}
+                                        {item.items && (
+                                            <ChevronDown 
+                                                size={14} 
+                                                color={hoveredMenuId === item.id ? Colors.primary : Colors.textSecondary} 
+                                                style={[styles.chevronIcon, hoveredMenuId === item.id && styles.chevronIconRotated]} 
+                                            />
+                                        )}
                                     </View>
                                 </Link>
 
                                 {item.items && hoveredMenuId === item.id && (
-                                    <View style={styles.megaMenu}>
+                                    <View
+                                        style={[
+                                            styles.megaMenu,
+                                            (item.id === 'industries' || item.id === 'services') && styles.megaMenuWide
+                                        ]}
+                                        {...(isWeb ? {
+                                            onMouseEnter: () => handleMouseEnter(item.id),
+                                            onMouseLeave: handleMouseLeave
+                                        } : {})}
+                                    >
                                         <View style={styles.megaMenuInner}>
                                             <View style={styles.megaMenuGrid}>
-                                                {item.items.map((subItem: any) => (
-                                                    <Link key={subItem.id} href={subItem.url as any} style={styles.megaMenuItem as any} onPress={() => setHoveredMenuId(null)}>
-                                                        <Text style={styles.megaMenuTitle}>{subItem.label}</Text>
-                                                    </Link>
-                                                ))}
+                                                {item.items.map((subItem: any) => {
+                                                    const IconComponent = getIconComponent(subItem.label, subItem.icon);
+                                                    return (
+                                                        <Link 
+                                                            key={subItem.id} 
+                                                            href={subItem.url as any} 
+                                                            asChild
+                                                            onPress={() => setHoveredMenuId(null)}
+                                                        >
+                                                            <TouchableOpacity 
+                                                                style={styles.megaMenuItem}
+                                                            >
+                                                                {(item.id === 'industries' || item.id === 'services') && (
+                                                                    <View style={styles.industryIconContainer}>
+                                                                        {IconComponent && <IconComponent size={20} color={Colors.primary} />}
+                                                                    </View>
+                                                                )}
+                                                                <View style={styles.megaMenuTextContainer}>
+                                                                    <View style={styles.megaMenuTitleRow}>
+                                                                        <Text style={styles.megaMenuTitle} numberOfLines={1}>
+                                                                            {subItem.label}
+                                                                        </Text>
+                                                                        {(item.id === 'industries' || item.id === 'services') && <ChevronRight size={14} color={Colors.textSecondary} />}
+                                                                    </View>
+                                                                    {subItem.description && (
+                                                                        <Text style={styles.megaMenuDesc} numberOfLines={2}>
+                                                                            {subItem.description}
+                                                                        </Text>
+                                                                    )}
+                                                                </View>
+                                                            </TouchableOpacity>
+                                                        </Link>
+                                                    );
+                                                })}
                                             </View>
                                         </View>
                                     </View>
@@ -129,11 +270,10 @@ export default function PublicLayout() {
                 </View>
             </View>
 
-            {/* MOBILE NAVIGATION */}
             {isMenuOpen && (
                 <View style={[styles.mobileMenu, { height: '100%' }]}>
                     <ScrollView contentContainerStyle={styles.mobileMenuScroll}>
-                        {header.menuItems?.map((item: any) => (
+                        {headerItems.map((item: any) => (
                             <View key={item.id} style={styles.mobileNavItem}>
                                 <Link href={item.url as any} style={styles.mobileMenuItemLink as any} onPress={() => !item.items && setIsMenuOpen(false)}>
                                     <Text style={styles.mobileMenuItemText}>{item.label}</Text>
@@ -183,14 +323,14 @@ export default function PublicLayout() {
                         </View>
 
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
-                            <Text style={styles.footerTitle}>Company</Text>
-                            {footer.companyLinks?.map((link) => (
-                                <Link key={link.id} href={link.url as any} style={styles.footerLink as any}>{link.label}</Link>
+                            <Text style={styles.footerTitle}>Quick Links</Text>
+                            {footerItems.map((item: any) => (
+                                <Link key={item.id} href={item.url as any} style={styles.footerLink as any}>{item.label}</Link>
                             ))}
                         </View>
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
-                            <Text style={styles.footerTitle}>Solutions</Text>
-                            {footer.solutionsLinks?.map((link) => (
+                            <Text style={styles.footerTitle}>Company</Text>
+                            {footer.companyLinks?.map((link) => (
                                 <Link key={link.id} href={link.url as any} style={styles.footerLink as any}>{link.label}</Link>
                             ))}
                         </View>
@@ -242,11 +382,6 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '600',
-        ...Platform.select({
-            web: {
-                whiteSpace: 'nowrap',
-            }
-        })
     },
     headerContent: {
         flexDirection: 'row',
@@ -270,7 +405,6 @@ const styles = StyleSheet.create({
     navLinks: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 0,
         height: '100%',
     },
     navItemContainer: {
@@ -286,12 +420,12 @@ const styles = StyleSheet.create({
     navLinkInner: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
     },
     navText: {
         fontSize: 15,
         fontWeight: '600',
         color: Colors.navy,
+        marginRight: 6,
     },
     chevron: {
         width: 8,
@@ -309,13 +443,18 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
         padding: 24,
-        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-        borderWidth: 1,
-        borderColor: Colors.border,
-        zIndex: 120,
+        zIndex: 9999,
+        marginTop: -4, // Eliminate gap between trigger and dropdown
+        pointerEvents: 'auto' as any, // Ensure dropdown is clickable
         ...Platform.select({
             web: {
-                marginTop: 10,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 20 },
+                shadowOpacity: 0.1,
+                shadowRadius: 25,
+            },
+            default: {
+                elevation: 10
             }
         })
     },
@@ -325,30 +464,120 @@ const styles = StyleSheet.create({
     megaMenuGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 16,
+        marginHorizontal: -8,
+        justifyContent: 'flex-start',
     },
     megaMenuItem: {
-        width: '47%',
-        padding: 12,
-        borderRadius: 8,
+        width: Platform.OS === 'web' ? '46%' : '47%',
+        margin: 8,
+        padding: 16,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        minHeight: 100,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    industryIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        backgroundColor: '#F0FDFA',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    megaMenuTextContainer: {
+        flex: 1,
+    },
+    megaMenuTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 2,
+    },
+    megaMenuTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.navy,
+    },
+    megaMenuDesc: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+        lineHeight: 18,
+        overflow: 'hidden',
         ...Platform.select({
             web: {
-                transition: 'background-color 0.2s',
-                ':hover': {
-                    backgroundColor: '#F8FAFC',
-                }
+                display: '-webkit-box' as any,
+                WebkitLineClamp: 2 as any,
+                WebkitBoxOrient: 'vertical' as any,
             }
         })
     },
-    megaMenuTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: Colors.navy,
+    chevronIcon: {
+        marginLeft: 6,
+    },
+    chevronIconRotated: {
+        transform: [{ rotate: '180deg' }],
+    },
+    megaMenuWide: {
+        width: 800,
+        left: -200,
+    },
+    megaMenuGridIndustries: {
+        // Keeps the same grid config from megaMenuGrid
+    },
+    megaMenuItemIndustry: {
+        // Keeps the same item config from megaMenuItem
+    },
+    megaMenuLinkContent: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    industryIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        backgroundColor: '#F0FDFA',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 2,
+    },
+    megaMenuTextContainer: {
+        flex: 1,
+    },
+    megaMenuTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    megaMenuDesc: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+        marginTop: 2,
+        lineHeight: 18,
+    },
+    arrowIcon: {
+        opacity: 0,
+        transform: [{ translateX: -4 }],
+    },
+    arrowIconVisible: {
+        opacity: 1,
+        transform: [{ translateX: 0 }],
     },
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
+    },
+    saveBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.adminPrimary,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        marginRight: 16,
     },
     loginBtn: {
         backgroundColor: Colors.primary,
@@ -357,7 +586,11 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        boxShadow: '0 4px 6px -1px rgb(13 148 136 / 0.3)',
+        shadowColor: '#0d9488',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4,
     },
     loginBtnText: {
         color: '#FFFFFF',
@@ -399,7 +632,6 @@ const styles = StyleSheet.create({
         paddingLeft: 16,
         borderLeftWidth: 2,
         borderLeftColor: Colors.border,
-        gap: 16,
     },
     mobileSubLink: {
         textDecorationLine: 'none',
@@ -439,7 +671,6 @@ const styles = StyleSheet.create({
         width: '100%',
         alignSelf: 'center',
         justifyContent: 'space-between',
-        gap: 48,
         marginBottom: 60,
     },
     footerColMain: {
@@ -465,7 +696,6 @@ const styles = StyleSheet.create({
     },
     socialRow: {
         flexDirection: 'row',
-        gap: 16,
     },
     socialBtn: {
         width: 44,
@@ -474,31 +704,14 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.05)',
         alignItems: 'center',
         justifyContent: 'center',
-        ...Platform.select({
-            web: {
-                transition: 'background-color 0.2s',
-                ':hover': {
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                }
-            }
-        })
     },
     footerCol: {
         width: '100%',
-        gap: 16,
     },
     footerLink: {
         color: '#94A3B8',
         fontSize: 15,
         textDecorationLine: 'none',
-        ...Platform.select({
-            web: {
-                transition: 'color 0.2s',
-                ':hover': {
-                    color: '#FFFFFF',
-                }
-            }
-        })
     },
     footerBottom: {
         maxWidth: 1200,

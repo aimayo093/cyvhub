@@ -6,6 +6,7 @@ import { Alert, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { apiClient, setToken } from '@/services/api';
 import Colors from '@/constants/colors';
+import { useQuoteStore } from '@/hooks/useQuoteStore';
 import { usePayments } from '@/providers/PaymentProvider';
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
@@ -27,6 +28,12 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
 };
 
 export default function GuestReviewPage() {
+    const { 
+        fromAddress, fromPostcode, senderPhone, 
+        toAddress, toPostcode, receiverPhone,
+        parcels: storedParcels, totalDistanceMiles,
+        estimatedPrice, selectedServiceType 
+    } = useQuoteStore();
     const params = useLocalSearchParams();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,7 +41,7 @@ export default function GuestReviewPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [bookingRef, setBookingRef] = useState<string>('');
 
-    const price = Number(params.price || 0);
+    const price = estimatedPrice || Number(params.price || 0);
     const vatAmount = price * 0.2;
     const totalIncVat = price + vatAmount;
 
@@ -54,25 +61,27 @@ export default function GuestReviewPage() {
                 body: JSON.stringify({
                     guestEmail: params.email,
                     pickupContactName: `${params.firstName} ${params.lastName}`,
-                    pickupContactPhone: params.phone || '0000000000', 
-                    pickupAddressLine1: params.collectionAddress || 'Collection Point',
+                    pickupContactPhone: senderPhone, 
+                    pickupAddressLine1: params.collectionAddress || fromAddress,
                     pickupCity: params.collectionCity || 'Unknown', 
-                    pickupPostcode: params.collection,
+                    pickupPostcode: fromPostcode,
                     dropoffContactName: `${params.firstName} ${params.lastName}`,
-                    dropoffContactPhone: params.phone || '0000000000',
-                    dropoffAddressLine1: params.deliveryAddress || 'Delivery Point',
+                    dropoffContactPhone: receiverPhone,
+                    dropoffAddressLine1: params.deliveryAddress || toAddress,
                     dropoffCity: params.deliveryCity || 'Unknown',
-                    dropoffPostcode: params.delivery,
-                    vehicleType: params.vehicleType,
-                    parcels: parcels.map((p: any) => ({
-                        lengthCm: parseFloat(p.length) || 0,
-                        widthCm: parseFloat(p.width) || 0,
-                        heightCm: parseFloat(p.height) || 0,
-                        weightKg: parseFloat(p.weight) || 0,
-                        quantity: parseInt(p.quantity, 10) || 1,
+                    dropoffPostcode: toPostcode,
+                    vehicleType: 'Standard Vehicle', // Could be from store if we had it
+                    parcels: storedParcels.map((p: any) => ({
+                        lengthCm: p.lengthCm,
+                        widthCm: p.widthCm,
+                        heightCm: p.heightCm,
+                        weightKg: p.weightKg,
+                        quantity: p.quantity,
                         description: p.description || 'Guest Item'
                     })),
-                    distanceKm: params.distance ? parseFloat(params.distance as string) : 20,
+                    distanceKm: totalDistanceMiles ? totalDistanceMiles * 1.609 : 20,
+                    senderPhone, // Include specifically as requested
+                    receiverPhone
                 })
             });
 
@@ -151,14 +160,38 @@ export default function GuestReviewPage() {
                         </View>
 
                         <View style={styles.sectionCard}>
-                            <Text style={styles.sectionTitle}>Guest Details</Text>
+                            <Text style={styles.sectionTitle}>Contact Details</Text>
                             <View style={styles.dataRow}>
-                                <Text style={styles.dataLabel}>Name:</Text>
+                                <Text style={styles.dataLabel}>Guest Name:</Text>
                                 <Text style={styles.dataValue}>{params.firstName} {params.lastName}</Text>
                             </View>
                             <View style={styles.dataRow}>
                                 <Text style={styles.dataLabel}>Email:</Text>
                                 <Text style={styles.dataValue}>{params.email}</Text>
+                            </View>
+                            <View style={styles.dataRow}>
+                                <Text style={styles.dataLabel}>Sender Phone:</Text>
+                                <Text style={styles.dataValue}>{senderPhone}</Text>
+                            </View>
+                            <View style={styles.dataRow}>
+                                <Text style={styles.dataLabel}>Receiver Phone:</Text>
+                                <Text style={styles.dataValue}>{receiverPhone}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.sectionCard}>
+                            <Text style={styles.sectionTitle}>Parcel Details</Text>
+                            {storedParcels.map((p, idx) => (
+                                <View key={idx} style={styles.parcelRow}>
+                                    <Text style={styles.parcelInfo}>
+                                        {p.quantity}x {p.lengthCm}x{p.widthCm}x{p.heightCm}cm ({p.weightKg}kg)
+                                    </Text>
+                                    <Text style={styles.parcelDesc}>{p.description || 'No description'}</Text>
+                                </View>
+                            ))}
+                            <View style={[styles.dataRow, { marginTop: 12 }]}>
+                                <Text style={styles.dataLabel}>Total Distance:</Text>
+                                <Text style={styles.dataValue}>{totalDistanceMiles?.toFixed(1)} miles</Text>
                             </View>
                         </View>
                     </View>
@@ -207,8 +240,8 @@ export default function GuestReviewPage() {
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                        <ActivityIndicator color="#FFFFFF" />
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <ActivityIndicator color="#FFFFFF" style={{ marginRight: 10 }} />
                                         <Text style={styles.payBtnText}>Processing...</Text>
                                     </View>
                                 ) : (
@@ -286,13 +319,13 @@ const styles = StyleSheet.create({
     },
     reviewGrid: {
         flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-        gap: 24,
     },
     mainCol: {
         flex: 1.5,
     },
     sideCol: {
         flex: 1,
+        marginLeft: Platform.OS === 'web' ? 24 : 0,
     },
     sectionCard: {
         backgroundColor: '#FFFFFF',
@@ -301,6 +334,21 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         borderWidth: 1,
         borderColor: '#E2E8F0',
+    },
+    parcelRow: {
+        marginBottom: 8,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    parcelInfo: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1a237e',
+    },
+    parcelDesc: {
+        fontSize: 12,
+        color: '#64748b',
     },
     paymentCard: {
         backgroundColor: '#FFFFFF',

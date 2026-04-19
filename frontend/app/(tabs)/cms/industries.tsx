@@ -7,47 +7,62 @@ import {
     TouchableOpacity,
     TextInput,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     ArrowLeft,
     Save,
-    Eye,
     Plus,
     Trash2,
     ChevronDown,
-    ChevronUp,
+    CheckCircle,
+    XCircle,
+    Settings,
+    FileText,
+    Layout,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
-import { IndustryDetail, initialIndustryDetails } from '@/constants/cmsDefaults';
+import { IndustryDetail, initialIndustryDetails, IndustriesPageConfig } from '@/constants/cmsDefaults';
 import { useCMS } from '@/context/CMSContext';
-import { ActivityIndicator } from 'react-native';
+import CMSImagePicker from '@/components/CMSImagePicker';
 
 export default function IndustriesCMS() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { industryDetails, setIndustryDetails, isLoaded, batchUpdateAndSync } = useCMS();
+    const { 
+        industryDetails, 
+        isLoaded, 
+        batchUpdateAndSync,
+        industriesPage
+    } = useCMS();
+    
     const [industries, setIndustries] = useState<Record<string, IndustryDetail>>(initialIndustryDetails);
+    const [pageConfig, setPageConfig] = useState<IndustriesPageConfig | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [isEditingLanding, setIsEditingLanding] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (isLoaded && industryDetails) {
-            setIndustries(prev => ({ ...prev, ...industryDetails }));
+        if (isLoaded) {
+            if (industryDetails) setIndustries(prev => ({ ...prev, ...industryDetails }));
+            if (industriesPage) setPageConfig(industriesPage);
             setLoading(false);
         }
-    }, [isLoaded, industryDetails]);
+    }, [isLoaded, industryDetails, industriesPage]);
 
     const handleSave = async () => {
         try {
-            await batchUpdateAndSync({ industryDetails: industries }, true);
+            const updates: any = { industryDetails: industries };
+            if (pageConfig) updates.industriesPage = pageConfig;
+            
+            await batchUpdateAndSync(updates, true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setHasUnsavedChanges(false);
-            Alert.alert('✅ Success', 'Industry pages published!');
+            Alert.alert('✅ Success', 'Industry content published!');
         } catch (e) {
             console.error('[IndustriesCMS] Save Error:', e);
             Alert.alert('❌ Error', 'Failed to save changes.');
@@ -62,18 +77,29 @@ export default function IndustriesCMS() {
         setHasUnsavedChanges(true);
     };
 
-    const updateFeature = (id: string, index: number, value: string) => {
-        const updated = [...industries[id].features];
+    const updatePageField = (key: keyof IndustriesPageConfig, value: any) => {
+        if (!pageConfig) return;
+        setPageConfig(prev => prev ? ({ ...prev, [key]: value }) : null);
+        setHasUnsavedChanges(true);
+    };
+
+    // Generic Array Update Helpers
+    const updateArrayItem = (id: string, field: 'whyChooseUs' | 'typicalServices' | 'features', index: number, value: string) => {
+        const currentField = industries[id][field] || [];
+        const updated = [...currentField];
         updated[index] = value;
-        updateField(id, 'features', updated);
+        updateField(id, field, updated);
     };
 
-    const addFeature = (id: string) => {
-        updateField(id, 'features', [...industries[id].features, '']);
+    const addArrayItem = (id: string, field: 'whyChooseUs' | 'typicalServices' | 'features') => {
+        const currentField = industries[id][field] || [];
+        const updated = [...currentField, ''];
+        updateField(id, field, updated);
     };
 
-    const removeFeature = (id: string, index: number) => {
-        updateField(id, 'features', industries[id].features.filter((_, i) => i !== index));
+    const removeArrayItem = (id: string, field: 'whyChooseUs' | 'typicalServices' | 'features', index: number) => {
+        const currentField = industries[id][field] || [];
+        updateField(id, field, currentField.filter((_, i) => i !== index));
     };
 
     const updateStat = (id: string, index: number, key: 'label' | 'value', val: string) => {
@@ -124,12 +150,23 @@ export default function IndustriesCMS() {
         <View style={styles.container}>
             <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
                 <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => activeId ? setActiveId(null) : router.back()} style={styles.backButton}>
+                    <TouchableOpacity 
+                        onPress={() => {
+                            if (activeId) setActiveId(null);
+                            else if (isEditingLanding) setIsEditingLanding(false);
+                            else router.back();
+                        }} 
+                        style={styles.backButton}
+                    >
                         <ArrowLeft size={20} color={Colors.textInverse} />
                     </TouchableOpacity>
                     <View>
-                        <Text style={styles.headerTitle}>{activeId ? detail?.title : 'Industries Manager'}</Text>
-                        <Text style={styles.headerSubtitle}>{activeId ? 'Edit industry detail page' : 'Manage industry-specific content'}</Text>
+                        <Text style={styles.headerTitle}>
+                            {activeId ? detail?.title : isEditingLanding ? 'Landing Page Editor' : 'Industries Manager'}
+                        </Text>
+                        <Text style={styles.headerSubtitle}>
+                            {activeId ? 'Edit industry detail page' : isEditingLanding ? 'General landing page settings' : 'Manage industry-specific content'}
+                        </Text>
                     </View>
                     <View style={styles.headerActions}>
                         <TouchableOpacity
@@ -150,93 +187,240 @@ export default function IndustriesCMS() {
                 </View>
             ) : (
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentPadding}>
-                {!activeId ? (
-                    // INDUSTRY LIST VIEW
+                {!activeId && !isEditingLanding ? (
+                    // DASHBOARD VIEW
                     <View>
-                        <Text style={styles.sectionTitle}>Select an Industry to Edit</Text>
-                        <Text style={styles.sectionDesc}>Each industry has its own detailed public page with problem/solution, stats, equipment, and case studies.</Text>
-                        {Object.entries(industries).map(([key, ind]) => (
+                        <TouchableOpacity 
+                            style={[styles.industryListItem, { backgroundColor: Colors.navyLight, borderColor: Colors.primary }]}
+                            onPress={() => setIsEditingLanding(true)}
+                        >
+                            <View style={styles.industryListIcon}>
+                                <Layout size={20} color={Colors.primary} />
+                            </View>
+                            <View style={styles.industryListContent}>
+                                <Text style={[styles.industryListTitle, { color: '#FFF' }]}>Main Landing Page</Text>
+                                <Text style={[styles.industryListSubtitle, { color: 'rgba(255,255,255,0.6)' }]}>Hero title, intro text, and metadata...</Text>
+                            </View>
+                            <ChevronDown size={20} color={Colors.textMuted} style={{ transform: [{ rotate: '-90deg' }] }} />
+                        </TouchableOpacity>
+
+                        <Text style={[styles.sectionTitle, { marginTop: 24, marginBottom: 16 }]}>Sector-Specific Pages</Text>
+                        
+                        {Object.entries(industries)
+                            .sort(([, a], [, b]) => (a.order || 0) - (b.order || 0))
+                            .map(([key, ind]) => (
                             <TouchableOpacity
                                 key={key}
                                 style={styles.industryListItem}
                                 onPress={() => setActiveId(key)}
                             >
+                                <View style={styles.industryListIcon}>
+                                    {ind.publishStatus ? (
+                                        <CheckCircle size={20} color={Colors.success} />
+                                    ) : (
+                                        <XCircle size={20} color={Colors.textMuted} />
+                                    )}
+                                </View>
                                 <View style={styles.industryListContent}>
-                                    <Text style={styles.industryListTitle}>{ind.title}</Text>
-                                    <Text style={styles.industryListSubtitle}>{ind.subtitle}</Text>
+                                    <View style={styles.industryListHeader}>
+                                        <Text style={styles.industryListTitle}>{ind.title}</Text>
+                                        <Text style={[styles.statusBadge, ind.publishStatus ? styles.statusPublished : styles.statusDraft]}>
+                                            {ind.publishStatus ? 'Published' : 'Draft'}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.industryListSubtitle} numberOfLines={1}>{ind.subtitle || ind.description}</Text>
                                 </View>
                                 <ChevronDown size={20} color={Colors.textMuted} style={{ transform: [{ rotate: '-90deg' }] }} />
                             </TouchableOpacity>
                         ))}
                     </View>
-                ) : detail ? (
-                    // INDUSTRY DETAIL EDITOR
+                ) : isEditingLanding && pageConfig ? (
+                    // LANDING PAGE EDITOR
                     <View>
-                        {/* Hero Section */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Hero Section</Text>
+                            <Text style={styles.sectionTitle}>Hero Content</Text>
                             <View style={styles.card}>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Page Title</Text>
+                                    <Text style={styles.inputLabel}>Page Title (H1 Tag)</Text>
+                                    <TextInput style={styles.input} value={pageConfig.title} onChangeText={t => updatePageField('title', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Hero Heading</Text>
+                                    <TextInput style={styles.input} value={pageConfig.heroHeading} onChangeText={t => updatePageField('heroHeading', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Hero Subtext</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={pageConfig.heroSubtext} onChangeText={t => updatePageField('heroSubtext', t)} multiline />
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Intro Content</Text>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Intro Heading</Text>
+                                    <TextInput style={styles.input} value={pageConfig.introHeading} onChangeText={t => updatePageField('introHeading', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Intro Main Text</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={pageConfig.introText} onChangeText={t => updatePageField('introText', t)} multiline />
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Global CTA</Text>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>CTA Heading</Text>
+                                    <TextInput style={styles.input} value={pageConfig.ctaHeading} onChangeText={t => updatePageField('ctaHeading', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>CTA Supporting Text</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={pageConfig.ctaText} onChangeText={t => updatePageField('ctaText', t)} multiline />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>CTA Button Label</Text>
+                                    <TextInput style={styles.input} value={pageConfig.ctaButtonText} onChangeText={t => updatePageField('ctaButtonText', t)} />
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Search Engine Optmization</Text>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Meta Title</Text>
+                                    <TextInput style={styles.input} value={pageConfig.metaTitle} onChangeText={t => updatePageField('metaTitle', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Meta Description</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={pageConfig.metaDesc} onChangeText={t => updatePageField('metaDesc', t)} multiline />
+                                </View>
+                            </View>
+                        </View>
+                        <View style={{ height: 100 }} />
+                    </View>
+                ) : detail && activeId ? (
+                    // INDUSTRY DETAIL EDITOR
+                    <View>
+                        {/* Publishing */}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>Publish Settings</Text>
+                                <TouchableOpacity 
+                                    style={[styles.statusToggle, detail.publishStatus ? styles.statusToggleActive : styles.statusToggleInactive]} 
+                                    onPress={() => updateField(activeId, 'publishStatus', !detail.publishStatus)}
+                                >
+                                    <Text style={styles.statusToggleText}>{detail.publishStatus ? 'Published' : 'Draft'}</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Display Order (Numeric)</Text>
+                                    <TextInput style={styles.input} value={String(detail.order || 0)} onChangeText={t => updateField(activeId, 'order', parseInt(t) || 0)} keyboardType="numeric" />
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Basic Info */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Page Content</Text>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Industry Name</Text>
                                     <TextInput style={styles.input} value={detail.title} onChangeText={t => updateField(activeId, 'title', t)} />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Subtitle</Text>
+                                    <Text style={styles.inputLabel}>URL Slug</Text>
+                                    <TextInput style={styles.input} value={detail.slug} onChangeText={t => updateField(activeId, 'slug', t)} placeholder="e.g. medical-healthcare" />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Hero Tagline</Text>
                                     <TextInput style={styles.input} value={detail.subtitle} onChangeText={t => updateField(activeId, 'subtitle', t)} />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Hero Image URL</Text>
-                                    <TextInput style={styles.input} value={detail.heroImageUrl} onChangeText={t => updateField(activeId, 'heroImageUrl', t)} />
+                                    <Text style={styles.inputLabel}>Short Description (Cards/Dropdown)</Text>
+                                    <TextInput style={[styles.input, styles.textArea, { minHeight: 60 }]} value={detail.description} onChangeText={t => updateField(activeId, 'description', t)} multiline />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Icon Name</Text>
-                                    <TextInput style={styles.input} value={detail.icon} onChangeText={t => updateField(activeId, 'icon', t)} placeholder="e.g. Truck, Monitor, Package" />
+                                    <Text style={styles.inputLabel}>Full Overview Text</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.overview} onChangeText={t => updateField(activeId, 'overview', t)} multiline />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Hero Image</Text>
+                                    <CMSImagePicker
+                                        value={detail.heroImageUrl}
+                                        onSelect={(url: string) => updateField(activeId, 'heroImageUrl', url)}
+                                        label="Industry Hero Image"
+                                    />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Icon (Lucide name)</Text>
+                                    <TextInput style={styles.input} value={detail.icon} onChangeText={t => updateField(activeId, 'icon', t)} />
                                 </View>
                             </View>
                         </View>
 
-                        {/* Problem / Solution */}
+                        {/* Challenges & Solutions */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Problem & Solution</Text>
+                            <Text style={styles.sectionTitle}>Sector Problem & Solution</Text>
                             <View style={styles.card}>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Problem Title</Text>
+                                    <Text style={styles.inputLabel}>Problem Heading</Text>
                                     <TextInput style={styles.input} value={detail.problemTitle} onChangeText={t => updateField(activeId, 'problemTitle', t)} />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Problem Content</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={detail.problemContent} onChangeText={t => updateField(activeId, 'problemContent', t)} multiline numberOfLines={4} />
+                                    <Text style={styles.inputLabel}>Problem Detail</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.problemContent} onChangeText={t => updateField(activeId, 'problemContent', t)} multiline />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Solution Title</Text>
+                                    <Text style={styles.inputLabel}>Solution Heading</Text>
                                     <TextInput style={styles.input} value={detail.solutionTitle} onChangeText={t => updateField(activeId, 'solutionTitle', t)} />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Solution Content</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={detail.solutionContent} onChangeText={t => updateField(activeId, 'solutionContent', t)} multiline numberOfLines={4} />
+                                    <Text style={styles.inputLabel}>Solution Detail</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.solutionContent} onChangeText={t => updateField(activeId, 'solutionContent', t)} multiline />
+                                    <Text style={styles.inputHint}>Use double newlines (\n\n) to separate the 4 paragraphs.</Text>
                                 </View>
                             </View>
                         </View>
 
-                        {/* Features */}
+                        {/* SEO Settings */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Search Engine Optimization (SEO)</Text>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Meta Title</Text>
+                                    <TextInput style={styles.input} value={detail.metaTitle} onChangeText={t => updateField(activeId, 'metaTitle', t)} placeholder="SEO Title..." />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Meta Description</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.metaDesc} onChangeText={t => updateField(activeId, 'metaDesc', t)} multiline placeholder="SEO Description..." />
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Lists Editor */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Key Features</Text>
-                                <TouchableOpacity style={styles.addButton} onPress={() => addFeature(activeId)}>
+                                <Text style={styles.sectionTitle}>Why Choose CYVhub?</Text>
+                                <TouchableOpacity style={styles.addButton} onPress={() => addArrayItem(activeId, 'whyChooseUs')}>
                                     <Plus size={16} color="#FFF" />
                                     <Text style={styles.addButtonText}>Add</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={styles.card}>
-                                {detail.features.map((feature, idx) => (
+                                {(detail.whyChooseUs || []).map((item, idx) => (
                                     <View key={idx} style={styles.listItemRow}>
                                         <TextInput
                                             style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                                            value={feature}
-                                            onChangeText={t => updateFeature(activeId, idx, t)}
-                                            placeholder="Feature description"
+                                            value={item}
+                                            onChangeText={t => updateArrayItem(activeId, 'whyChooseUs', idx, t)}
+                                            placeholder="..."
                                         />
-                                        <TouchableOpacity onPress={() => removeFeature(activeId, idx)} style={styles.trashBtn}>
+                                        <TouchableOpacity onPress={() => removeArrayItem(activeId, 'whyChooseUs', idx)} style={styles.trashBtn}>
                                             <Trash2 size={16} color={Colors.danger} />
                                         </TouchableOpacity>
                                     </View>
@@ -244,13 +428,38 @@ export default function IndustriesCMS() {
                             </View>
                         </View>
 
-                        {/* Stats */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Industry Stats</Text>
-                                <TouchableOpacity style={styles.addButton} onPress={() => addStat(activeId)}>
+                                <Text style={styles.sectionTitle}>Typical Industry Services</Text>
+                                <TouchableOpacity style={styles.addButton} onPress={() => addArrayItem(activeId, 'typicalServices')}>
                                     <Plus size={16} color="#FFF" />
                                     <Text style={styles.addButtonText}>Add</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.card}>
+                                {(detail.typicalServices || []).map((item, idx) => (
+                                    <View key={idx} style={styles.listItemRow}>
+                                        <TextInput
+                                            style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                                            value={item}
+                                            onChangeText={t => updateArrayItem(activeId, 'typicalServices', idx, t)}
+                                            placeholder="..."
+                                        />
+                                        <TouchableOpacity onPress={() => removeArrayItem(activeId, 'typicalServices', idx)} style={styles.trashBtn}>
+                                            <Trash2 size={16} color={Colors.danger} />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Sector Specific Stats */}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>Sector Performance Stats</Text>
+                                <TouchableOpacity style={styles.addButton} onPress={() => addStat(activeId)}>
+                                    <Plus size={16} color="#FFF" />
+                                    <Text style={styles.addButtonText}>Add Stats</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={styles.card}>
@@ -266,27 +475,33 @@ export default function IndustriesCMS() {
                             </View>
                         </View>
 
-                        {/* Equipment */}
+                        {/* Equipment Section */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Equipment</Text>
+                                <Text style={styles.sectionTitle}>Specialized Equipment</Text>
                                 <TouchableOpacity style={styles.addButton} onPress={() => addEquipment(activeId)}>
                                     <Plus size={16} color="#FFF" />
-                                    <Text style={styles.addButtonText}>Add</Text>
+                                    <Text style={styles.addButtonText}>Add Item</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={styles.card}>
-                                {detail.equipment.map((equip, idx) => (
-                                    <View key={idx} style={styles.subCard}>
-                                        <View style={styles.subCardHeader}>
-                                            <Text style={styles.subCardNum}>Equipment {idx + 1}</Text>
-                                            <TouchableOpacity onPress={() => removeEquipment(activeId, idx)} style={styles.trashBtn}>
-                                                <Trash2 size={16} color={Colors.danger} />
-                                            </TouchableOpacity>
+                                {detail.equipment.map((item, idx) => (
+                                    <View key={idx} style={[styles.card, { padding: 16, marginBottom: 12, borderStyle: 'dashed' }]}>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Title</Text>
+                                            <TextInput style={styles.input} value={item.title} onChangeText={t => updateEquipment(activeId, idx, 'title', t)} />
                                         </View>
-                                        <TextInput style={styles.input} value={equip.title} onChangeText={t => updateEquipment(activeId, idx, 'title', t)} placeholder="Title" />
-                                        <TextInput style={[styles.input, styles.textArea]} value={equip.desc} onChangeText={t => updateEquipment(activeId, idx, 'desc', t)} placeholder="Description" multiline />
-                                        <TextInput style={styles.input} value={equip.icon} onChangeText={t => updateEquipment(activeId, idx, 'icon', t)} placeholder="Icon name (e.g. Package)" />
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Description</Text>
+                                            <TextInput style={[styles.input, styles.textArea]} value={item.desc} onChangeText={t => updateEquipment(activeId, idx, 'desc', t)} multiline />
+                                        </View>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Icon Name (Lucide)</Text>
+                                            <TextInput style={styles.input} value={item.icon} onChangeText={t => updateEquipment(activeId, idx, 'icon', t)} />
+                                        </View>
+                                        <TouchableOpacity onPress={() => removeEquipment(activeId, idx)} style={[styles.trashBtn, { alignSelf: 'flex-end' }]}>
+                                            <Trash2 size={16} color={Colors.danger} />
+                                        </TouchableOpacity>
                                     </View>
                                 ))}
                             </View>
@@ -295,48 +510,70 @@ export default function IndustriesCMS() {
                         {/* Process Steps */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Process Steps</Text>
+                                <Text style={styles.sectionTitle}>Sector Workflow Steps</Text>
                                 <TouchableOpacity style={styles.addButton} onPress={() => addStep(activeId)}>
                                     <Plus size={16} color="#FFF" />
-                                    <Text style={styles.addButtonText}>Add</Text>
+                                    <Text style={styles.addButtonText}>Add Step</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={styles.card}>
                                 {detail.processSteps.map((step, idx) => (
-                                    <View key={idx} style={styles.subCard}>
-                                        <View style={styles.subCardHeader}>
-                                            <Text style={styles.subCardNum}>Step {idx + 1}</Text>
-                                            <TouchableOpacity onPress={() => removeStep(activeId, idx)} style={styles.trashBtn}>
-                                                <Trash2 size={16} color={Colors.danger} />
-                                            </TouchableOpacity>
+                                    <View key={idx} style={[styles.card, { padding: 16, marginBottom: 12, borderStyle: 'dotted' }]}>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Step {idx + 1} Title</Text>
+                                            <TextInput style={styles.input} value={step.title} onChangeText={t => updateStep(activeId, idx, 'title', t)} />
                                         </View>
-                                        <TextInput style={styles.input} value={step.title} onChangeText={t => updateStep(activeId, idx, 'title', t)} placeholder="Step title" />
-                                        <TextInput style={[styles.input, styles.textArea]} value={step.desc} onChangeText={t => updateStep(activeId, idx, 'desc', t)} placeholder="Step description" multiline />
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Step {idx + 1} Description</Text>
+                                            <TextInput style={[styles.input, styles.textArea]} value={step.desc} onChangeText={t => updateStep(activeId, idx, 'desc', t)} multiline />
+                                        </View>
+                                        <TouchableOpacity onPress={() => removeStep(activeId, idx)} style={[styles.trashBtn, { alignSelf: 'flex-end' }]}>
+                                            <Trash2 size={16} color={Colors.danger} />
+                                        </TouchableOpacity>
                                     </View>
                                 ))}
                             </View>
                         </View>
 
-                        {/* Case Study */}
+                        {/* Case Study Section */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Case Study</Text>
+                            <Text style={styles.sectionTitle}>Case Study / Testimonial</Text>
                             <View style={styles.card}>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Case Study Title</Text>
+                                    <Text style={styles.inputLabel}>Success Title</Text>
                                     <TextInput style={styles.input} value={detail.caseStudyTitle} onChangeText={t => updateField(activeId, 'caseStudyTitle', t)} />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Quote</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={detail.caseStudyQuote} onChangeText={t => updateField(activeId, 'caseStudyQuote', t)} multiline numberOfLines={3} />
+                                    <Text style={styles.inputLabel}>Quote Content</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.caseStudyQuote} onChangeText={t => updateField(activeId, 'caseStudyQuote', t)} multiline />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Author</Text>
+                                    <Text style={styles.inputLabel}>Author / Attribution</Text>
                                     <TextInput style={styles.input} value={detail.caseStudyAuthor} onChangeText={t => updateField(activeId, 'caseStudyAuthor', t)} />
                                 </View>
                             </View>
                         </View>
 
-                        <View style={{ height: 40 }} />
+                        {/* CTA Section */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Page Closing CTA</Text>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>CTA Heading</Text>
+                                    <TextInput style={styles.input} value={detail.ctaHeading} onChangeText={t => updateField(activeId, 'ctaHeading', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>CTA Text</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.ctaText} onChangeText={t => updateField(activeId, 'ctaText', t)} multiline />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>CTA Button Text</Text>
+                                    <TextInput style={styles.input} value={detail.ctaButtonText} onChangeText={t => updateField(activeId, 'ctaButtonText', t)} />
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={{ height: 100 }} />
                     </View>
                 ) : null}
             </ScrollView>
@@ -346,7 +583,7 @@ export default function IndustriesCMS() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background },
+    container: { flex: 1, backgroundColor: Colors.background || '#F8FAFC' },
     header: {
         backgroundColor: Colors.navy,
         paddingHorizontal: 20,
@@ -361,18 +598,18 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: Colors.navyLight,
+        backgroundColor: 'rgba(255,255,255,0.1)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     headerTitle: {
         fontSize: 22,
         fontWeight: '800',
-        color: Colors.textInverse,
+        color: '#FFF',
     },
     headerSubtitle: {
         fontSize: 13,
-        color: Colors.textMuted,
+        color: 'rgba(255,255,255,0.6)',
         marginTop: 2,
     },
     headerActions: {
@@ -399,11 +636,11 @@ const styles = StyleSheet.create({
     },
     content: { flex: 1 },
     contentPadding: { padding: 20 },
-    section: { marginBottom: 24 },
+    section: { marginBottom: 32 },
     sectionTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: Colors.text,
+        fontSize: 18,
+        fontWeight: '900',
+        color: Colors.navy,
         marginBottom: 8,
     },
     sectionDesc: {
@@ -418,42 +655,48 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     card: {
-        backgroundColor: Colors.surface,
-        borderRadius: 16,
-        padding: 20,
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
         borderWidth: 1,
-        borderColor: Colors.border,
+        borderColor: '#E2E8F0',
     },
-    inputGroup: { marginBottom: 16 },
+    inputGroup: { marginBottom: 20 },
     inputLabel: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 12,
+        fontWeight: '800',
         color: Colors.textSecondary,
-        marginBottom: 6,
+        marginBottom: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
     input: {
-        backgroundColor: Colors.background,
+        backgroundColor: '#F8FAFC',
         borderWidth: 1,
-        borderColor: Colors.border,
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
+        borderColor: '#E2E8F0',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         fontSize: 15,
-        color: Colors.text,
-        marginBottom: 12,
+        color: Colors.navy,
     },
     textArea: {
-        minHeight: 80,
+        minHeight: 100,
         textAlignVertical: 'top',
     },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: Colors.adminPrimary,
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 8,
+        backgroundColor: Colors.navy,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 10,
     },
     addButtonText: {
         color: '#FFF',
@@ -464,51 +707,97 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        marginBottom: 12,
+        marginBottom: 16,
     },
     trashBtn: {
-        padding: 8,
-        backgroundColor: Colors.dangerLight,
-        borderRadius: 8,
-    },
-    subCard: {
-        backgroundColor: Colors.background,
-        borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: Colors.borderLight,
-        marginBottom: 12,
-    },
-    subCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    subCardNum: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: Colors.textSecondary,
+        padding: 10,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 10,
     },
     industryListItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.surface,
-        borderRadius: 16,
+        backgroundColor: '#FFF',
+        borderRadius: 20,
         padding: 20,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: Colors.border,
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.02,
+        shadowRadius: 4,
+        elevation: 1,
     },
     industryListContent: { flex: 1 },
     industryListTitle: {
         fontSize: 17,
         fontWeight: '700',
-        color: Colors.text,
+        color: Colors.navy,
         marginBottom: 4,
     },
     industryListSubtitle: {
         fontSize: 14,
         color: Colors.textSecondary,
     },
+    industryListIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    industryListHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    statusBadge: {
+        fontSize: 10,
+        fontWeight: '900',
+        textTransform: 'uppercase',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        overflow: 'hidden',
+    },
+    statusPublished: {
+        backgroundColor: '#DCFCE7',
+        color: '#166534',
+    },
+    statusDraft: {
+        backgroundColor: '#F1F5F9',
+        color: '#64748B',
+    },
+    statusToggle: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    statusToggleActive: {
+        backgroundColor: Colors.success,
+    },
+    statusToggleInactive: {
+        backgroundColor: '#64748B',
+    },
+    statusToggleText: {
+        color: '#FFF',
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    statusHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 16,
+    },
+    inputHint: {
+        fontSize: 11,
+        color: Colors.textSecondary,
+        marginTop: 4,
+        fontStyle: 'italic',
+    }
 });

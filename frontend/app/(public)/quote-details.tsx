@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Package, Ruler, Weight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuoteStore } from '@/hooks/useQuoteStore';
 import { QuoteDetailsConfig, initialQuoteDetails } from '@/constants/cmsDefaults';
 
 
@@ -27,14 +28,27 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
 
 export default function QuoteDetailsPage() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
-    const { collection, delivery, ready, vehicle } = useLocalSearchParams();
-    const router = useRouter();
-
-    const [parcels, setParcels] = useState<any[]>([
-        { length: '', width: '', height: '', weight: '', quantity: '1', description: '' }
-    ]);
+    const { fromAddress, toAddress, senderPhone, receiverPhone, parcels: storedParcels, setStep2 } = useQuoteStore();
+    const [parcels, setParcels] = useState<any[]>([]);
     const [config, setConfig] = useState<QuoteDetailsConfig>(initialQuoteDetails);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (storedParcels && storedParcels.length > 0) {
+            setParcels(storedParcels.map(p => ({
+                id: p.id,
+                length: p.lengthCm?.toString() || '',
+                width: p.widthCm?.toString() || '',
+                height: p.heightCm?.toString() || '',
+                weight: p.weightKg?.toString() || '',
+                quantity: p.quantity?.toString() || '1',
+                description: p.description || ''
+            })));
+        } else {
+            setParcels([{ id: Math.random().toString(), length: '', width: '', height: '', weight: '', quantity: '1', description: '' }]);
+        }
+    }, [storedParcels]);
+
 
     useEffect(() => {
         const loadStoredData = async () => {
@@ -89,26 +103,22 @@ export default function QuoteDetailsPage() {
             return;
         }
 
-        try {
-            await AsyncStorage.setItem('last_quote_details', JSON.stringify({ parcels }));
-        } catch (e) {
-            console.error('Failed to save quote details', e);
-        }
+        // Save to store
+        setStep2(parcels.map(p => ({
+            id: p.id || Math.random().toString(),
+            lengthCm: parseFloat(p.length),
+            widthCm: parseFloat(p.width),
+            heightCm: parseFloat(p.height),
+            weightKg: parseFloat(p.weight),
+            quantity: parseInt(p.quantity, 10),
+            description: p.description || ''
+        })));
 
-        router.push({
-            pathname: '/(public)/guest-quote',
-            params: {
-                collection,
-                delivery,
-                ready,
-                vehicle,
-                parcels: JSON.stringify(parcels)
-            }
-        });
+        router.push('/(public)/guest-quote' as any);
     };
 
     const addParcel = () => {
-        setParcels([...parcels, { length: '', width: '', height: '', weight: '', quantity: '1', description: '' }]);
+        setParcels([...parcels, { id: Math.random().toString(), length: '', width: '', height: '', weight: '', quantity: '1', description: '' }]);
     };
 
     const removeParcel = (index: number) => {
@@ -145,15 +155,15 @@ export default function QuoteDetailsPage() {
                     <View style={styles.summaryBox}>
                         <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>From:</Text>
-                            <Text style={styles.summaryValue}>
-                                {typeof collection === 'object' ? `${(collection as any).line1}, ${(collection as any).townCity}` : (collection as string)}
-                            </Text>
+                            <Text style={styles.summaryValue}>{fromAddress}</Text>
                         </View>
                         <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>To:</Text>
-                            <Text style={styles.summaryValue}>
-                                {typeof delivery === 'object' ? `${(delivery as any).line1}, ${(delivery as any).townCity}` : (delivery as string)}
-                            </Text>
+                            <Text style={styles.summaryValue}>{toAddress}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Phones:</Text>
+                            <Text style={styles.summaryValue}>{senderPhone} → {receiverPhone}</Text>
                         </View>
                     </View>
 
@@ -340,26 +350,25 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     formSection: {
-        gap: 24,
     },
     inputGroup: {
-        gap: 8,
+        marginBottom: 16,
     },
     inputLabelRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        marginBottom: 8,
     },
     inputLabel: {
         fontSize: 16,
         fontWeight: '600',
         color: '#1a237e',
+        marginLeft: 8,
     },
     dimRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         alignItems: 'center',
-        gap: 12,
     },
     dimInput: {
         flex: 1,
@@ -371,6 +380,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         fontSize: 16,
         backgroundColor: '#f8fafc',
+        marginHorizontal: 6,
     },
     dimX: {
         fontSize: 18,
@@ -409,7 +419,7 @@ const styles = StyleSheet.create({
         padding: 16,
         borderWidth: 1,
         borderColor: '#e2e8f0',
-        gap: 16,
+        marginBottom: 24,
     },
     parcelHeader: {
         flexDirection: 'row',

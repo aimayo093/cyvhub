@@ -20,7 +20,9 @@ export class CommercialService {
         items: any[], 
         flags: any, 
         vehicleType?: string, 
-        businessId?: string 
+        businessId?: string,
+        senderPhone?: string,
+        receiverPhone?: string
     }) {
         const totalQuantity = payload.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
         const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(payload.items);
@@ -152,6 +154,8 @@ export class CommercialService {
                 driverPayoutTotal: payout.driverTotal,
                 marginPercentage: Number(marginPercentage.toFixed(2)),
                 status,
+                senderPhone: payload.senderPhone,
+                receiverPhone: payload.receiverPhone,
                 parcels: {
                     create: payload.items.map((item: any) => ({
                         weightKg: parseFloat(item.weightKg) || 0,

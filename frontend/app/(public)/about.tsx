@@ -217,11 +217,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         flexWrap: 'wrap',
-        gap: 40,
     },
     statItem: {
         alignItems: 'center',
         paddingHorizontal: 20,
+        margin: 20,
     },
     statIconBox: {
         width: 60,
@@ -246,11 +246,11 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     storyGrid: {
-        gap: 80,
         alignItems: 'center',
     },
     storyText: {
         flex: 1,
+        marginRight: Platform.OS === 'web' ? 80 : 0,
     },
     storyVisual: {
         flex: 1,
@@ -264,7 +264,6 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     dualGrid: {
-        gap: 40,
     },
     missionCardInverse: {
         flex: 1,
@@ -273,6 +272,7 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.1)',
+        margin: 20,
     },
     iconBoxInverse: {
         width: 64,
@@ -297,12 +297,12 @@ const styles = StyleSheet.create({
     },
     milestonesTimeline: {
         justifyContent: 'space-between',
-        gap: 32,
     },
     milestoneItem: {
         flex: 1,
         alignItems: 'center',
         position: 'relative',
+        margin: 16,
     },
     milestoneYearBox: {
         width: 80,
@@ -345,11 +345,10 @@ const styles = StyleSheet.create({
         zIndex: 1,
     },
     sustainabilityGrid: {
-        gap: 32,
     },
     susItem: {
         flexDirection: 'row',
-        gap: 20,
+        marginBottom: 32,
     },
     susIcon: {
         width: 52,
@@ -358,6 +357,7 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primary + '10',
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 20,
     },
     susContent: {
         flex: 1,
@@ -433,7 +433,6 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     splitGrid: {
-        gap: 80,
     },
     splitText: {
         flex: 1,
@@ -468,7 +467,6 @@ const styles = StyleSheet.create({
     valuesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 32,
         justifyContent: 'center',
     },
     valueCard: {
@@ -485,6 +483,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 20,
         elevation: 5,
+        margin: 16,
     },
     valueIcon: {
         width: 72,
@@ -516,7 +515,6 @@ const styles = StyleSheet.create({
         borderRadius: 40,
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 40,
         overflow: 'hidden',
         position: 'relative',
     },
@@ -528,6 +526,7 @@ const styles = StyleSheet.create({
         color: '#FFF',
         marginBottom: 16,
         letterSpacing: -1,
+        marginRight: Platform.OS === 'web' ? 40 : 0,
     },
     ctaDesc: {
         fontSize: 20,
@@ -542,7 +541,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 40,
         paddingVertical: 20,
         borderRadius: 16,
-        gap: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,

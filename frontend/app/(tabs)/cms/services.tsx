@@ -32,6 +32,7 @@ import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
 import { ServicesPageConfig, initialServicesPage, ServiceDetailConfig, ServicePageDetail } from '@/constants/cmsDefaults';
 import { useCMS } from '@/context/CMSContext';
+import CMSImagePicker from '@/components/CMSImagePicker';
 
 export default function ServicesCMS() {
     const insets = useSafeAreaInsets();
@@ -105,6 +106,26 @@ export default function ServicesCMS() {
         );
     }
 
+    // Sort published services by order
+    const sortedServices = Object.values(details)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const togglePublish = (slug: string) => {
+        setDetails(prev => ({
+            ...prev,
+            [slug]: { ...prev[slug], publishStatus: !prev[slug].publishStatus }
+        }));
+        setHasUnsavedChanges(true);
+    };
+
+    const updateOrder = (slug: string, newOrder: number) => {
+        setDetails(prev => ({
+            ...prev,
+            [slug]: { ...prev[slug], order: newOrder }
+        }));
+        setHasUnsavedChanges(true);
+    };
+
     return (
         <View style={styles.container}>
             {/* HEADER */}
@@ -137,119 +158,121 @@ export default function ServicesCMS() {
             </View>
 
             <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-                {/* HERO SECTION */}
+                {/* LANDING PAGE CONFIG */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Hero Section</Text>
+                    <Text style={styles.sectionTitle}>Landing Page Content</Text>
                     <View style={styles.card}>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Headline</Text>
+                            <Text style={styles.inputLabel}>Page Title</Text>
                             <TextInput
                                 style={styles.input}
-                                value={config.heroTitle}
-                                onChangeText={t => updateConfig({ heroTitle: t })}
+                                value={config.title}
+                                onChangeText={t => updateConfig({ title: t })}
                             />
                         </View>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Subheading</Text>
+                            <Text style={styles.inputLabel}>Hero Heading</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={config.heroHeading}
+                                onChangeText={t => updateConfig({ heroHeading: t })}
+                            />
+                        </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Hero Subtext</Text>
                             <TextInput
                                 style={[styles.input, { height: 80 }]}
-                                value={config.heroSubtitle}
-                                onChangeText={t => updateConfig({ heroSubtitle: t })}
+                                value={config.heroSubtext}
+                                onChangeText={t => updateConfig({ heroSubtext: t })}
                                 multiline
                             />
                         </View>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Hero Background Image URL</Text>
-                            <TextInput
-                                style={styles.input}
+                            <Text style={styles.inputLabel}>Hero Background Image</Text>
+                            <CMSImagePicker
                                 value={config.heroImageUrl}
-                                onChangeText={t => updateConfig({ heroImageUrl: t })}
+                                onImageSelected={url => updateConfig({ heroImageUrl: url })}
+                                label="Page Hero Image"
+                            />
+                        </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Intro Section (Long Text)</Text>
+                            <TextInput
+                                style={[styles.input, { height: 120 }]}
+                                value={config.introSection}
+                                onChangeText={t => updateConfig({ introSection: t })}
+                                multiline
+                            />
+                        </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Card Intro Highlight Text</Text>
+                            <TextInput
+                                style={[styles.input, { height: 60 }]}
+                                value={config.cardIntroText}
+                                onChangeText={t => updateConfig({ cardIntroText: t })}
+                                multiline
                             />
                         </View>
                     </View>
                 </View>
 
-                {/* MAIN SERVICES */}
+                {/* SERVICES GRID MANAGEMENT */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeaderRow}>
-                        <Text style={styles.sectionTitle}>Main Services</Text>
-                        <TouchableOpacity style={styles.addBtn} onPress={addService}>
-                            <Plus size={16} color="#FFF" />
-                            <Text style={styles.addBtnText}>Add Service</Text>
-                        </TouchableOpacity>
+                        <Text style={styles.sectionTitle}>Service Offerings ({sortedServices.length})</Text>
                     </View>
 
-                    {config.mainServices.map((service, index) => (
+                    {sortedServices.map((service, index) => (
                         <View key={service.id} style={styles.card}>
                             <View style={styles.cardHeader}>
                                 <View style={styles.cardHeaderLeft}>
-                                    <View style={styles.dragHandle}><GripVertical size={16} color={Colors.textMuted} /></View>
-                                    <Text style={styles.cardIndex}>Service #{index + 1}</Text>
+                                    <Text style={styles.cardIndex}>#{service.order} - {service.title}</Text>
                                 </View>
-                                <TouchableOpacity onPress={() => removeService(service.id)}>
-                                    <Trash2 size={18} color={Colors.danger} />
-                                </TouchableOpacity>
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Title</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={service.title}
-                                    onChangeText={t => updateService(service.id, { title: t })}
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Description</Text>
-                                <TextInput
-                                    style={[styles.input, { height: 60 }]}
-                                    value={service.description}
-                                    onChangeText={t => updateService(service.id, { description: t })}
-                                    multiline
-                                />
+                                <View style={styles.cardHeaderRight}>
+                                    <TouchableOpacity 
+                                        style={[styles.publishToggle, service.publishStatus && styles.publishToggleActive]}
+                                        onPress={() => togglePublish(service.slug)}
+                                    >
+                                        <Text style={[styles.publishToggleText, service.publishStatus && styles.publishToggleTextActive]}>
+                                            {service.publishStatus ? 'Published' : 'Hidden'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
                             <View style={styles.row}>
                                 <View style={[styles.inputGroup, { flex: 1 }]}>
-                                    <Text style={styles.inputLabel}>Icon Name</Text>
+                                    <Text style={styles.inputLabel}>Display Order</Text>
                                     <TextInput
                                         style={styles.input}
-                                        value={service.icon}
-                                        onChangeText={t => updateService(service.id, { icon: t })}
+                                        value={service.order?.toString()}
+                                        onChangeText={t => updateOrder(service.slug, parseInt(t) || 0)}
+                                        keyboardType="numeric"
                                     />
                                 </View>
-                                <View style={[styles.inputGroup, { flex: 2 }]}>
-                                    <Text style={styles.inputLabel}>Image URL</Text>
+                                <View style={[styles.inputGroup, { flex: 3 }]}>
+                                    <Text style={styles.inputLabel}>Summary Link Slug</Text>
                                     <TextInput
-                                        style={styles.input}
-                                        value={service.imageUrl}
-                                        onChangeText={t => updateService(service.id, { imageUrl: t })}
+                                        style={[styles.input, { backgroundColor: '#F1F5F9' }]}
+                                        value={service.slug}
+                                        editable={false}
                                     />
                                 </View>
                             </View>
 
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Features (one per line)</Text>
-                                <TextInput
-                                    style={[styles.input, { height: 80 }]}
-                                    value={service.features.join('\n')}
-                                    onChangeText={t => updateService(service.id, { features: t.split('\n') })}
-                                    multiline
-                                    placeholder="Feature 1&#10;Feature 2"
-                                />
-                            </View>
+                            <Text style={styles.summaryPreview}>{service.summary}</Text>
+
                             <View style={[styles.row, { marginTop: 12 }]}>
                                 <TouchableOpacity 
                                     style={[styles.editDetailsBtn, { flex: 1 }]} 
-                                    onPress={() => setEditingSlug(service.id)}
+                                    onPress={() => setEditingSlug(service.slug)}
                                 >
                                     <Layout size={16} color={Colors.primary} />
-                                    <Text style={styles.editDetailsText}>Edit Page Details</Text>
+                                    <Text style={styles.editDetailsText}>Edit Dedicated Page</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity 
                                     style={[styles.previewBtnSmall, { width: 44 }]} 
-                                    onPress={() => router.push(`/(public)/services/${service.id}` as any)}
+                                    onPress={() => router.push(`/(public)/services/${service.slug}` as any)}
                                 >
                                     <Eye size={16} color={Colors.primary} />
                                 </TouchableOpacity>
@@ -258,104 +281,38 @@ export default function ServicesCMS() {
                     ))}
                 </View>
 
-                {/* WHAT WE DELIVER */}
+                {/* LANDING PAGE CTA */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Delivery Types</Text>
+                    <Text style={styles.sectionTitle}>Landing Page CTA</Text>
                     <View style={styles.card}>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Section Title</Text>
+                            <Text style={styles.inputLabel}>CTA Heading</Text>
                             <TextInput
                                 style={styles.input}
-                                value={config.whatWeDeliverTitle}
-                                onChangeText={t => updateConfig({ whatWeDeliverTitle: t })}
+                                value={config.ctaHeading}
+                                onChangeText={t => updateConfig({ ctaHeading: t })}
                             />
                         </View>
-
-                        {config.deliveryItems.map((item, idx) => (
-                            <View key={item.id} style={styles.nestedCard}>
-                                <View style={styles.row}>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.inputLabel}>Item Title</Text>
-                                        <TextInput
-                                            style={styles.input}
-                                            value={item.title}
-                                            onChangeText={t => {
-                                                const newItems = [...config.deliveryItems];
-                                                newItems[idx].title = t;
-                                                updateConfig({ deliveryItems: newItems });
-                                            }}
-                                        />
-                                    </View>
-                                    <View style={{ width: 80, marginLeft: 12 }}>
-                                        <Text style={styles.inputLabel}>Icon</Text>
-                                        <TextInput
-                                            style={styles.input}
-                                            value={item.icon}
-                                            onChangeText={t => {
-                                                const newItems = [...config.deliveryItems];
-                                                newItems[idx].icon = t;
-                                                updateConfig({ deliveryItems: newItems });
-                                            }}
-                                        />
-                                    </View>
-                                </View>
-                                <View style={[styles.inputGroup, { marginTop: 12 }]}>
-                                    <Text style={styles.inputLabel}>Item Description</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        value={item.desc}
-                                        onChangeText={t => {
-                                            const newItems = [...config.deliveryItems];
-                                            newItems[idx].desc = t;
-                                            updateConfig({ deliveryItems: newItems });
-                                        }}
-                                    />
-                                </View>
-                            </View>
-                        ))}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>CTA Subtext</Text>
+                            <TextInput
+                                style={[styles.input, { height: 80 }]}
+                                value={config.ctaText}
+                                onChangeText={t => updateConfig({ ctaText: t })}
+                                multiline
+                            />
+                        </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Button Label</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={config.ctaButton}
+                                onChangeText={t => updateConfig({ ctaButton: t })}
+                            />
+                        </View>
                     </View>
                 </View>
 
-                {/* CALL TO ACTION */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Call to Action</Text>
-                    <View style={styles.card}>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>CTA Title</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={config.ctaTitle}
-                                onChangeText={t => updateConfig({ ctaTitle: t })}
-                            />
-                        </View>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>CTA Description</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={config.ctaDesc}
-                                onChangeText={t => updateConfig({ ctaDesc: t })}
-                            />
-                        </View>
-                        <View style={[styles.row, { marginBottom: 12 }]}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Button Text</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={config.ctaBtnText}
-                                    onChangeText={t => updateConfig({ ctaBtnText: t })}
-                                />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Button URL</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={config.ctaBtnUrl}
-                                    onChangeText={t => updateConfig({ ctaBtnUrl: t })}
-                                />
-                            </View>
-                        </View>
-                    </View>
-                </View>
 
                 <View style={{ height: 100 }} />
             </ScrollView>
@@ -387,11 +344,8 @@ export default function ServicesCMS() {
                         </View>
 
                         <ScrollView style={styles.modalBody}>
-                            {(() => {
-                                const d = details[editingSlug] || {
-                                    title: '', description: '', longContent: '', heroImageUrl: '',
-                                    metaTitle: '', metaDesc: '', benefits: [], features: [], process: []
-                                };
+                             {(() => {
+                                const d = details[editingSlug] || ({} as ServicePageDetail);
                                 const updateDetail = (up: Partial<ServicePageDetail>) => {
                                     setDetails(prev => ({
                                         ...prev,
@@ -402,27 +356,96 @@ export default function ServicesCMS() {
 
                                 return (
                                     <View style={{ padding: 20 }}>
-                                        <Text style={styles.sectionTitle}>Main Content</Text>
+                                        <Text style={styles.sectionTitle}>Dedicated Page Hero</Text>
                                         <View style={styles.card}>
                                             <View style={styles.inputGroup}>
-                                                <Text style={styles.inputLabel}>Hero Title</Text>
-                                                <TextInput style={styles.input} value={d.title} onChangeText={t => updateDetail({ title: t })} />
+                                                <Text style={styles.inputLabel}>Hero Heading</Text>
+                                                <TextInput style={styles.input} value={d.heroHeading} onChangeText={t => updateDetail({ heroHeading: t })} />
                                             </View>
                                             <View style={styles.inputGroup}>
-                                                <Text style={styles.inputLabel}>Hero Image URL</Text>
-                                                <TextInput style={styles.input} value={d.heroImageUrl} onChangeText={t => updateDetail({ heroImageUrl: t })} />
+                                                <Text style={styles.inputLabel}>Hero Subtext</Text>
+                                                <TextInput style={[styles.input, { height: 80 }]} multiline value={d.heroSubtext} onChangeText={t => updateDetail({ heroSubtext: t })} />
+                                            </View>
+                                             <View style={styles.inputGroup}>
+                                                 <Text style={styles.inputLabel}>Hero Image</Text>
+                                                 <CMSImagePicker
+                                                     value={d.heroImageUrl}
+                                                     onImageSelected={url => updateDetail({ heroImageUrl: url })}
+                                                     label="Service Hero Image"
+                                                 />
+                                             </View>
+                                        </View>
+
+                                        <Text style={styles.sectionTitle}>Core Content</Text>
+                                        <View style={styles.card}>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Service Overview (Visible on Page)</Text>
+                                                <TextInput style={[styles.input, { height: 120 }]} multiline value={d.overview} onChangeText={t => updateDetail({ overview: t })} />
                                             </View>
                                             <View style={styles.inputGroup}>
-                                                <Text style={styles.inputLabel}>Short Description</Text>
-                                                <TextInput style={[styles.input, { height: 60 }]} multiline value={d.description} onChangeText={t => updateDetail({ description: t })} />
+                                                <Text style={styles.inputLabel}>Service Description (Technical/Deep)</Text>
+                                                <TextInput style={[styles.input, { height: 120 }]} multiline value={d.description} onChangeText={t => updateDetail({ description: t })} />
                                             </View>
                                             <View style={styles.inputGroup}>
-                                                <Text style={styles.inputLabel}>Long Overview Content</Text>
-                                                <TextInput style={[styles.input, { height: 120 }]} multiline value={d.longContent} onChangeText={t => updateDetail({ longContent: t })} />
+                                                <Text style={styles.inputLabel}>How It Works (Process)</Text>
+                                                <TextInput style={[styles.input, { height: 120 }]} multiline value={d.howItWorks} onChangeText={t => updateDetail({ howItWorks: t })} />
                                             </View>
                                         </View>
 
-                                        <Text style={styles.sectionTitle}>SEO Meta Data</Text>
+                                        <Text style={styles.sectionTitle}>Benefits & Applications</Text>
+                                        <View style={styles.card}>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Key Benefits (one per line)</Text>
+                                                <TextInput 
+                                                    style={[styles.input, { height: 120 }]} 
+                                                    multiline 
+                                                    value={d.benefits?.join('\n')} 
+                                                    onChangeText={t => updateDetail({ benefits: t.split('\n').filter(Boolean) })} 
+                                                />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Typical Use Cases (one per line)</Text>
+                                                <TextInput 
+                                                    style={[styles.input, { height: 120 }]} 
+                                                    multiline 
+                                                    value={d.useCases?.join('\n')} 
+                                                    onChangeText={t => updateDetail({ useCases: t.split('\n').filter(Boolean) })} 
+                                                />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Why Choose Us Factors (one per line)</Text>
+                                                <TextInput 
+                                                    style={[styles.input, { height: 120 }]} 
+                                                    multiline 
+                                                    value={d.whyChooseUs?.join('\n')} 
+                                                    onChangeText={t => updateDetail({ whyChooseUs: t.split('\n').filter(Boolean) })} 
+                                                />
+                                            </View>
+                                        </View>
+
+                                        <Text style={styles.sectionTitle}>Page Specific CTA</Text>
+                                        <View style={styles.card}>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>CTA Heading</Text>
+                                                <TextInput style={styles.input} value={d.ctaHeading} onChangeText={t => updateDetail({ ctaHeading: t })} />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>CTA Text</Text>
+                                                <TextInput style={styles.input} value={d.ctaText} onChangeText={t => updateDetail({ ctaText: t })} />
+                                            </View>
+                                            <View style={styles.row}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.inputLabel}>Btn Label</Text>
+                                                    <TextInput style={styles.input} value={d.ctaButtonText} onChangeText={t => updateDetail({ ctaButtonText: t })} />
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.inputLabel}>Btn URL</Text>
+                                                    <TextInput style={styles.input} value={d.ctaButtonUrl} onChangeText={t => updateDetail({ ctaButtonUrl: t })} />
+                                                </View>
+                                            </View>
+                                        </View>
+
+                                        <Text style={styles.sectionTitle}>SEO & Meta</Text>
                                         <View style={styles.card}>
                                             <View style={styles.inputGroup}>
                                                 <Text style={styles.inputLabel}>Meta Title</Text>
@@ -434,8 +457,21 @@ export default function ServicesCMS() {
                                             </View>
                                         </View>
 
-                                        {/* Benefits, Features, Process lists could be added here similarly */}
-                                        <Text style={styles.infoText}>Tip: Benefits and Process steps can be expanded in the next CMS update. Currently using defaults for new services.</Text>
+                                        <Text style={styles.sectionTitle}>Preview Summary (Landing Page Card)</Text>
+                                        <View style={styles.card}>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Main Service Title</Text>
+                                                <TextInput style={styles.input} value={d.title} onChangeText={t => updateDetail({ title: t })} />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Summary Text (1-2 lines)</Text>
+                                                <TextInput style={[styles.input, { height: 60 }]} multiline value={d.summary} onChangeText={t => updateDetail({ summary: t })} />
+                                            </View>
+                                            <View style={styles.inputGroup}>
+                                                <Text style={styles.inputLabel}>Dashboard Icon</Text>
+                                                <TextInput style={styles.input} value={d.icon} onChangeText={t => updateDetail({ icon: t })} />
+                                            </View>
+                                        </View>
                                     </View>
                                 );
                             })()}
@@ -655,53 +691,32 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 14,
     },
-    previewBtnSmall: {
-        width: 44,
-        height: 44,
-        borderRadius: 10,
-        backgroundColor: Colors.primary + '10',
-        alignItems: 'center',
-        justifyContent: 'center',
+    summaryPreview: {
+        fontSize: 14,
+        color: 'gray',
+        backgroundColor: '#F8FAFC',
+        padding: 12,
+        borderRadius: 8,
+        fontStyle: 'italic',
+    },
+    publishToggle: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: Colors.danger + '10',
         borderWidth: 1,
+        borderColor: Colors.danger + '20',
+    },
+    publishToggleActive: {
+        backgroundColor: Colors.primary + '10',
         borderColor: Colors.primary + '20',
     },
-    modalContainer: {
-        flex: 1,
-        backgroundColor: '#F8FAFC',
+    publishToggleText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: Colors.danger,
     },
-    modalHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 20,
-        backgroundColor: '#FFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-    },
-    modalClose: {
-        width: 40,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: Colors.navy,
-    },
-    modalDone: {
-        width: 60,
-        alignItems: 'flex-end',
-    },
-    modalDoneText: {
+    publishToggleTextActive: {
         color: Colors.primary,
-        fontWeight: '800',
     },
-    modalBody: {
-        flex: 1,
-    },
-    infoText: {
-        fontSize: 13,
-        color: Colors.textSecondary,
-        textAlign: 'center',
-        fontStyle: 'italic',
-        marginTop: 10,
-    }
 });

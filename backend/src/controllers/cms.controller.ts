@@ -373,6 +373,59 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
             );
         }
 
+        // --- Handle Job Openings (Specialized Table Sync) ---
+        if (data.jobOpenings && Array.isArray(data.jobOpenings)) {
+            console.log('[CMSController] Syncing JobOpenings table...');
+            // First, clear existing jobs to ensure a clean sync (or we could do upsert by ID)
+            // For simplicity in CMS sync, we'll replace the set if provided
+            updates.push(prisma.jobOpening.deleteMany({})); 
+            
+            for (const job of data.jobOpenings) {
+                updates.push(
+                    prisma.jobOpening.create({
+                        data: {
+                            id: job.id || undefined,
+                            title: job.title,
+                            department: job.department,
+                            location: job.location,
+                            employmentType: job.employmentType,
+                            summary: job.summary,
+                            description: job.description,
+                            responsibilities: job.responsibilities,
+                            requirements: job.requirements,
+                            salaryInfo: job.salaryInfo,
+                            applicationUrl: job.applicationUrl,
+                            status: job.status || 'OPEN',
+                            isPublished: job.isPublished !== undefined ? job.isPublished : true,
+                            displayOrder: job.displayOrder || 0
+                        }
+                    })
+                );
+            }
+        }
+
+        // --- Handle Menu Config (GlobalConfig) ---
+        if (data.menuConfig) {
+            updates.push(
+                prisma.globalConfig.upsert({
+                    where: { key: 'cms_menuConfig' },
+                    create: { key: 'cms_menuConfig', config: data.menuConfig as any, updatedBy: req.user.userId },
+                    update: { config: data.menuConfig as any, updatedBy: req.user.userId, updatedAt: new Date() }
+                })
+            );
+        }
+
+        // --- Handle Careers Page (GlobalConfig) ---
+        if (data.careersPage) {
+            updates.push(
+                prisma.globalConfig.upsert({
+                    where: { key: 'cms_careersPage' },
+                    create: { key: 'cms_careersPage', config: data.careersPage as any, updatedBy: req.user.userId },
+                    update: { config: data.careersPage as any, updatedBy: req.user.userId, updatedAt: new Date() }
+                })
+            );
+        }
+
         // 3. CRITICAL: Update the MASTER BUNDLE that the frontend fetches on load.
         // This resolves the "lost data on refresh" issue.
         const masterPayload = {
@@ -384,7 +437,10 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
             // Preserve pages if they are ever bundled, but for now focus on the core context fields
             aboutPage: data.aboutPage,
             contactPage: data.contactPage,
-            servicesPage: data.servicesPage
+            servicesPage: data.servicesPage,
+            menuConfig: data.menuConfig,
+            careersPage: data.careersPage,
+            jobOpenings: data.jobOpenings
         };
 
         // 4. NEW: Granular Sync to CMSPage/CMSSection
@@ -435,7 +491,34 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
             await prisma.$transaction(updates);
         }
 
-        res.json({ message: 'CMS data synchronized successfully', count: updates.length });
+        // --- AUTOMATED SYNC & REVALIDATION ---
+        // As per critical requirement: Saving any field must commit to GitHub and revalidate Next.js
+        try {
+            console.log('[CMSController] Triggering background GitHub sync and revalidation...');
+            
+            // We do this asynchronously to avoid blocking the response
+            (async () => {
+                try {
+                    const { GithubSyncService } = require('../services/github-sync.service');
+                    await GithubSyncService.syncToGithub();
+                    
+                    // Revalidate industries and detail pages
+                    const paths = ['/industries'];
+                    if (data.industryDetails) {
+                        Object.values(data.industryDetails).forEach((ind: any) => {
+                            if (ind.slug) paths.push(`/industries/${ind.slug}`);
+                        });
+                    }
+                    await GithubSyncService.triggerRevalidation(paths);
+                } catch (syncErr) {
+                    console.error('[CMSController] Background sync/revalidate failed:', syncErr);
+                }
+            })();
+        } catch (e) {
+            console.warn('[CMSController] Could not trigger background sync:', e);
+        }
+
+        res.json({ message: 'CMS data synchronized and publish triggered', count: updates.length });
     } catch (error) {
         console.error('[CMSController] Sync CMS Data Error:', error);
         res.status(500).json({ error: 'Internal server error' });

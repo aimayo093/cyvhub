@@ -17,12 +17,18 @@ import {
     BarChart3,
     Truck,
     Plane,
-    Globe
+    Globe,
+    Calendar,
+    Map,
+    Briefcase,
+    ArrowLeftRight,
+    ShieldCheck,
+    Settings
 } from 'lucide-react-native';
 import Head from 'expo-router/head';
 
 const IconMap: any = {
-    Clock, Target, Zap, Shield, Package, Users, FileText, Rocket, CheckCircle2, BarChart3, Truck, Plane, Globe
+    Clock, Target, Zap, Shield, Package, Users, FileText, Rocket, CheckCircle2, BarChart3, Truck, Plane, Globe, Calendar, Map, Briefcase, ArrowLeftRight, ShieldCheck, Settings
 };
 
 const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
@@ -46,7 +52,7 @@ export default function ServiceDetailPage() {
         );
     }
 
-    if (!config) {
+    if (!config || !config.publishStatus) {
         return (
             <View style={styles.errorContainer}>
                 <Text style={styles.errorTitle}>Service Not Found</Text>
@@ -76,11 +82,11 @@ export default function ServiceDetailPage() {
                 />
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.7)' }]} />
                 <View style={[styles.contentMax, styles.heroContent]}>
-                    <Text style={styles.heroTag}>Logistics Solutions</Text>
+                    <Text style={styles.heroTag}>Service Excellence</Text>
                     <Text style={[styles.titleText, { fontSize: isMobile ? 40 : 64, lineHeight: isMobile ? 48 : 72 }]}>
-                        {config.title}
+                        {config.heroHeading}
                     </Text>
-                    <Text style={styles.heroSubtitle}>{config.description}</Text>
+                    <Text style={styles.heroSubtitle}>{config.heroSubtext}</Text>
                     <View style={styles.heroActions}>
                         <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push('/contact')}>
                             <Text style={styles.primaryBtnText}>Get an Instant Quote</Text>
@@ -90,31 +96,24 @@ export default function ServiceDetailPage() {
                 </View>
             </View>
 
-            {/* LONG CONTENT SECTION */}
+            {/* OVERVIEW SECTION */}
             <View style={styles.section}>
                 <View style={styles.contentMax}>
                     <View style={[styles.splitGrid, { flexDirection: isMobile ? 'column' : 'row' }]}>
                         <View style={styles.mainText}>
                             <Text style={styles.sectionTitle}>Overview</Text>
-                            <Text style={styles.longDescription}>{config.longContent}</Text>
+                            <Text style={styles.longDescription}>{config.overview}</Text>
                             
-                            <Text style={styles.sectionSubTitle}>Key Benefits</Text>
-                            <View style={styles.benefitsGrid}>
-                                {config.benefits.map((benefit, idx) => (
-                                    <View key={idx} style={styles.benefitItem}>
-                                        <CheckCircle2 size={20} color={Colors.primary} />
-                                        <Text style={styles.benefitText}>{benefit}</Text>
-                                    </View>
-                                ))}
-                            </View>
+                            <Text style={styles.sectionSubTitle}>How We Deliver</Text>
+                            <Text style={styles.longDescription}>{config.howItWorks}</Text>
                         </View>
 
                         <View style={styles.sidebar}>
                             <View style={styles.ctaBox}>
-                                <Text style={styles.ctaBoxTitle}>Ready to Ship?</Text>
-                                <Text style={styles.ctaBoxText}>Our experts are ready to handle your critical deliveries 24/7.</Text>
+                                <Text style={styles.ctaBoxTitle}>Ready to Move?</Text>
+                                <Text style={styles.ctaBoxText}>Our logistics experts are ready to handle your business-critical jobs 24/7/365.</Text>
                                 <TouchableOpacity style={styles.ctaBoxBtn} onPress={() => router.push('/contact')}>
-                                    <Text style={styles.ctaBoxBtnText}>Contact Our Desk</Text>
+                                    <Text style={styles.ctaBoxBtnText}>Open an Account</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -122,43 +121,62 @@ export default function ServiceDetailPage() {
                 </View>
             </View>
 
-            {/* FEATURES GRID */}
+            {/* DESCRIPTION SECTION */}
             <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
                 <View style={styles.contentMax}>
-                    <Text style={styles.sectionHeader}>
-                        Why Choose Our {config.title}
-                    </Text>
-                    <View style={styles.featuresGrid}>
-                        {config.features.map((feature) => (
-                            <View key={feature.id} style={[styles.featureCard, { width: isMobile ? '100%' : '31%' }]}>
-                                <View style={styles.featureIconBox}>
-                                    <DynamicIcon name={feature.icon} size={32} color={Colors.primary} />
-                                </View>
-                                <Text style={styles.featureTitle}>{feature.title}</Text>
-                                <Text style={styles.featureDesc}>{feature.desc}</Text>
-                            </View>
-                        ))}
+                    <View style={[styles.splitGrid, { flexDirection: isMobile ? 'column' : 'row' }]}>
+                        <View style={styles.sidebar}>
+                             <View style={styles.benefitHeaderBox}>
+                                <DynamicIcon name={config.icon} size={48} color={Colors.primary} />
+                                <Text style={styles.benefitHeaderTitle}>Professional Solution</Text>
+                             </View>
+                        </View>
+                        <View style={styles.mainText}>
+                            <Text style={styles.sectionTitle}>Service Description</Text>
+                            <Text style={styles.longDescription}>{config.description}</Text>
+                        </View>
                     </View>
                 </View>
             </View>
 
-            {/* PROCESS SECTION */}
+            {/* BENEFITS & USE CASES */}
             <View style={styles.section}>
                 <View style={styles.contentMax}>
-                    <Text style={styles.sectionHeader}>
-                        How It Works
-                    </Text>
-                    <View style={[styles.processSteps, { flexDirection: isMobile ? 'column' : 'row' }]}>
-                        {config.process.map((step, idx) => (
-                            <View key={step.id} style={styles.processItem}>
-                                <View style={styles.stepNumBox}>
-                                    <Text style={styles.stepNum}>{step.step}</Text>
-                                </View>
-                                {idx < config.process.length - 1 && !isMobile && <View style={styles.processLine} />}
-                                <Text style={styles.processTitle}>{step.title}</Text>
-                                <Text style={styles.processDesc}>{step.desc}</Text>
+                    <View style={[styles.splitGrid, { flexDirection: isMobile ? 'column' : 'row' }]}>
+                        <View style={styles.mainText}>
+                            <Text style={styles.sectionSubTitle}>Key Benefits</Text>
+                            <View style={styles.benefitsGrid}>
+                                {config.benefits && Array.isArray(config.benefits) && config.benefits.map((benefit: any, idx: number) => (
+                                    <View key={idx} style={styles.benefitItem}>
+                                        <CheckCircle2 size={24} color={Colors.primary} />
+                                        <Text style={styles.benefitText}>{benefit}</Text>
+                                    </View>
+                                ))}
                             </View>
-                        ))}
+                        </View>
+                        <View style={styles.mainText}>
+                            <Text style={styles.sectionSubTitle}>Typical Use Cases</Text>
+                            <View style={styles.benefitsGrid}>
+                                {config.useCases && Array.isArray(config.useCases) && config.useCases.map((useCase: any, idx: number) => (
+                                    <View key={idx} style={styles.benefitItem}>
+                                        <View style={styles.bulletPoint} />
+                                        <Text style={styles.benefitText}>{useCase}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </View>
+
+            {/* WHY CHOOSE US */}
+            <View style={[styles.section, { backgroundColor: Colors.navy }]}>
+                <View style={styles.contentMax}>
+                    <Text style={[styles.sectionHeader, { color: '#FFF' }]}>Why Choose CYVhub</Text>
+                    <View style={styles.centeredContent}>
+                         {config.whyChooseUs && Array.isArray(config.whyChooseUs) && config.whyChooseUs.map((text: any, idx: number) => (
+                             <Text key={idx} style={styles.whiteInfoText}>{text}</Text>
+                         ))}
                     </View>
                 </View>
             </View>
@@ -168,11 +186,14 @@ export default function ServiceDetailPage() {
                 <View style={styles.contentMax}>
                     <View style={[styles.ctaInner, { flexDirection: isMobile ? 'column' : 'row' }]}>
                         <View style={styles.ctaTextContainer}>
-                            <Text style={styles.ctaBarTitle}>Specialist Requirements?</Text>
-                            <Text style={styles.ctaBarSubtitle}>Our team can design a bespoke solution for your specific cargo needs.</Text>
+                            <Text style={styles.ctaBarTitle}>{config.ctaHeading}</Text>
+                            <Text style={styles.ctaBarSubtitle}>{config.ctaText}</Text>
                         </View>
-                        <TouchableOpacity style={styles.whiteBtn} onPress={() => router.push('/contact')}>
-                            <Text style={styles.whiteBtnText}>Talk to an Expert</Text>
+                        <TouchableOpacity 
+                            style={styles.whiteBtn} 
+                            onPress={() => router.push(config.ctaButtonUrl as any)}
+                        >
+                            <Text style={styles.whiteBtnText}>{config.ctaButtonText}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -180,7 +201,6 @@ export default function ServiceDetailPage() {
         </ScrollView>
     );
 }
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -190,50 +210,43 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: 400,
     },
     errorContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 40,
-        minHeight: 400,
     },
     errorTitle: {
-        fontSize: 32,
+        fontSize: 24,
         fontWeight: '900',
         color: Colors.navy,
         marginBottom: 12,
     },
     errorSubtitle: {
-        fontSize: 18,
-        color: 'gray',
-        marginBottom: 32,
+        fontSize: 16,
+        color: '#64748B',
         textAlign: 'center',
+        marginBottom: 32,
     },
     homeBtn: {
         backgroundColor: Colors.primary,
-        paddingHorizontal: 32,
-        paddingVertical: 16,
+        paddingHorizontal: 24,
+        paddingVertical: 14,
         borderRadius: 12,
     },
     homeBtnText: {
         color: '#FFFFFF',
         fontWeight: '700',
-        fontSize: 16,
-    },
-    contentMax: {
-        maxWidth: 1200,
-        width: '100%',
-        alignSelf: 'center',
-        paddingHorizontal: 24,
     },
     heroSection: {
-        position: 'relative',
+        width: '100%',
         justifyContent: 'center',
+        overflow: 'hidden',
     },
     heroContent: {
-        zIndex: 1,
+        zIndex: 10,
+        paddingHorizontal: 20,
     },
     heroTag: {
         color: Colors.primary,
@@ -244,198 +257,157 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     titleText: {
-        fontWeight: '900', 
-        color: '#FFF', 
-        marginBottom: 20,
+        color: '#FFFFFF',
+        fontWeight: '900',
+        marginBottom: 24,
     },
     heroSubtitle: {
-        fontSize: 20,
-        color: '#94A3B8',
-        lineHeight: 32,
-        maxWidth: 700,
-        marginBottom: 40,
+        fontSize: 18,
+        color: 'rgba(255,255,255,0.8)',
+        lineHeight: 28,
+        maxWidth: 600,
+        marginBottom: 32,
     },
     heroActions: {
         flexDirection: 'row',
-        gap: 16,
     },
     primaryBtn: {
         backgroundColor: Colors.primary,
-        paddingHorizontal: 32,
-        paddingVertical: 18,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
         borderRadius: 12,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
     },
     primaryBtnText: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 16,
+        fontWeight: '800',
+        marginLeft: 12,
+    },
+    contentMax: {
+        maxWidth: 1280,
+        width: '100%',
+        alignSelf: 'center',
+        paddingHorizontal: 20,
     },
     section: {
         paddingVertical: 100,
     },
-    sectionTitle: {
-        fontSize: 32, 
-        fontWeight: '800', 
-        marginBottom: 24, 
-        color: Colors.navy
-    },
-    sectionSubTitle: {
-        fontSize: 24, 
-        fontWeight: '800', 
-        marginTop: 40, 
-        marginBottom: 20, 
-        color: Colors.navy
-    },
-    sectionHeader: {
-        fontSize: 36, 
-        fontWeight: '900', 
-        textAlign: 'center', 
-        marginBottom: 60, 
-        color: Colors.navy 
-    },
     splitGrid: {
-        gap: 60,
     },
     mainText: {
         flex: 2,
     },
-    longDescription: {
-        fontSize: 18,
-        color: 'gray',
-        lineHeight: 30,
-    },
-    benefitsGrid: {
-        gap: 16,
-    },
-    benefitItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    benefitText: {
-        fontSize: 17,
-        color: Colors.navy,
-        fontWeight: '500',
-    },
     sidebar: {
         flex: 1,
+    },
+    sectionTitle: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: Colors.navy,
+        marginBottom: 32,
+    },
+    sectionSubTitle: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: Colors.navy,
+        marginTop: 48,
+        marginBottom: 24,
+    },
+    longDescription: {
+        fontSize: 18,
+        color: '#64748B',
+        lineHeight: 30,
+        marginBottom: 24,
     },
     ctaBox: {
         backgroundColor: Colors.navy,
         padding: 40,
-        borderRadius: 24,
+        borderRadius: 32,
     },
     ctaBoxTitle: {
-        fontSize: 20, 
-        fontWeight: '800', 
-        color: '#FFF', 
-        marginBottom: 12
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        marginBottom: 12,
     },
     ctaBoxText: {
-        color: '#94A3B8',
-        fontSize: 16,
+        fontSize: 15,
+        color: 'rgba(255,255,255,0.7)',
         lineHeight: 24,
-        marginBottom: 24,
+        marginBottom: 32,
     },
     ctaBoxBtn: {
         backgroundColor: Colors.primary,
         paddingVertical: 14,
-        borderRadius: 10,
+        borderRadius: 12,
         alignItems: 'center',
     },
     ctaBoxBtnText: {
         color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '800',
     },
-    featuresGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 32,
-    },
-    featureCard: {
-        backgroundColor: '#FFFFFF',
+    benefitHeaderBox: {
+        alignItems: 'center',
         padding: 40,
-        borderRadius: 24,
+        backgroundColor: '#FFF',
+        borderRadius: 32,
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
-    featureIconBox: {
-        width: 64,
-        height: 64,
-        borderRadius: 16,
-        backgroundColor: Colors.primary + '10',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-    },
-    featureTitle: {
-        fontSize: 22,
+    benefitHeaderTitle: {
+        fontSize: 18,
         fontWeight: '800',
         color: Colors.navy,
-        marginBottom: 12,
-    },
-    featureDesc: {
-        fontSize: 16,
-        color: 'gray',
-        lineHeight: 24,
-    },
-    processSteps: {
-        justifyContent: 'space-between',
-        gap: 32,
-    },
-    processItem: {
-        flex: 1,
-        alignItems: 'center',
-        position: 'relative',
-    },
-    stepNumBox: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: Colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-        zIndex: 2,
-    },
-    stepNum: {
-        color: '#FFF',
-        fontSize: 20,
-        fontWeight: '900',
-    },
-    processLine: {
-        position: 'absolute',
-        top: 30,
-        left: '50%',
-        width: '100%',
-        height: 2,
-        backgroundColor: '#E2E8F0',
-        zIndex: 1,
-    },
-    processTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: Colors.navy,
-        marginBottom: 12,
-    },
-    processDesc: {
-        fontSize: 15,
-        color: 'gray',
+        marginTop: 16,
         textAlign: 'center',
-        lineHeight: 22,
+    },
+    benefitsGrid: {
+    },
+    benefitItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    benefitText: {
+        fontSize: 16,
+        color: '#64748B',
+        fontWeight: '500',
+        marginLeft: 16,
+    },
+    bulletPoint: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: Colors.primary,
+    },
+    sectionHeader: {
+        fontSize: 36,
+        fontWeight: '900',
+        textAlign: 'center',
+        marginBottom: 60,
+    },
+    centeredContent: {
+        alignItems: 'center',
+        maxWidth: 900,
+        alignSelf: 'center',
+    },
+    whiteInfoText: {
+        fontSize: 22,
+        color: 'rgba(255,255,255,0.7)',
+        lineHeight: 36,
+        textAlign: 'center',
+        fontWeight: '500',
+        marginBottom: 32,
     },
     ctaBar: {
         backgroundColor: Colors.primary,
-        paddingVertical: 60,
+        paddingVertical: 80,
     },
     ctaInner: {
-        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 32,
+        justifyContent: 'space-between',
     },
     ctaTextContainer: {
         flex: 1,
@@ -448,17 +420,17 @@ const styles = StyleSheet.create({
     },
     ctaBarSubtitle: {
         fontSize: 18,
-        color: 'rgba(255,255,255,0.8)',
+        color: 'rgba(255,255,255,0.9)',
     },
     whiteBtn: {
         backgroundColor: '#FFFFFF',
         paddingHorizontal: 40,
         paddingVertical: 20,
-        borderRadius: 12,
+        borderRadius: 16,
     },
     whiteBtnText: {
         color: Colors.primary,
         fontSize: 18,
         fontWeight: '800',
-    }
+    },
 });

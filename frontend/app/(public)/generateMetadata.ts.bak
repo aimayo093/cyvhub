@@ -1,0 +1,68 @@
+import { Metadata } from 'next';
+import { useCMS } from '@/context/CMSContext';
+import { notFound } from 'next/navigation';
+
+/**
+ * Shared SEO metadata generator for Service, Industry, and Career pages.
+ * Expects a slug param and a type ('service' | 'industry' | 'career').
+ * Retrieves the entity from CMS context; if missing, falls back to generic values.
+ */
+export async function generateMetadata({ params, type }: { params: { slug: string }; type: 'service' | 'industry' | 'career' }): Promise<Metadata> {
+  // In the App Router, we cannot use React hooks directly.
+  // We'll import the CMS store statically – the CMS context uses a singleton
+  // that can be accessed without a component render.
+  const cms = (global as any).__CMS__ as any; // placeholder for runtime injection
+  if (!cms) {
+    // Fallback if CMS is not yet initialized – allow Next.js to render with defaults.
+    return {
+      title: 'CYVhub – Specialized Logistics',
+      description: 'Professional logistics solutions across services and industries.',
+      openGraph: {
+        title: 'CYVhub – Specialized Logistics',
+        description: 'Professional logistics solutions across services and industries.',
+        url: `https://www.cyvhub.com/${type}s/${params.slug}`,
+        type: 'website',
+        images: [{ url: '/images/default-og.jpg' }],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: 'CYVhub – Specialized Logistics',
+        description: 'Professional logistics solutions across services and industries.',
+        images: { url: '/images/default-og.jpg' },
+      },
+    };
+  }
+
+  let entity;
+  if (type === 'service') entity = cms.serviceDetails?.[params.slug];
+  else if (type === 'industry') entity = cms.industryDetails?.[params.slug];
+  else if (type === 'career') entity = cms.jobPostings?.find((j: any) => j.slug === params.slug);
+
+  if (!entity) {
+    // If the entity does not exist, let Next.js handle 404.
+    notFound();
+  }
+
+  const title = entity.seoTitle || `${entity.title} | CYVhub`;
+  const description = entity.seoDescription || entity.shortDescription || `Learn more about ${entity.title} at CYVhub.`;
+  const imageUrl = entity.heroImage ? `${entity.heroImage}?v=${entity.updatedAt ?? Date.now()}` : '/images/default-og.jpg';
+  const url = `https://www.cyvhub.com/${type}s/${params.slug}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      type: 'website',
+      images: [{ url: imageUrl }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: { url: imageUrl },
+    },
+  };
+}
