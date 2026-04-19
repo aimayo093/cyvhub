@@ -28,7 +28,7 @@ export const getIndustries = async (req: Request, res: Response) => {
 
 export const getIndustryBySlug = async (req: Request, res: Response) => {
     try {
-        const { slug } = req.params;
+        const slug = req.params.slug as string;
         const industry = await prisma.industry.findUnique({
             where: { slug }
         });
@@ -107,7 +107,7 @@ export const updateIndustry = async (req: AuthenticatedRequest, res: Response) =
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
         const {
             title,
             slug: customSlug,
@@ -156,7 +156,7 @@ export const deleteIndustry = async (req: AuthenticatedRequest, res: Response) =
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         // Soft delete: set isActive to false
         await prisma.industry.update({

@@ -58,9 +58,8 @@ export const updateMenuItem = async (req: AuthenticatedRequest, res: Response) =
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { label, url, type, displayOrder, isVisible, location } = req.body;
-
         const menuItem = await prisma.menuItem.update({
             where: { id },
             data: {
@@ -69,7 +68,7 @@ export const updateMenuItem = async (req: AuthenticatedRequest, res: Response) =
                 type: type !== undefined ? type : undefined,
                 displayOrder: displayOrder !== undefined ? displayOrder : undefined,
                 isVisible: isVisible !== undefined ? isVisible : undefined,
-                location: location !== undefined ? location : undefined
+                location: location !== undefined ? (location as string) : undefined
             }
         });
 
@@ -86,7 +85,7 @@ export const deleteMenuItem = async (req: AuthenticatedRequest, res: Response) =
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         await prisma.menuItem.delete({
             where: { id }

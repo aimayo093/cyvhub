@@ -28,7 +28,7 @@ export const getServices = async (req: Request, res: Response) => {
 
 export const getServiceBySlug = async (req: Request, res: Response) => {
     try {
-        const { slug } = req.params;
+        const slug = req.params.slug as string;
         const service = await prisma.service.findUnique({
             where: { slug }
         });
@@ -107,7 +107,7 @@ export const updateService = async (req: AuthenticatedRequest, res: Response) =>
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
         const {
             title,
             slug: customSlug,
@@ -156,7 +156,7 @@ export const deleteService = async (req: AuthenticatedRequest, res: Response) =>
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         // Soft delete: set isActive to false
         await prisma.service.update({

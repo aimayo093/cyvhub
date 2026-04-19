@@ -76,7 +76,7 @@ export const updateCareerPosting = async (req: AuthenticatedRequest, res: Respon
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
         const {
             title,
             department,
@@ -90,7 +90,6 @@ export const updateCareerPosting = async (req: AuthenticatedRequest, res: Respon
             displayOrder,
             isActive
         } = req.body;
-
         const job = await prisma.jobPosting.update({
             where: { id },
             data: {
@@ -121,7 +120,7 @@ export const deleteCareerPosting = async (req: AuthenticatedRequest, res: Respon
             return res.status(403).json({ error: 'Forbidden. Admin access required.' });
         }
 
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         // Soft delete: set isActive to false
         await prisma.jobPosting.update({
