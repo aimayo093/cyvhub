@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Platform, useWindowDimensions, ActivityIndicator, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Truck, Clock, ShieldCheck, ArrowRight, Zap, Target, Search, Package, Calculator, CheckCircle, MapPin, TrendingUp, Headset, Star, Users, ArrowUpRight, BarChart3, Plane, Globe } from 'lucide-react-native';
 import Head from 'expo-router/head';
 import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
+import { initialHomepageData } from '@/constants/cmsDefaults';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PostcodeAutocomplete } from '@/components/shared/PostcodeAutocomplete';
 
@@ -32,8 +33,88 @@ export default function PublicHome() {
     const [activeHeroTab, setActiveHeroTab] = useState<'quote' | 'track'>('quote');
     const [trackingNumber, setTrackingNumber] = useState('');
 
+    const servicesScrollRef = useRef<ScrollView>(null);
+    const industriesScrollRef = useRef<ScrollView>(null);
+
+    const [servicesOffset, setServicesOffset] = useState(0);
+    const [industriesOffset, setIndustriesOffset] = useState(0);
+
+    // Auto-scroll states
+    const [servicesAutoScroll, setServicesAutoScroll] = useState(true);
+    const [industriesAutoScroll, setIndustriesAutoScroll] = useState(true);
+    const servicesAutoScrollRef = useRef<NodeJS.Timeout | null>(null);
+    const industriesAutoScrollRef = useRef<NodeJS.Timeout | null>(null);
+
+    const scrollSlider = (ref: React.RefObject<ScrollView> | null, direction: 'left' | 'right', type: 'services' | 'industries') => {
+        if (!ref || !ref.current) return;
+
+        const cardWidth = 340; // width + margin
+        const currentOffset = type === 'services' ? servicesOffset : industriesOffset;
+        const setOffset = type === 'services' ? setServicesOffset : setIndustriesOffset;
+
+        let newOffset = direction === 'left' ? currentOffset - cardWidth : currentOffset + cardWidth;
+
+        // Basic bounds check (optional, but good for UX)
+        if (newOffset < 0) newOffset = 0;
+
+        ref.current.scrollTo({
+            x: newOffset,
+            animated: true
+        });
+        setOffset(newOffset);
+    };
+
+    const handleScroll = (event: any, type: 'services' | 'industries') => {
+        const x = event.nativeEvent.contentOffset.x;
+        if (type === 'services') setServicesOffset(x);
+        else setIndustriesOffset(x);
+    };
+
+    // Auto-scroll effect for services
+    useEffect(() => {
+        if (!servicesAutoScroll) return;
+
+        if (servicesAutoScrollRef.current) {
+            clearInterval(servicesAutoScrollRef.current as NodeJS.Timeout);
+        }
+
+        servicesAutoScrollRef.current = setInterval(() => {
+            scrollSlider(servicesScrollRef as React.RefObject<ScrollView>, 'right', 'services');
+        }, 4000) as any;
+
+        return () => {
+            if (servicesAutoScrollRef.current) {
+                clearInterval(servicesAutoScrollRef.current as NodeJS.Timeout);
+            }
+        };
+    }, [servicesAutoScroll]);
+
+    // Auto-scroll effect for industries
+    useEffect(() => {
+        if (!industriesAutoScroll) return;
+
+        if (industriesAutoScrollRef.current) {
+            clearInterval(industriesAutoScrollRef.current as NodeJS.Timeout);
+        }
+
+        industriesAutoScrollRef.current = setInterval(() => {
+            scrollSlider(industriesScrollRef as React.RefObject<ScrollView>, 'right', 'industries');
+        }, 4000) as any;
+
+        return () => {
+            if (industriesAutoScrollRef.current) {
+                clearInterval(industriesAutoScrollRef.current as NodeJS.Timeout);
+            }
+        };
+    }, [industriesAutoScroll]);
+
     const isMobile = SCREEN_WIDTH < 768;
     const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
+
+    // Calculate current index for dot indicators
+    const cardWidth = 340;
+    const servicesCurrentIndex = Math.round(servicesOffset / cardWidth);
+    const industriesCurrentIndex = Math.round(industriesOffset / cardWidth);
 
     const handleContinue = async () => {
         if (!collection || !delivery) {
@@ -67,6 +148,24 @@ export default function PublicHome() {
         });
     };
 
+    const hero = homepageData['cms_heroConfig'] || {};
+    const stats = homepageData['cms_statsConfig'] || { stats: [] };
+    const { serviceDetails, industryDetails } = useCMS();
+    
+    // Dynamically pull published services
+    const dynamicServices = useMemo(() => {
+        return Object.values(serviceDetails || {})
+            .filter(s => s.publishStatus)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+    }, [serviceDetails]);
+
+    // Dynamically pull published industries
+    const dynamicIndustries = useMemo(() => {
+        return Object.values(industryDetails || {})
+            .filter(i => i.publishStatus)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+    }, [industryDetails]);
+
     if (!isLoaded) {
         return (
             <View style={styles.loadingContainer}>
@@ -75,10 +174,6 @@ export default function PublicHome() {
         );
     }
 
-    const hero = homepageData['cms_heroConfig'] || {};
-    const stats = homepageData['cms_statsConfig'] || { stats: [] };
-    const services = homepageData['cms_servicesConfig'] || { banners: [] };
-    const industries = homepageData['cms_industriesConfig'] || { industries: [] };
     const whyUs = homepageData['cms_whyUsConfig'] || { cards: [] };
 
     return (
@@ -210,26 +305,62 @@ export default function PublicHome() {
                         <Text style={styles.sectionDesc}>B2B logistics solutions tailored to the unique demands of modern commerce.</Text>
                     </View>
 
-                    <View style={styles.servicesGrid}>
-                        {services.banners?.slice(0, 4).map((service: any) => (
-                            <TouchableOpacity 
-                                key={service.id} 
-                                style={[styles.serviceCard, { width: SCREEN_WIDTH >= 1024 ? '23.5%' : isMobile ? '100%' : '48%' }]}
-                                onPress={() => router.push(service.link as any)}
-                            >
-                                <Image source={{ uri: service.imageUrl }} style={styles.serviceImg} />
-                                <View style={styles.serviceOverlay} />
-                                <View style={styles.serviceContent}>
-                                    <Text style={styles.serviceName}>{service.title}</Text>
-                                    <Text style={styles.serviceLiteDesc}>{service.desc}</Text>
-                                    <View style={styles.serviceLink}>
-                                        <Text style={styles.serviceLinkText}>View Details</Text>
-                                        <ArrowRight size={14} color="#FFF" />
+                    <View style={styles.sliderWrapper}>
+                        <ScrollView
+                            ref={servicesScrollRef}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.sliderContent}
+                            snapToInterval={isMobile ? SCREEN_WIDTH - 48 : 340}
+                            decelerationRate="fast"
+                            scrollEventThrottle={16}
+                            onScroll={(e) => handleScroll(e, 'services')}
+                        >
+                            {dynamicServices.map((service: any) => (
+                                <TouchableOpacity
+                                    key={service.id}
+                                    style={[styles.serviceCard, { width: 320, marginRight: 20 }]}
+                                    onPress={() => router.push(`/services/${service.slug}` as any)}
+                                >
+                                    <Image source={{ uri: service.heroImageUrl || service.imageUrl }} style={styles.serviceImg} />
+                                    <View style={styles.serviceOverlay} />
+                                    <View style={styles.serviceContent}>
+                                        <Text style={styles.serviceName}>{service.title}</Text>
+                                        <Text style={styles.serviceLiteDesc} numberOfLines={2}>{service.summary || service.desc}</Text>
+                                        <View style={styles.serviceLink}>
+                                            <Text style={styles.serviceLinkText}>View Details</Text>
+                                            <ArrowRight size={14} color="#FFF" />
+                                        </View>
                                     </View>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        {!isMobile && (
+                            <View style={styles.sliderControls}>
+                                <TouchableOpacity style={styles.sliderArrow} onPress={() => scrollSlider(servicesScrollRef as React.RefObject<ScrollView>, 'left', 'services')}>
+                                    <ArrowRight size={20} color={Colors.navy} style={{ transform: [{ rotate: '180deg' }] }} />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.sliderArrow} onPress={() => scrollSlider(servicesScrollRef as React.RefObject<ScrollView>, 'right', 'services')}>
+                                    <ArrowRight size={20} color={Colors.navy} />
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
+
+                    {/* Dot indicators for services */}
+                    {!isMobile && (
+                        <View style={styles.dotIndicators}>
+                            {dynamicServices.map((_, index) => (
+                                <View
+                                    key={index}
+                                    style={[
+                                        styles.dot,
+                                        servicesCurrentIndex === index && styles.dotActive
+                                    ]}
+                                />
+                            ))}
+                        </View>
+                    )}
 
                     <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/services')}>
                         <Text style={styles.viewAllBtnText}>Explore All Services</Text>
@@ -249,22 +380,58 @@ export default function PublicHome() {
                         </Text>
                     </View>
 
-                    <View style={styles.industryGrid}>
-                        {industries.industries?.map((ind: any) => (
-                            <TouchableOpacity 
-                                key={ind.id} 
-                                style={[styles.industryCard, { width: SCREEN_WIDTH >= 1024 ? '23.5%' : isMobile ? '100%' : '48%' }]}
-                                onPress={() => router.push(`/industries/${ind.id}` as any)}
-                            >
-                                <Image source={{ uri: ind.imageUrl }} style={styles.industryImg} />
-                                <View style={styles.industryOverlayDark} />
-                                <View style={styles.industryInfo}>
-                                    <Text style={styles.industryTitle}>{ind.title}</Text>
-                                    <ArrowUpRight size={20} color="#FFF" />
-                                </View>
-                            </TouchableOpacity>
-                        ))}
+                    <View style={styles.sliderWrapper}>
+                        <ScrollView
+                            ref={industriesScrollRef}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.sliderContent}
+                            snapToInterval={isMobile ? SCREEN_WIDTH - 48 : 340}
+                            decelerationRate="fast"
+                            scrollEventThrottle={16}
+                            onScroll={(e) => handleScroll(e, 'industries')}
+                        >
+                            {dynamicIndustries.map((ind: any) => (
+                                <TouchableOpacity
+                                    key={ind.id}
+                                    style={[styles.industryCard, { width: 320, marginRight: 20 }, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
+                                    onPress={() => router.push(`/industries/${ind.slug || ind.id}` as any)}
+                                >
+                                    <Image source={{ uri: ind.heroImageUrl || ind.imageUrl }} style={styles.industryImg} />
+                                    <View style={styles.industryOverlayDark} />
+                                    <View style={styles.industryInfo}>
+                                        <Text style={styles.industryTitle}>{ind.title}</Text>
+                                        <ArrowUpRight size={20} color="#FFF" />
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        {!isMobile && (
+                            <View style={styles.sliderControls}>
+                                <TouchableOpacity style={[styles.sliderArrow, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => scrollSlider(industriesScrollRef as React.RefObject<ScrollView>, 'left', 'industries')}>
+                                    <ArrowRight size={20} color="#FFF" style={{ transform: [{ rotate: '180deg' }] }} />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={[styles.sliderArrow, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => scrollSlider(industriesScrollRef as React.RefObject<ScrollView>, 'right', 'industries')}>
+                                    <ArrowRight size={20} color="#FFF" />
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
+
+                    {/* Dot indicators for industries */}
+                    {!isMobile && (
+                        <View style={styles.dotIndicatorsPrimary}>
+                            {dynamicIndustries.map((_, index) => (
+                                <View
+                                    key={index}
+                                    style={[
+                                        styles.dotPrimary,
+                                        industriesCurrentIndex === index && styles.dotPrimaryActive
+                                    ]}
+                                />
+                            ))}
+                        </View>
+                    )}
                 </View>
             </View>
 
@@ -339,7 +506,6 @@ const styles = StyleSheet.create({
         zIndex: 1,
         justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 60,
     },
     heroTextContent: {
         flex: 1,
@@ -347,7 +513,6 @@ const styles = StyleSheet.create({
     heroBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
         backgroundColor: 'rgba(255,255,255,0.1)',
         paddingHorizontal: 16,
         paddingVertical: 8,
@@ -356,6 +521,9 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.2)',
+    },
+    heroBadgeIcon: {
+        marginRight: 8,
     },
     heroBadgeText: {
         color: '#FFF',
@@ -389,7 +557,11 @@ const styles = StyleSheet.create({
         maxWidth: 480,
         borderRadius: 32,
         overflow: 'hidden',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 25 },
+        shadowOpacity: 0.5,
+        shadowRadius: 50,
+        elevation: 10,
     },
     widgetTabs: {
         flexDirection: 'row',
@@ -401,9 +573,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
         paddingVertical: 14,
         borderRadius: 26,
+    },
+    widgetTabIcon: {
+        marginRight: 8,
     },
     widgetTabActive: {
         backgroundColor: '#FFF',
@@ -435,7 +609,7 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     vehicleScroll: {
-        gap: 10,
+        paddingRight: 20,
     },
     vOption: {
         paddingHorizontal: 16,
@@ -444,6 +618,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E2E8F0',
         backgroundColor: '#F8FAFC',
+        marginRight: 10,
     },
     vOptionActive: {
         borderColor: Colors.primary,
@@ -465,7 +640,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
+    },
+    quoteBtnIcon: {
+        marginLeft: 12,
     },
     quoteBtnText: {
         color: '#FFF',
@@ -473,7 +650,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     trackContainer: {
-        gap: 20,
     },
     trackInput: {
         height: 60,
@@ -483,6 +659,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '600',
         color: Colors.navy,
+        marginBottom: 20,
     },
     statsBar: {
         backgroundColor: '#FFF',
@@ -494,7 +671,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: 30,
     },
     statItem: {
         alignItems: 'center',
@@ -556,7 +732,14 @@ const styles = StyleSheet.create({
     servicesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 24,
+    },
+    sliderWrapper: {
+        width: SCREEN_WIDTH,
+        marginLeft: -24,
+    },
+    sliderContent: {
+        paddingHorizontal: 24,
+        paddingBottom: 20,
     },
     serviceCard: {
         height: 380,
@@ -595,7 +778,9 @@ const styles = StyleSheet.create({
     serviceLink: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+    },
+    serviceLinkIcon: {
+        marginLeft: 8,
     },
     serviceLinkText: {
         color: '#FFF',
@@ -605,8 +790,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
         marginTop: 60,
+    },
+    viewAllBtnIcon: {
+        marginLeft: 12,
     },
     viewAllBtnText: {
         fontSize: 18,
@@ -616,7 +803,6 @@ const styles = StyleSheet.create({
     industryGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 20,
     },
     industryCard: {
         height: 250,
@@ -648,7 +834,6 @@ const styles = StyleSheet.create({
     whyGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 24,
     },
     whyCard: {
         backgroundColor: '#F8FAFC',
@@ -665,7 +850,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 24,
-        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 2,
     },
     whyTitle: {
         fontSize: 22,
@@ -707,7 +896,6 @@ const styles = StyleSheet.create({
     ctaBtns: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 20,
         justifyContent: 'center',
     },
     ctaPrimary: {
@@ -733,5 +921,64 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 18,
         fontWeight: '900',
-    }
+    },
+    sliderControls: {
+        position: 'absolute',
+        top: '50%',
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 10,
+        marginTop: -25,
+        pointerEvents: 'box-none',
+        zIndex: 5,
+    },
+    sliderArrow: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 5,
+    },
+    dotIndicators: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 32,
+        gap: 8,
+    },
+    dot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: 'rgba(15, 23, 42, 0.2)',
+    },
+    dotActive: {
+        backgroundColor: Colors.primary,
+        width: 24,
+    },
+    dotIndicatorsPrimary: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 32,
+        gap: 8,
+    },
+    dotPrimary: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    dotPrimaryActive: {
+        backgroundColor: '#FFF',
+        width: 24,
+    },
 });
