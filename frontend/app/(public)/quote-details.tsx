@@ -28,10 +28,12 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
 
 export default function QuoteDetailsPage() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
-    const { fromAddress, toAddress, senderPhone, receiverPhone, parcels: storedParcels, setStep2 } = useQuoteStore();
+    const { fromAddress, toAddress, fromPostcode, toPostcode, senderPhone, receiverPhone, parcels: storedParcels, setStep2 } = useQuoteStore();
     const [parcels, setParcels] = useState<any[]>([]);
     const [config, setConfig] = useState<QuoteDetailsConfig>(initialQuoteDetails);
     const [isLoading, setIsLoading] = useState(true);
+    const [isCalculating, setIsCalculating] = useState(false);
+    const [calcError, setCalcError] = useState<string | null>(null);
 
     useEffect(() => {
         if (storedParcels && storedParcels.length > 0) {
@@ -86,35 +88,63 @@ export default function QuoteDetailsPage() {
     }, []);
 
     const handleGetPrices = async () => {
-        const isValid = parcels.every(p => p.length && p.width && p.height && p.weight && parseInt(p.quantity, 10) > 0);
+        setCalcError(null);
+
+        console.log('[QuoteDetails] Validating parcels:', parcels);
+        
+        const isValid = parcels.every(p => {
+            const l = parseFloat(p.length);
+            const w = parseFloat(p.width);
+            const h = parseFloat(p.height);
+            const wt = parseFloat(p.weight);
+            const q = parseInt(p.quantity, 10);
+            return l > 0 && w > 0 && h > 0 && wt > 0 && q > 0;
+        });
+
         if (!isValid) {
-            Alert.alert('Missing Information', 'Please fill in all dimensions, weight, and quantity for all parcels.');
+            Alert.alert('Missing Information', 'Please fill in all dimensions, weight, and quantity with values greater than 0 for all parcels.');
             return;
         }
 
-        const totalWeight = parcels.reduce((sum, p) => sum + (parseFloat(p.weight) * parseInt(p.quantity, 10)), 0);
-
-        if (totalWeight > 1200) {
-            Alert.alert(
-                'High Capacity Load',
-                'Your shipment exceeds 1,200kg, which is the limit for our standard vehicles. Please contact support for a specialized heavy-haulage quote.',
-                [{ text: 'OK' }]
-            );
+        if (!fromPostcode || !toPostcode) {
+            setCalcError("Please go back and confirm your collection and delivery addresses before calculating a price.");
+            Alert.alert('Addresses Missing', 'Please go back and confirm your collection and delivery addresses.');
             return;
         }
 
-        // Save to store
-        setStep2(parcels.map(p => ({
-            id: p.id || Math.random().toString(),
-            lengthCm: parseFloat(p.length),
-            widthCm: parseFloat(p.width),
-            heightCm: parseFloat(p.height),
-            weightKg: parseFloat(p.weight),
-            quantity: parseInt(p.quantity, 10),
-            description: p.description || ''
-        })));
+        setIsCalculating(true);
+        try {
+            const totalWeight = parcels.reduce((sum, p) => sum + (parseFloat(p.weight) * parseInt(p.quantity, 10)), 0);
 
-        router.push('/(public)/guest-quote' as any);
+            if (totalWeight > 1200) {
+                Alert.alert(
+                    'High Capacity Load',
+                    'Your shipment exceeds 1,200kg, which is the limit for our standard vehicles. Please contact support for a specialized heavy-haulage quote.',
+                    [{ text: 'OK' }]
+                );
+                setIsCalculating(false);
+                return;
+            }
+
+            // Save to store
+            setStep2(parcels.map(p => ({
+                id: p.id || Math.random().toString(),
+                lengthCm: parseFloat(p.length),
+                widthCm: parseFloat(p.width),
+                heightCm: parseFloat(p.height),
+                weightKg: parseFloat(p.weight),
+                quantity: parseInt(p.quantity, 10),
+                description: p.description || ''
+            })));
+
+            router.push('/(public)/guest-quote' as any);
+        } catch (error: any) {
+            console.error('[QuoteDetails] Calculation error:', error);
+            setCalcError("We couldn't calculate an automatic price. Submit your quote and our team will be in touch with a tailored price within 1 hour.");
+            Alert.alert('Error', "An unexpected error occurred. Please try again.");
+        } finally {
+            setIsCalculating(false);
+        }
     };
 
     const addParcel = () => {
@@ -165,6 +195,11 @@ export default function QuoteDetailsPage() {
                             <Text style={styles.summaryLabel}>Phones:</Text>
                             <Text style={styles.summaryValue}>{senderPhone} → {receiverPhone}</Text>
                         </View>
+                        {calcError && (
+                            <View style={styles.errorBox}>
+                                <Text style={styles.errorText}>{calcError}</Text>
+                            </View>
+                        )}
                     </View>
 
                     <View style={styles.formSection}>
@@ -250,11 +285,18 @@ export default function QuoteDetailsPage() {
                         </TouchableOpacity>
 
                         <TouchableOpacity 
-                            style={styles.continueBtn}
+                            style={[styles.continueBtn, (isCalculating || !parcels.every(p => p.length && p.width && p.height && p.weight)) && styles.continueBtnDisabled]}
                             onPress={handleGetPrices}
                             activeOpacity={0.8}
+                            disabled={isCalculating}
+                            accessibilityRole="button"
+                            accessibilityLabel="Calculate Unified Price"
                         >
-                            <Text style={styles.continueBtnText}>Calculate Unified Price</Text>
+                            {isCalculating ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.continueBtnText}>Calculate Unified Price</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
 
@@ -469,5 +511,22 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 18,
         fontWeight: '700',
+    },
+    continueBtnDisabled: {
+        opacity: 0.6,
+    },
+    errorBox: {
+        backgroundColor: '#fef2f2',
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 12,
+        borderWidth: 1,
+        borderColor: '#fee2e2',
+    },
+    errorText: {
+        color: '#ef4444',
+        fontSize: 14,
+        fontWeight: '500',
+        textAlign: 'center',
     }
 });

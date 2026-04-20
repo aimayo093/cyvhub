@@ -50,6 +50,7 @@ export const PostcodeAutocomplete: React.FC<PostcodeAutocompleteProps> = ({
   const handleSearch = useCallback(async (text: string) => {
     setQuery(text);
     setManualMode(false);
+    setSelectedAddress(null);
     
     if (text.length < 3) {
       setSuggestions([]);
@@ -137,12 +138,33 @@ export const PostcodeAutocomplete: React.FC<PostcodeAutocompleteProps> = ({
 
   const handleManualSubmit = () => {
     if (selectedAddress && manualLine1) {
-      const finalAddress = { ...selectedAddress, line1: manualLine1 };
+      const finalAddress = { ...selectedAddress, line1: manualLine1, formatted: `${manualLine1}, ${selectedAddress.townCity}, ${selectedAddress.postcode}` };
+      setSelectedAddress(finalAddress);
       onAddressSelect(finalAddress);
       setManualMode(false);
       setQuery(finalAddress.postcode);
     }
   };
+
+  // NEW: Effect to notify parent of manual text entry if no selection is active
+  useEffect(() => {
+    if (!selectedAddress && query.length > 5) {
+      // Create a dummy AddressResult for verbatim entry
+      // We try to extract a postcode from the end if possible, or just use the query
+      const postcodeMatch = query.match(/([A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2})/i);
+      const postcode = postcodeMatch ? postcodeMatch[0].toUpperCase() : '';
+      
+      onAddressSelect({
+        id: 'manual-verbatim',
+        line1: query,
+        townCity: '',
+        postcode: postcode || query,
+        latitude: 0,
+        longitude: 0,
+        formatted: query
+      });
+    }
+  }, [query, selectedAddress]);
 
   return (
     <View style={styles.container}>
@@ -154,7 +176,7 @@ export const PostcodeAutocomplete: React.FC<PostcodeAutocompleteProps> = ({
           style={styles.input}
           placeholder={placeholder}
           placeholderTextColor={Colors.textMuted}
-          value={selectedAddress && !manualMode ? `${selectedAddress.line1 ? selectedAddress.line1 + ', ' : ''}${selectedAddress.postcode}` : query}
+          value={selectedAddress && !manualMode ? (selectedAddress.formatted || `${selectedAddress.line1 ? selectedAddress.line1 + ', ' : ''}${selectedAddress.postcode}`) : query}
           onChangeText={handleSearch}
           onFocus={() => (suggestions.length > 0 || addresses.length > 0) && setShowDropdown(true)}
         />

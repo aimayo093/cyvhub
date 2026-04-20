@@ -134,11 +134,13 @@ export default function GuestCheckoutPage() {
                 <View style={styles.summaryRibbon}>
                     <View>
                         <Text style={styles.ribbonLight}>Selected Service</Text>
-                        <Text style={styles.ribbonDark}>{selectedServiceType} - Standard Vehicle</Text>
+                        <Text style={styles.ribbonDark}>{selectedServiceType === 'MANUAL' ? 'Manual Quote Request' : `${selectedServiceType} - Standard Vehicle`}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.ribbonDark}>£{Number(estimatedPrice || 0).toFixed(2)}</Text>
-                        <Text style={styles.ribbonLight}>excl. VAT</Text>
+                        <Text style={styles.ribbonDark}>
+                            {estimatedPrice && estimatedPrice > 0 ? `£${Number(estimatedPrice).toFixed(2)}` : 'Price TBC'}
+                        </Text>
+                        <Text style={styles.ribbonLight}>{estimatedPrice && estimatedPrice > 0 ? 'excl. VAT' : 'Subject to review'}</Text>
                     </View>
                 </View>
 

@@ -65,7 +65,7 @@ export class AddressService {
                 postcode: cleanPostcode,
                 latitude: result.latitude,
                 longitude: result.longitude,
-                formatted: `${cleanPostcode} (Manual Entry Required)`
+                formatted: cleanPostcode
             }];
         } catch (error: any) {
             console.error('[AddressService] Both services failed:', error.message);

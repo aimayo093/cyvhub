@@ -218,6 +218,12 @@ export default function GuestQuotePage() {
                     <View style={styles.noVehicles}>
                         <Text style={styles.tierTitle}>No suitable vehicles found</Text>
                         <Text style={styles.tierDesc}>Your items are too large or heavy for our standard same-day fleet. Please contact our special loads team for a manual quote.</Text>
+                        <TouchableOpacity 
+                            style={[styles.bookBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary, marginTop: 16 }]} 
+                            onPress={() => handleBook("MANUAL", "Specialized Vehicle", 0)}
+                        >
+                            <Text style={[styles.bookBtnText, { color: '#FFF' }]}>Proceed to Manual Quote</Text>
+                        </TouchableOpacity>
                     </View>
                 ) : (
                     <>
