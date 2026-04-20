@@ -139,9 +139,17 @@ export default function QuoteDetailsPage() {
 
             router.push('/(public)/guest-quote' as any);
         } catch (error: any) {
-            console.error('[QuoteDetails] Calculation error:', error);
+            console.error('[CYVhub Error] Step 2 Calculation failed');
+            console.error('[CYVhub Error Stack]', error?.stack);
+            console.error('[CYVhub Error Context]', { 
+                action: 'handleGetPrices',
+                parcels,
+                fromPostcode,
+                toPostcode
+            });
+
             setCalcError("We couldn't calculate an automatic price. Submit your quote and our team will be in touch with a tailored price within 1 hour.");
-            Alert.alert('Error', "An unexpected error occurred. Please try again.");
+            Alert.alert('Error', "Something went wrong on our end. Your details have not been lost — please try again in a moment or contact us directly.");
         } finally {
             setIsCalculating(false);
         }

@@ -25,7 +25,12 @@ class ErrorBoundary extends React.Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: any) {
     this.setState({ errorInfo });
     // Log to console for production debugging
-    console.error('CRITICAL APP ERROR:', error, errorInfo);
+    console.error('[CYVhub Error]', error);
+    console.error('[CYVhub Error Stack]', error?.stack);
+    console.error('[CYVhub Error Context]', { 
+        component: 'ErrorBoundary',
+        info: errorInfo
+    });
     
     // In production, we could send this to an error tracking service
     if (typeof window !== 'undefined') {

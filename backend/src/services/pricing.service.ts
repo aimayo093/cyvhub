@@ -1,11 +1,17 @@
 import { prisma } from '../index';
 import { RoutingService } from './routing.service';
+import { Logger } from '../utils/logger';
 
 export class PricingService {
+    private static readonly logger = new Logger(PricingService.name);
     /**
      * Calculates the "Chargeable Weight" (unchanged from previous version as it follows PRD).
      */
     static calculateChargeableWeight(items: any[]) {
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            this.logger.error('[Weight Calc] No items provided for weight calculation');
+            throw new Error('No items provided for weight calculation');
+        }
         let totalActualWeight = 0;
         let totalVolumetricWeight = 0;
 
@@ -19,6 +25,11 @@ export class PricingService {
             totalActualWeight += (w * qty);
             const volWeight = ((l * wd * h) / 5000) * qty;
             totalVolumetricWeight += volWeight;
+
+            if (isNaN(w) || isNaN(l) || isNaN(wd) || isNaN(h)) {
+                this.logger.error(`[Weight Calc] Invalid dimensions found in item: ${JSON.stringify(item)}`);
+                throw new Error(`Invalid dimensions found in one or more items.`);
+            }
         }
 
         return {
@@ -32,7 +43,11 @@ export class PricingService {
      * The NEW UK-Wide Consignment-First Pricing Engine.
      */
     static async generateCustomerQuote(vehicleClassId: string, roadDistanceMiles: number, chargeableWeightKg: number, flags: any = {}, totalQuantity: number = 1, businessId?: string) {
-        console.log(`[PRICING_ENGINE] Starting NEW quote for ${vehicleClassId}, Dist: ${roadDistanceMiles}m, Qty: ${totalQuantity}`);
+        this.logger.log(`Starting quote for ${vehicleClassId}, Dist: ${roadDistanceMiles}m, Qty: ${totalQuantity}`);
+
+        if (!vehicleClassId) throw new Error('Missing vehicleClassId for pricing');
+        if (typeof roadDistanceMiles !== 'number' || roadDistanceMiles < 0) throw new Error(`Invalid road distance: ${roadDistanceMiles}`);
+        if (typeof chargeableWeightKg !== 'number' || chargeableWeightKg < 0) throw new Error(`Invalid chargeable weight: ${chargeableWeightKg}`);
 
         // 1. Fetch Global Config
         const globalConfig = await (prisma as any).globalConfig.findUnique({ where: { key: 'pricing_engine_config' } });

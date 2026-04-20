@@ -6,8 +6,11 @@ import { AddressService } from '../services/address.service';
 import { RoutingService } from '../services/routing.service';
 import { normalizeVehicleType } from '../utils/vehicleMapping';
 import { CommercialService } from '../services/commercial.service';
+import { Logger } from '../utils/logger';
 
 export class QuoteController {
+    private static readonly logger = new Logger(QuoteController.name);
+
     static async getQuotes(req: any, res: Response): Promise<void> {
         try {
             const quotes = await prisma.quoteRequest.findMany({
@@ -16,9 +19,9 @@ export class QuoteController {
                 orderBy: { createdAt: 'desc' }
             });
             res.json(quotes);
-        } catch (error) {
-            console.error('[QUOTE_CONTROLLER] Fetch Quotes Error:', error);
-            res.status(500).json({ error: 'Failed to fetch quotes' });
+        } catch (error: any) {
+            this.logger.error('[Fetch Quotes] Error:', error.stack);
+            res.status(500).json({ error: 'Failed to fetch quotes', message: error.message });
         }
     }
 
@@ -33,9 +36,9 @@ export class QuoteController {
                 return;
             }
             res.json(quote);
-        } catch (error) {
-            console.error('[QUOTE_CONTROLLER] Fetch Quote Error:', error);
-            res.status(500).json({ error: 'Failed to fetch quote' });
+        } catch (error: any) {
+            this.logger.error(`[Fetch Quote] Error for ID ${req.params.id}:`, error.stack);
+            res.status(500).json({ error: 'Failed to fetch quote', message: error.message });
         }
     }
 
@@ -65,9 +68,9 @@ export class QuoteController {
                 businessId: businessId || req.user?.id
             });
             res.json(result);
-        } catch (error) {
-            console.error('[QUOTE_CONTROLLER] Create Quote Error:', error);
-            res.status(500).json({ error: 'Failed to create quote' });
+        } catch (error: any) {
+            this.logger.error('[Create Quote] Fatal Error:', error.stack);
+            res.status(500).json({ error: 'Failed to create quote', message: error.message });
         }
     }
 
@@ -163,10 +166,11 @@ export class QuoteController {
             });
 
         } catch (error: any) {
-            console.error('[QUOTE_CONTROLLER] Fatal Error:', error.message);
+            this.logger.error('[Calculate Price] Fatal Error:', error.stack);
             res.status(400).json({ 
-                error: error.message || 'Calculation failed',
-                error_code: 'CALCULATION_ERROR'
+                error: error.message || 'Price calculation failed',
+                error_code: 'CALCULATION_ERROR',
+                details: error.stack
             });
         }
     }
@@ -179,8 +183,9 @@ export class QuoteController {
                 data: { status }
             });
             res.json(quote);
-        } catch (error) {
-            res.status(500).json({ error: 'Failed to update quote status' });
+        } catch (error: any) {
+            this.logger.error(`[Update Quote Status] Error for ID ${req.params.id}:`, error.stack);
+            res.status(500).json({ error: 'Failed to update quote status', message: error.message });
         }
     }
 }

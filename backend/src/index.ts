@@ -47,13 +47,15 @@ dotenv.config();
 // SEC-3: Refuse to start if critical environment variables are missing.
 const REQUIRED_ENV_VARS = [
     'DATABASE_URL',
-    'DIRECT_URL', // Required for prisma migrate deploy
+    'DIRECT_URL',
     'JWT_SECRET',
     'NODE_ENV',
     'STRIPE_SECRET_KEY',
     'STRIPE_WEBHOOK_SECRET',
     'RESEND_API_KEY',
-    'OPENROUTER_API_KEY'
+    'OPENROUTER_API_KEY',
+    'GETADDRESS_API_KEY',
+    'GOOGLE_MAPS_API_KEY'
 ];
 
 REQUIRED_ENV_VARS.forEach(key => {

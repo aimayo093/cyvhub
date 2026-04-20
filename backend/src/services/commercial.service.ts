@@ -3,8 +3,10 @@ import { PricingService } from './pricing.service';
 import { PayoutService } from './payout.service';
 import { RoutingService } from './routing.service';
 import { AddressService } from './address.service';
+import { Logger } from '../utils/logger';
 
 export class CommercialService {
+    private static readonly logger = new Logger(CommercialService.name);
     /**
      * The master orchestrator for UK-Wide Quote Generation.
      */
@@ -24,8 +26,16 @@ export class CommercialService {
         senderPhone?: string,
         receiverPhone?: string
     }) {
-        const totalQuantity = payload.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
-        const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(payload.items);
+        try {
+            if (!payload.pickupPostcode || !payload.dropoffPostcode) {
+                throw new Error(`Missing postcodes: from=${payload.pickupPostcode}, to=${payload.dropoffPostcode}`);
+            }
+            if (!payload.items || payload.items.length === 0) {
+                throw new Error('No parcels provided in quote request');
+            }
+
+            const totalQuantity = payload.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+            const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(payload.items);
         
         // 1. Select Suitable Vehicle
         const { SuitabilityService } = require('./suitability.service');
@@ -197,6 +207,10 @@ export class CommercialService {
                 vatAmount: pricing.vatAmount,
                 totalIncVat: pricing.totalIncVat
             }
-        };
+            };
+        } catch (error: any) {
+            this.logger.error('[Quote Request] Fatal Error:', error.stack);
+            throw error;
+        }
     }
 }

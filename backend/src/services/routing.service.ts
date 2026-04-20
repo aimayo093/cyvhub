@@ -6,6 +6,28 @@ export class RoutingService {
      * Defaults to OSRM (Open Source Routing Machine) public API.
      */
     static async calculateRoadRoute(origin: { lat: number, lng: number }, destination: { lat: number, lng: number }) {
+        // 1. Try Google Maps if key exists
+        const googleKey = process.env.GOOGLE_MAPS_API_KEY;
+        if (googleKey) {
+            try {
+                const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin.lat},${origin.lng}&destinations=${destination.lat},${destination.lng}&key=${googleKey}`;
+                const response = await axios.get(url);
+                const data = response.data;
+
+                if (data.status === 'OK' && data.rows[0].elements[0].status === 'OK') {
+                    const element = data.rows[0].elements[0];
+                    return {
+                        distanceMiles: Number((element.distance.value * 0.000621371).toFixed(2)),
+                        durationMinutes: Math.ceil(element.duration.value / 60)
+                    };
+                }
+                console.warn('[RoutingService] Google Maps returned non-OK status:', data.status);
+            } catch (err: any) {
+                console.error('[RoutingService] Google Maps failed:', err.message);
+            }
+        }
+
+        // 2. Fallback to OSRM
         try {
             // OSRM coordinates format is {lng},{lat}
             const coords = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`;
@@ -28,7 +50,7 @@ export class RoutingService {
         } catch (error: any) {
             console.error('[RoutingService] OSRM Route failed:', error.message);
             
-            // Critical Fallback: Haversine * 1.3 (Traditional approximation)
+            // 3. Critical Fallback: Haversine * 1.3 (Traditional approximation)
             const airDist = this.calculateHaversine(origin, destination);
             return {
                 distanceMiles: Number((airDist * 1.3).toFixed(2)),
