@@ -198,7 +198,13 @@ export class DeliveryController {
                     }
 
                     if (targetEmail) {
-                        NotificationService.sendEmail(targetEmail, 'Job Created Successfully', `<p>Hi ${targetName},</p><p>Your job <b>${newDelivery.jobNumber}</b> has been created and is pending payment.</p>`);
+                        const isManual = quoteResult.quote.requiresManualPricing;
+                        const subject = isManual ? 'Quote Request Received - Manual Review' : 'Job Created Successfully';
+                        const body = isManual 
+                            ? `<p>Hi ${targetName},</p><p>We've received your request for <b>${newDelivery.jobNumber}</b>. Because of the specific requirements of your load, our team will be in touch with a personalised quote within 1 hour.</p>`
+                            : `<p>Hi ${targetName},</p><p>Your job <b>${newDelivery.jobNumber}</b> has been created and is pending payment.</p>`;
+                        
+                        NotificationService.sendEmail(targetEmail, subject, body);
                     }
                     if (targetPhone) {
                         NotificationService.sendSms(targetPhone, `CYVhub: Your job ${newDelivery.jobNumber} has been created.`);

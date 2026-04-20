@@ -213,18 +213,18 @@ export default function GuestReviewPage() {
 
                             <View style={styles.dataRow}>
                                 <Text style={styles.dataLabel}>Subtotal:</Text>
-                                <Text style={styles.dataValue}>£{price.toFixed(2)}</Text>
+                                <Text style={styles.dataValue}>{price > 0 ? `£${price.toFixed(2)}` : 'TBC'}</Text>
                             </View>
                             <View style={styles.dataRow}>
                                 <Text style={styles.dataLabel}>VAT (20%):</Text>
-                                <Text style={styles.dataValue}>£{vatAmount.toFixed(2)}</Text>
+                                <Text style={styles.dataValue}>{price > 0 ? `£${vatAmount.toFixed(2)}` : 'TBC'}</Text>
                             </View>
 
                             <View style={[styles.divider, { borderTopWidth: 2, borderTopColor: '#1a237e' }]} />
 
                             <View style={styles.dataRow}>
                                 <Text style={styles.totalLabel}>Total to Pay:</Text>
-                                <Text style={styles.totalValue}>£{totalIncVat.toFixed(2)}</Text>
+                                <Text style={styles.totalValue}>{price > 0 ? `£${totalIncVat.toFixed(2)}` : 'TBC'}</Text>
                             </View>
 
                             {errorMessage && (
@@ -234,7 +234,7 @@ export default function GuestReviewPage() {
                             )}
 
                             <TouchableOpacity
-                                style={[styles.payBtn, isSubmitting && { opacity: 0.7 }]}
+                                style={[styles.payBtn, isSubmitting && { opacity: 0.7 }, price === 0 && { backgroundColor: Colors.primary }]}
                                 activeOpacity={0.8}
                                 onPress={handleConfirmAndPay}
                                 disabled={isSubmitting}
@@ -245,10 +245,12 @@ export default function GuestReviewPage() {
                                         <Text style={styles.payBtnText}>Processing...</Text>
                                     </View>
                                 ) : (
-                                    <Text style={styles.payBtnText}>{errorMessage ? 'Retry Payment' : 'Confirm & Pay'}</Text>
+                                    <Text style={styles.payBtnText}>
+                                        {errorMessage ? 'Retry Submission' : (price > 0 ? 'Confirm & Pay' : 'Submit for Manual Quote')}
+                                    </Text>
                                 )}
                             </TouchableOpacity>
-                            <Text style={styles.secureText}>🔒 Secure payment via Stripe</Text>
+                            <Text style={styles.secureText}>{price > 0 ? '🔒 Secure payment via Stripe' : 'Our team will review your requirements'}</Text>
                         </View>
                     </View>
                 </View>

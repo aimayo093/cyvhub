@@ -75,103 +75,61 @@ export class QuoteController {
     }
 
     static async calculatePrice(req: Request, res: Response): Promise<void> {
-        const { 
-            pickupPostcode, 
-            dropoffPostcode, 
-            pickupCoords, 
-            dropoffCoords,
-            items, 
-            flags 
-        } = req.body;
+        const { pickupPostcode, dropoffPostcode, items, flags } = req.body;
         
-        console.log(`[QUOTE_CONTROLLER] New UK-Wide Calculation: ${pickupPostcode} -> ${dropoffPostcode}`);
-
         try {
             if (!pickupPostcode || !dropoffPostcode || !items || !Array.isArray(items)) {
-                res.status(400).json({ error: 'Missing required fields', error_code: 'MISSING_FIELDS' });
+                res.status(400).json({ success: false, error: 'Missing required fields' });
                 return;
             }
 
-            // 1. Resolve Street-Level Locations (Coords) if not provided
-            let pickup = pickupCoords;
-            let dropoff = dropoffCoords;
-
-            if (!pickup || !dropoff) {
-                const [pAddrs, dAddrs] = await Promise.all([
-                    AddressService.findAddresses(pickupPostcode),
-                    AddressService.findAddresses(dropoffPostcode)
-                ]);
-                if (!pickup) pickup = { lat: pAddrs[0].latitude, lng: pAddrs[0].longitude };
-                if (!dropoff) dropoff = { lat: dAddrs[0].latitude, lng: dAddrs[0].longitude };
-            }
-
-            // 2. Road Routing
-            const route = await RoutingService.calculateRoadRoute(pickup, dropoff);
-            const miles = route.distanceMiles;
-
-            // 3. Weight Calculation
+            const miles = await RoutingService.calculateDistance(pickupPostcode, dropoffPostcode);
             const { actualWeightKg, volumetricWeightKg, chargeableWeightKg } = PricingService.calculateChargeableWeight(items);
-
-            // 4. Vehicle Suitability
             const { available, rejected } = await SuitabilityService.findSuitableVehicles(items, actualWeightKg, volumetricWeightKg);
 
-            // 5. Generate Quotes for each available vehicle
-            const globalConfig = await (prisma as any).globalConfig.findUnique({ where: { key: 'pricing_engine_config' } });
-            const config = globalConfig?.config as any || {};
-            const remotePrefixes = config.remote_postcode_prefixes || [];
-            const isRemote = remotePrefixes.some((p: string) => pickupPostcode.toUpperCase().startsWith(p) || dropoffPostcode.toUpperCase().startsWith(p));
-
-            const augmentedFlags = { ...flags, isRemote };
-            const totalQuantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+            if (miles === null || available.length === 0) {
+                res.json({
+                    success: true,
+                    canAutoPrice: false,
+                    estimatedPrice: null,
+                    distanceMiles: miles,
+                    quotes: [],
+                    rejectedVehicles: rejected
+                });
+                return;
+            }
 
             const quotes = [];
             for (const vc of available) {
                 try {
-                    const pricing = await PricingService.generateCustomerQuote(
-                        vc.id, 
-                        miles, 
-                        chargeableWeightKg, 
-                        augmentedFlags, 
-                        totalQuantity,
-                        req.body.businessId
-                    );
-
+                    const pricing = await PricingService.generateCustomerQuote(vc.id, miles, chargeableWeightKg, { ...flags }, 1, req.body.businessId);
                     quotes.push({
                         vehicleId: vc.id,
                         vehicleName: vc.name,
-                        displayName: vc.displayName || vc.name,
-                        distanceMiles: miles,
-                        durationMinutes: route.durationMinutes,
-                        chargeableWeightKg,
                         totalExVat: pricing.customerTotal,
                         totalIncVat: pricing.totalIncVat,
                         vatAmount: pricing.vatAmount,
-                        lineItems: pricing.lineItems,
-                        dimensions: `${vc.maxLengthCm / 100} x ${vc.maxWidthCm / 100} x ${vc.maxHeightCm / 100}m`,
+                        dimensions: `${vc.maxLengthCm / 100}m x ${vc.maxWidthCm / 100}m x ${vc.maxHeightCm / 100}m`,
                         maxWeight: `${vc.maxWeightKg}kg`
                     });
-                } catch (pe) {
-                    console.error(`[QUOTE_CONTROLLER] Pricing failed for ${vc.name}:`, pe);
+                } catch (e: any) {
+                    this.logger.error(`Pricing failed: ${e.message}`);
                 }
             }
 
             res.json({
-                pickupPostcode,
-                dropoffPostcode,
-                miles,
-                durationMinutes: route.durationMinutes,
+                success: true,
+                canAutoPrice: quotes.length > 0,
+                estimatedPrice: quotes[0]?.totalExVat || null,
+                distanceMiles: miles,
                 quotes,
                 rejectedVehicles: rejected,
-                isRemote
+                currency: 'GBP'
             });
 
         } catch (error: any) {
             this.logger.error('[Calculate Price] Fatal Error:', error.stack);
-            res.status(400).json({ 
-                error: error.message || 'Price calculation failed',
-                error_code: 'CALCULATION_ERROR',
-                details: error.stack
-            });
+            res.json({ success: false, canAutoPrice: false, estimatedPrice: null, distanceMiles: null });
         }
     }
 

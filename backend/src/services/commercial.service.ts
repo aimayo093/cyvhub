@@ -164,6 +164,7 @@ export class CommercialService {
                 driverPayoutTotal: payout.driverTotal,
                 marginPercentage: Number(marginPercentage.toFixed(2)),
                 status,
+                requiresManualPricing: pricing.requiresManualPricing || false,
                 senderPhone: payload.senderPhone,
                 receiverPhone: payload.receiverPhone,
                 parcels: {

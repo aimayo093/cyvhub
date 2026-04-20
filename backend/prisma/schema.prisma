@@ -460,6 +460,7 @@ model Quote {
 
   senderPhone         String?
   receiverPhone       String?
+  requiresManualPricing Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -872,6 +873,7 @@ model QuoteRequest {
   marginPercentage  Float
 
   status String @default("AUTO_APPROVED") // 'AUTO_APPROVED', 'PENDING_REVIEW', 'REJECTED'
+  requiresManualPricing Boolean @default(false)
 
   customerId String?
   customer   User?   @relation(fields: [customerId], references: [id])

@@ -1,10 +1,86 @@
 import axios from 'axios';
+import { Logger } from '../utils/logger';
 
 export class RoutingService {
+    private static readonly logger = new Logger(RoutingService.name);
     /**
-     * Calculates actual road distance and estimated time between two sets of coordinates.
-     * Defaults to OSRM (Open Source Routing Machine) public API.
+     * MASTER DISTANCE ORCHESTRATOR
+     * Never throws. Returns number (miles) or null.
      */
+    static async calculateDistance(fromPostcode: string, toPostcode: string): Promise<number | null> {
+        try {
+            // 1. Try Google Maps if key exists
+            const googleKey = process.env.GOOGLE_MAPS_API_KEY;
+            if (googleKey) {
+                try {
+                    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${fromPostcode}&destinations=${toPostcode}&key=${googleKey}`;
+                    const response = await axios.get(url);
+                    if (response.data.status === 'OK' && response.data.rows[0].elements[0].status === 'OK') {
+                        return Number((response.data.rows[0].elements[0].distance.value * 0.000621371).toFixed(2));
+                    }
+                } catch (err) {
+                    this.logger.warn(`Google Maps failed for ${fromPostcode}->${toPostcode}`);
+                }
+            }
+
+            // 2. Try OSRM (needs coords)
+            const [fromCoords, toCoords] = await Promise.all([
+                this.getPostcodeCoords(fromPostcode),
+                this.getPostcodeCoords(toPostcode)
+            ]);
+
+            if (fromCoords && toCoords) {
+                try {
+                    const coords = `${fromCoords.lng},${fromCoords.lat};${toCoords.lng},${toCoords.lat}`;
+                    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`;
+                    const res = await axios.get(url);
+                    if (res.data.code === 'Ok') {
+                        return Number((res.data.routes[0].distance * 0.000621371).toFixed(2));
+                    }
+                } catch (err) {
+                    this.logger.warn(`OSRM failed for ${fromPostcode}->${toPostcode}`);
+                }
+
+                // 3. Haversine Fallback
+                return Number(this.haversineDistanceMiles(fromCoords, toCoords).toFixed(2));
+            }
+
+            this.logger.warn(`Could not calculate distance for postcodes: ${fromPostcode} -> ${toPostcode}`);
+            return null;
+        } catch (error: any) {
+            this.logger.error('Distance calculation fatal error', error.stack);
+            return null;
+        }
+    }
+
+    static async getPostcodeCoords(postcode: string): Promise<{ lat: number, lng: number } | null> {
+        try {
+            const clean = postcode.replace(/\s/g, '').toUpperCase();
+            const res = await axios.get(`https://api.postcodes.io/postcodes/${clean}`);
+            if (res.status === 200 && res.data.status === 200) {
+                return {
+                    lat: res.data.result.latitude,
+                    lng: res.data.result.longitude
+                };
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
+    static haversineDistanceMiles(a: { lat: number, lng: number }, b: { lat: number, lng: number }): number {
+        const R = 3958.8; // Miles
+        const dLat = (b.lat - a.lat) * Math.PI / 180;
+        const dLon = (b.lng - a.lng) * Math.PI / 180;
+        const lat1 = a.lat * Math.PI / 180;
+        const lat2 = b.lat * Math.PI / 180;
+        const x = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1) * Math.cos(lat2) *
+            Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.asin(Math.sqrt(x));
+    }
+
     static async calculateRoadRoute(origin: { lat: number, lng: number }, destination: { lat: number, lng: number }) {
         // 1. Try Google Maps if key exists
         const googleKey = process.env.GOOGLE_MAPS_API_KEY;

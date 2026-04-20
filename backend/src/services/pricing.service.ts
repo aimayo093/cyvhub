@@ -46,8 +46,21 @@ export class PricingService {
         this.logger.log(`Starting quote for ${vehicleClassId}, Dist: ${roadDistanceMiles}m, Qty: ${totalQuantity}`);
 
         if (!vehicleClassId) throw new Error('Missing vehicleClassId for pricing');
-        if (typeof roadDistanceMiles !== 'number' || roadDistanceMiles < 0) throw new Error(`Invalid road distance: ${roadDistanceMiles}`);
-        if (typeof chargeableWeightKg !== 'number' || chargeableWeightKg < 0) throw new Error(`Invalid chargeable weight: ${chargeableWeightKg}`);
+        
+        if (typeof roadDistanceMiles !== 'number' || roadDistanceMiles < 0 || isNaN(roadDistanceMiles)) {
+            this.logger.warn(`Cannot auto-price for ${vehicleClassId}: Invalid distance ${roadDistanceMiles}`);
+            return {
+                originalPerParcelExVat: 0,
+                grossExVat: 0,
+                customerTotal: 0,
+                totalIncVat: 0,
+                vatAmount: 0,
+                lineItems: [],
+                requiresReview: true,
+                requiresManualPricing: true,
+                blockReason: 'INVALID_DISTANCE'
+            };
+        }
 
         // 1. Fetch Global Config
         const globalConfig = await (prisma as any).globalConfig.findUnique({ where: { key: 'pricing_engine_config' } });
@@ -149,6 +162,7 @@ export class PricingService {
             vatAmount: Number(vatAmount.toFixed(2)),
             lineItems,
             requiresReview: subtotal < 50 && roadDistanceMiles > 100, // Example safety check
+            requiresManualPricing: false,
             blockReason: null
         };
     }

@@ -89,9 +89,9 @@ export default function QuoteDetailsPage() {
 
     const handleGetPrices = async () => {
         setCalcError(null);
+        setIsCalculating(true);
 
-        console.log('[QuoteDetails] Validating parcels:', parcels);
-        
+        // 1. Validation
         const isValid = parcels.every(p => {
             const l = parseFloat(p.length);
             const w = parseFloat(p.width);
@@ -103,30 +103,57 @@ export default function QuoteDetailsPage() {
 
         if (!isValid) {
             Alert.alert('Missing Information', 'Please fill in all dimensions, weight, and quantity with values greater than 0 for all parcels.');
+            setIsCalculating(false);
             return;
         }
 
         if (!fromPostcode || !toPostcode) {
-            setCalcError("Please go back and confirm your collection and delivery addresses before calculating a price.");
-            Alert.alert('Addresses Missing', 'Please go back and confirm your collection and delivery addresses.');
+            setCalcError("Please go back and confirm your collection and delivery addresses.");
+            setIsCalculating(false);
             return;
         }
 
-        setIsCalculating(true);
         try {
-            const totalWeight = parcels.reduce((sum, p) => sum + (parseFloat(p.weight) * parseInt(p.quantity, 10)), 0);
+            // Use fetch directly for better control over error handling
+            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/quotes/calculate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pickupPostcode: fromPostcode,
+                    dropoffPostcode: toPostcode,
+                    items: parcels.map(p => ({
+                        lengthCm: parseFloat(p.length),
+                        widthCm: parseFloat(p.width),
+                        heightCm: parseFloat(p.height),
+                        weightKg: parseFloat(p.weight),
+                        quantity: parseInt(p.quantity, 10),
+                        description: p.description
+                    }))
+                })
+            });
 
-            if (totalWeight > 1200) {
-                Alert.alert(
-                    'High Capacity Load',
-                    'Your shipment exceeds 1,200kg, which is the limit for our standard vehicles. Please contact support for a specialized heavy-haulage quote.',
-                    [{ text: 'OK' }]
-                );
-                setIsCalculating(false);
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                console.error('[CYVhub Calc Error]', response.status, body);
+                setCalcError("We couldn't calculate an automatic price. Submit your quote and our team will be in touch with a tailored price within 1 hour.");
+                setStep2(parcels.map(p => ({
+                    id: p.id || Math.random().toString(),
+                    lengthCm: parseFloat(p.length),
+                    widthCm: parseFloat(p.width),
+                    heightCm: parseFloat(p.height),
+                    weightKg: parseFloat(p.weight),
+                    quantity: parseInt(p.quantity, 10),
+                    description: p.description || ''
+                })));
+                setStep3({ estimatedPrice: null });
+                // We don't advance yet, let the user click "Submit Quote Anyway" or similar
+                // Actually, the user can still proceed.
                 return;
             }
 
-            // Save to store
+            const data = await response.json();
+
+            // Store shared data
             setStep2(parcels.map(p => ({
                 id: p.id || Math.random().toString(),
                 lengthCm: parseFloat(p.length),
@@ -136,20 +163,19 @@ export default function QuoteDetailsPage() {
                 quantity: parseInt(p.quantity, 10),
                 description: p.description || ''
             })));
+            setDistance(data.distanceMiles);
 
-            router.push('/(public)/guest-quote' as any);
-        } catch (error: any) {
-            console.error('[CYVhub Error] Step 2 Calculation failed');
-            console.error('[CYVhub Error Stack]', error?.stack);
-            console.error('[CYVhub Error Context]', { 
-                action: 'handleGetPrices',
-                parcels,
-                fromPostcode,
-                toPostcode
-            });
+            if (data.success && data.canAutoPrice && data.estimatedPrice) {
+                setStep3({ estimatedPrice: data.estimatedPrice });
+                router.push('/(public)/guest-quote' as any);
+            } else {
+                setCalcError("We couldn't calculate an automatic price. Submit your quote and our team will be in touch with a tailored price within 1 hour.");
+                setStep3({ estimatedPrice: null });
+            }
 
-            setCalcError("We couldn't calculate an automatic price. Submit your quote and our team will be in touch with a tailored price within 1 hour.");
-            Alert.alert('Error', "Something went wrong on our end. Your details have not been lost — please try again in a moment or contact us directly.");
+        } catch (networkError) {
+            console.error('[CYVhub Network Error]', networkError);
+            Alert.alert('Network Error', 'A network error occurred. Please check your connection and try again.');
         } finally {
             setIsCalculating(false);
         }
@@ -306,6 +332,15 @@ export default function QuoteDetailsPage() {
                                 <Text style={styles.continueBtnText}>Calculate Unified Price</Text>
                             )}
                         </TouchableOpacity>
+
+                        {calcError && (
+                            <TouchableOpacity 
+                                style={[styles.continueBtn, { backgroundColor: '#64748b', marginTop: 12 }]}
+                                onPress={() => router.push('/(public)/guest-quote' as any)}
+                            >
+                                <Text style={styles.continueBtnText}>Proceed to Manual Quote</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                 </View>
