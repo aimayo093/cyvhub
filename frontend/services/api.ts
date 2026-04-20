@@ -3,10 +3,8 @@ import { getToken, setToken, clearToken, TOKEN_KEY } from './session';
 
 // QA-1: Use EXPO_PUBLIC_API_URL for production deployments.
 // Falls back to localhost (web) or Android emulator address.
-export const API_URL = process.env.EXPO_PUBLIC_API_URL
-    ?? (Platform.OS === 'web'
-        ? '/api'
-        : 'http://localhost:3000/api'); // Default for development locally
+const baseApi = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'web' ? '' : 'http://localhost:3000');
+export const API_URL = baseApi.endsWith('/api') ? baseApi : `${baseApi}/api`;
 
 export { TOKEN_KEY, getToken, setToken, clearToken };
 

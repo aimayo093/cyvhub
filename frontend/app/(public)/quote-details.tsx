@@ -5,6 +5,7 @@ import { ArrowLeft, Package, Ruler, Weight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuoteStore } from '@/hooks/useQuoteStore';
+import { apiClient } from '@/services/api';
 import { QuoteDetailsConfig, initialQuoteDetails } from '@/constants/cmsDefaults';
 
 
@@ -114,10 +115,22 @@ export default function QuoteDetailsPage() {
         }
 
         try {
-            // Use fetch directly for better control over error handling
-            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/quotes/calculate`, {
+            console.log('[Calc Request URL] /quotes/calculate');
+            console.log('[Calc Request Body]', JSON.stringify({
+                pickupPostcode: fromPostcode,
+                dropoffPostcode: toPostcode,
+                items: parcels.map(p => ({
+                    lengthCm: parseFloat(p.length),
+                    widthCm: parseFloat(p.width),
+                    heightCm: parseFloat(p.height),
+                    weightKg: parseFloat(p.weight),
+                    quantity: parseInt(p.quantity, 10),
+                    description: p.description
+                }))
+            }));
+
+            const data = await apiClient('/quotes/calculate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     pickupPostcode: fromPostcode,
                     dropoffPostcode: toPostcode,
@@ -131,27 +144,6 @@ export default function QuoteDetailsPage() {
                     }))
                 })
             });
-
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                console.error('[CYVhub Calc Error]', response.status, body);
-                setCalcError("We couldn't calculate an automatic price. Submit your quote and our team will be in touch with a tailored price within 1 hour.");
-                setStep2(parcels.map(p => ({
-                    id: p.id || Math.random().toString(),
-                    lengthCm: parseFloat(p.length),
-                    widthCm: parseFloat(p.width),
-                    heightCm: parseFloat(p.height),
-                    weightKg: parseFloat(p.weight),
-                    quantity: parseInt(p.quantity, 10),
-                    description: p.description || ''
-                })));
-                setStep3({ estimatedPrice: null });
-                // We don't advance yet, let the user click "Submit Quote Anyway" or similar
-                // Actually, the user can still proceed.
-                return;
-            }
-
-            const data = await response.json();
 
             // Store shared data
             setStep2(parcels.map(p => ({
@@ -173,9 +165,25 @@ export default function QuoteDetailsPage() {
                 setStep3({ estimatedPrice: null });
             }
 
-        } catch (networkError) {
-            console.error('[CYVhub Network Error]', networkError);
-            Alert.alert('Network Error', 'A network error occurred. Please check your connection and try again.');
+        } catch (error: any) {
+            console.error('[CYVhub Calc Error]', error);
+            
+            // Consolidate dual error displays:
+            // Remove the Alert.alert blocking modal for calculation/network failures.
+            // Always show the inline message and allow manual submission.
+            setCalcError("We couldn't reach our pricing service right now. You can still submit your quote and our team will provide a price within 1 hour.");
+            setStep3({ estimatedPrice: null });
+            
+            // Ensure step 2 data is at least saved to store so user can proceed
+            setStep2(parcels.map(p => ({
+                id: p.id || Math.random().toString(),
+                lengthCm: parseFloat(p.length),
+                widthCm: parseFloat(p.width),
+                heightCm: parseFloat(p.height),
+                weightKg: parseFloat(p.weight),
+                quantity: parseInt(p.quantity, 10),
+                description: p.description || ''
+            })));
         } finally {
             setIsCalculating(false);
         }

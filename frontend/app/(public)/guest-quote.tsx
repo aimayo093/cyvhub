@@ -131,18 +131,11 @@ export default function GuestQuotePage() {
                     parcels: storedParcels
                 });
                 
-                let errorTitle = 'Calculation Error';
-                let errorMsg = 'Something went wrong on our end. Your details have not been lost — please try again in a moment or contact us directly.';
-
-                if (!fromPostcode || !toPostcode) {
-                    errorMsg = "Please go back to Step 1 and confirm your collection and delivery addresses before calculating a price.";
-                } else if (error.error_code === 'CALCULATION_FATAL' || error.error_code === 'CALCULATION_ERROR') {
-                    errorMsg = "We couldn't calculate a price automatically. Submit your quote and our team will provide a tailored price within 1 hour.";
-                } else if (error.message?.includes('Network') || error.message?.includes('fetch')) {
-                    errorMsg = "We couldn't reach our pricing engine. Please check your internet connection and try again.";
-                }
-
-                Alert.alert(errorTitle, errorMsg);
+                // Consolidate dual error displays:
+                // Remove Alert.alert blocking modal.
+                // The UI will show "No suitable vehicles found" with the manual submission path.
+                setDynamicQuotes([]);
+                setRejectedVehicles([]);
             } finally {
                 setIsLoading(false);
             }

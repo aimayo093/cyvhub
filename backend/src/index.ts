@@ -108,6 +108,8 @@ app.use(cors({
         
         const isAllowed = allowedOrigins.includes(origin) || 
                          origin.endsWith('cyvhub.com') || 
+                         origin === 'https://www.cyvhub.com' ||
+                         origin === 'https://cyvhub.com' ||
                          (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost'));
 
         if (isAllowed) {
