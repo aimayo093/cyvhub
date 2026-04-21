@@ -250,6 +250,11 @@ export type IndustryDetail = {
     ctaButtonText: string;
     metaTitle?: string;
     metaDesc?: string;
+    // --- Antigravity New Fields ---
+    accentColor: string;
+    challenges: { icon: string; title: string; desc: string }[];
+    features: { title: string; desc: string; icon: string; imageUrl: string }[];
+    useCases: { title: string; desc: string; badge: string }[];
 };
 
 export type ServiceDetailConfig = {
@@ -800,25 +805,43 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
             'Cold-chain and temperature-monitored moves'
         ],
         whyChooseUs: [
-            'Same-day delivery for urgent medical supplies',
-            'SLA-guaranteed time windows for surgical scheduling',
-            'Live GPS tracking with real-time clinical visibility',
-            'Proof of delivery with signature and timestamp',
-            'Temperature-sensitive handling protocols',
-            'Fully auditable delivery records for CQC compliance',
-            'Dedicated account management for NHS and private clients'
+            'CQC-compliant handling protocols',
+            'SLA-backed delivery guarantees',
+            'Real-time GPS and temperature tracking',
+            'Consolidated NHS & private billing'
         ],
-        stats: [],
+        stats: [
+            { label: 'NHS Trust Support', value: '45+' },
+            { label: 'On-Time Accuracy', value: '99.9%' },
+            { label: 'Urgent Transfers', value: '250k+' },
+            { label: 'Compliance Rate', value: '100.0%' }
+        ],
         equipment: [],
         processSteps: [],
-        caseStudyTitle: 'Case Study: Pathology Hub Support',
-        caseStudyQuote: 'CYVhub reduced our sample transit times by 35%, directly impacting the speed of patient diagnosis and clinical care.',
-        caseStudyAuthor: 'Pathology Manager, NHS Trust',
-        ctaHeading: 'Ready to Solve Your Medical Logistics?',
-        ctaText: 'Get a Tailored Quote',
-        ctaButtonText: 'Get a Tailored Quote',
+        caseStudyTitle: 'Life-Critical Success',
+        caseStudyQuote: 'When it comes to pathology samples and life-critical equipment, there is no margin for error. CYVhub understands the stakes.',
+        caseStudyAuthor: 'Logistics Manager, NHS Trust',
+        ctaHeading: 'Trust CYVhub with your medical logistics',
+        ctaText: 'Partner with a logistics provider that understands the clinical importance of every delivery.',
+        ctaButtonText: 'Get a Medical Delivery Quote',
         metaTitle: 'Medical & Healthcare Logistics | CYVhub',
-        metaDesc: 'Time-critical, temperature-aware delivery for medical supplies, diagnostics, and healthcare equipment.'
+        metaDesc: 'Time-critical, temperature-aware delivery for medical supplies, diagnostics, and healthcare equipment.',
+        accentColor: '#0D9488',
+        challenges: [
+            { icon: 'AlertTriangle', title: 'Zero Delay Tolerance', desc: 'Medical goods often have life-critical arrival windows with no room for error.' },
+            { icon: 'Thermometer', title: 'Temperature Sensitivity', desc: 'Maintaining cold-chain integrity is vital for reagents and biologics.' },
+            { icon: 'Shield', title: 'Regulatory Compliance', desc: 'Deliveries must meet strict clinical and CQC handling requirements.' }
+        ],
+        features: [
+            { title: 'Dedicated Medical Fleet', desc: 'Trained drivers who prioritize clinical consignments over standard freight.', icon: 'Truck', imageUrl: '' },
+            { title: 'SLA-Backed Precision', desc: 'Guaranteed delivery windows for surgeries and diagnostics.', icon: 'Clock', imageUrl: '' },
+            { title: 'Auditable Compliance', desc: 'Every move documented with GPS, timestamps, and digital signatures.', icon: 'FileText', imageUrl: '' }
+        ],
+        useCases: [
+            { title: 'Pathology Samples', desc: 'Urgent movement of samples from clinics to processing labs.', badge: 'URGENT' },
+            { title: 'Surgical Kits', desc: 'Direct delivery of sterile equipment to theatre teams.', badge: 'CRITICAL' },
+            { title: 'Pharma Distribution', desc: 'Timed replenishment for hospital pharmacies and clinics.', badge: 'SCHEDULED' }
+        ]
     },
     'construction-trades': {
         id: 'construction-trades',
@@ -843,24 +866,42 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
         ],
         whyChooseUs: [
             'Site-access-aware delivery scheduling',
-            'Multi-drop routes for contractors with multiple sites',
+            'Multi-drop routes for multiple sites',
             'Heavy and awkward load handling',
-            'Pallet and freight movement with tail-lift capability',
-            'Dedicated contract runs aligned to project timelines',
-            'Real-time tracking for site managers and project leads',
-            'Flexible same-day options for urgent material shortages'
+            'Pallet and freight movement with tail-lifts'
         ],
-        stats: [],
+        stats: [
+            { label: 'Contractor Support', value: '120+' },
+            { label: 'On-Time Delivery', value: '98.5%' },
+            { label: 'Material Moves', value: '800k+' },
+            { label: 'Site Access Rate', value: '100.0%' }
+        ],
         equipment: [],
         processSteps: [],
-        caseStudyTitle: 'Case Study: Infrastructure Excellence',
-        caseStudyQuote: 'CYVhub managed over 500 critical timed deliveries for our site during a 12-week peak period with 100% on-time performance.',
-        caseStudyAuthor: 'Project Logistics Lead',
-        ctaHeading: 'Ready to Solve Your Construction Logistics?',
-        ctaText: 'Get a Tailored Quote',
-        ctaButtonText: 'Get a Tailored Quote',
+        caseStudyTitle: 'Site Efficiency Success',
+        caseStudyQuote: 'Waiting on tools or materials kills site productivity. CYVhub\'s same-day response keeps our projects on schedule every single time.',
+        caseStudyAuthor: 'Site Manager, Tier 1 Contractor',
+        ctaHeading: 'Keep your site moving with CYVhub',
+        ctaText: 'Get your tools and materials delivered exactly when your team needs them.',
+        ctaButtonText: 'Get a Construction Delivery Quote',
         metaTitle: 'Construction & Trades Logistics | CYVhub',
-        metaDesc: 'Reliable delivery of tools, materials, and equipment to active construction sites — timed to your schedule, not ours.'
+        metaDesc: 'Reliable delivery of tools, materials, and equipment to active construction sites — timed to your schedule, not ours.',
+        accentColor: '#F59E0B',
+        challenges: [
+            { icon: 'Users', title: 'Idle Workforce', desc: 'Missing fixings or tools lead to expensive downtime for on-site teams.' },
+            { icon: 'BoxLabel', title: 'Heavy & Bulky Loads', desc: 'Materials are often oddly shaped and difficult for standard couriers to handle.' },
+            { icon: 'Map', title: 'Tight Site Access', desc: 'Restricted access windows and urban site locations require precise timing.' }
+        ],
+        features: [
+            { title: 'Site-Aware Scheduling', desc: 'Deliveries timed to your access windows to avoid site disruption.', icon: 'Clock', imageUrl: '' },
+            { title: 'Multi-Drop Efficiency', desc: 'One run can service all your active projects, reducing total logistics costs.', icon: 'Truck', imageUrl: '' },
+            { title: 'Heavy Load Capability', desc: 'Fleet equipped with tail-lifts and specialized handling for plant and machinery.', icon: 'Package', imageUrl: '' }
+        ],
+        useCases: [
+            { title: 'Merchant Collections', desc: 'Rapid pickup and delivery of materials from trade counters.', badge: 'SAME-DAY' },
+            { title: 'Site-to-Site Moves', desc: 'Transferring plant and tools between active project locations.', badge: 'FLEXIBLE' },
+            { title: 'Infrastructure Support', desc: 'Replenishing cable and fixings for large-scale utility projects.', badge: 'SCHEDULED' }
+        ]
     },
     'it-spare-parts-field-service': {
         id: 'it-spare-parts-field-service',
@@ -884,25 +925,43 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
             'Exhibition and demo-kit transport'
         ],
         whyChooseUs: [
-            'Same-day and SLA-tier delivery for break-fix parts',
-            'Real-time tracking for field service dispatch teams',
-            'Proof of delivery before engineer departure',
-            'Returns logistics for faulty units and warranty claims',
-            'Account billing with per-job cost codes',
-            'Multi-drop routes for engineers covering multiple sites',
-            'Coverage across all UK regions'
+            'SLA-tiered parts delivery',
+            'Real-time tracking for dispatchers',
+            'Pre-engineer delivery confirmation',
+            'Managed reverse logistics flow'
         ],
-        stats: [],
+        stats: [
+            { label: 'SLA Maintenance', value: '99.7%' },
+            { label: 'Engineer Support', value: '3,000+' },
+            { label: 'Parts Delivered', value: '1.5M+' },
+            { label: 'Data Center Coverage', value: '100.0%' }
+        ],
         equipment: [],
         processSteps: [],
-        caseStudyTitle: 'Case Study: Server Swap-Outs',
-        caseStudyQuote: 'CYVhub provides the precise timing and absolute security needed for our multi-million pound data center relocations.',
-        caseStudyAuthor: 'IT Operations Director',
-        ctaHeading: 'Ready to Secure Your Tech Logistics?',
-        ctaText: 'Get a Tailored Quote',
-        ctaButtonText: 'Get a Tailored Quote',
+        caseStudyTitle: 'Uptime Success',
+        caseStudyQuote: 'Every minute that a server is down costs our clients thousands. CYVhub ensures spare parts arrive exactly when and where they\'re needed.',
+        caseStudyAuthor: 'Lead Field Engineer, Global MSP',
+        ctaHeading: 'Eliminate IT downtime with CYVhub',
+        ctaText: 'Get critical parts into your engineers\' hands exactly when they need them.',
+        ctaButtonText: 'Get a Tech Logistics Quote',
         metaTitle: 'IT Spare Parts & Field Service Logistics | CYVhub',
-        metaDesc: 'Rapid, trackable delivery of IT spare parts and field service kits to engineers across the UK — because every minute of downtime costs money.'
+        metaDesc: 'Rapid, trackable delivery of IT spare parts and field service kits to engineers across the UK — because every minute of downtime costs money.',
+        accentColor: '#6366F1',
+        challenges: [
+            { icon: 'Zap', title: 'Critical Downtime', desc: 'Hardware failures cost businesses thousands per hour in lost productivity.' },
+            { icon: 'Target', title: 'Precision Routing', desc: 'Parts must meet engineers at specific sites, often with very tight windows.' },
+            { icon: 'RefreshCcw', title: 'Asset Recovery', desc: 'Faulty units and loan kits must be returned securely for refurbishment.' }
+        ],
+        features: [
+            { title: 'Real-Time Dispatch Sync', desc: 'Live tracking allows dispatchers to coordinate engineer arrival with part delivery.', icon: 'Signal', imageUrl: '' },
+            { title: 'SLA-Tiered Response', desc: 'Guaranteed collection and delivery windows aligned to your client contracts.', icon: 'ShieldCheck', imageUrl: '' },
+            { title: 'Managed Reverse Flow', desc: 'Closing the loop by collecting old or faulty parts as the new part is delivered.', icon: 'ArrowLeftRight', imageUrl: '' }
+        ],
+        useCases: [
+            { title: 'Engineer Swap-Outs', desc: 'Direct delivery of replacement parts to on-site technicians.', badge: 'SLA-CRITICAL' },
+            { title: 'Data Center Relocation', desc: 'Secure, timed movement of server racks and infrastructure.', badge: 'MANAGED' },
+            { title: 'Secure PC Recovery', desc: 'Safe collection of high-value hardware from remote employees.', badge: 'SECURE' }
+        ]
     },
     'manufacturing-wholesale': {
         id: 'manufacturing-wholesale',
@@ -926,25 +985,43 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
             'Palletized raw material movement'
         ],
         whyChooseUs: [
-            'Dedicated contract runs aligned to production schedules',
-            'Pallet and bulk freight capability',
-            'Scheduled collections from factory and warehouse',
-            'Multi-drop optimised routes for wholesale customers',
-            'Account invoicing with job-level cost reporting',
-            'Route planning and dispatch management integration',
-            'Scalable capacity for seasonal volume peaks'
+            'JIT-aligned shift scheduling',
+            'Pallet and bulk freight capacity',
+            'Optimised multi-drop routes',
+            'Detailed job-level reporting'
         ],
-        stats: [],
+        stats: [
+            { label: 'Production Efficiency', value: '+15%' },
+            { label: 'JIT Delivery Rate', value: '99.4%' },
+            { label: 'Pallet Movements', value: '1.2M+' },
+            { label: 'Supply Continuity', value: '100.0%' }
+        ],
         equipment: [],
         processSteps: [],
-        caseStudyTitle: 'Case Study: Production Line Feed',
-        caseStudyQuote: 'Their JIT replenishment model has allowed us to reduce on-site warehouse stock by 20%.',
-        caseStudyAuthor: 'Supply Chain Manager',
-        ctaHeading: 'Ready to Solve Your Manufacturing Logistics?',
-        ctaText: 'Get a Tailored Quote',
-        ctaButtonText: 'Get a Tailored Quote',
+        caseStudyTitle: 'Supply Chain Success',
+        caseStudyQuote: 'Our production lines depend on a seamless supply of components. CYVhub provides the reliability and scale we need to grow.',
+        caseStudyAuthor: 'Operations Director, Industrial Mfg',
+        ctaHeading: 'Optimise your production with CYVhub',
+        ctaText: 'Strengthen your supply chain with dependable manufacturing logistics support.',
+        ctaButtonText: 'Get a Manufacturing Quote',
         metaTitle: 'Manufacturing & Wholesale Logistics | CYVhub',
-        metaDesc: 'Dependable B2B delivery for manufacturers and wholesalers — scheduled runs, pallet movements, and contract logistics.'
+        metaDesc: 'Dependable B2B delivery for manufacturers and wholesalers — scheduled runs, pallet movements, and contract logistics.',
+        accentColor: '#0EA5E9',
+        challenges: [
+            { icon: 'PauseCircle', title: 'Line Stoppage Risk', desc: 'A single missing component can halt an entire multi-million pound production line.' },
+            { icon: 'Truck', title: 'Bulk Load Complexity', desc: 'Moving raw materials requires specialized freight handling and tail-lift access.' },
+            { icon: 'Link', title: 'Supply Chain Gaps', desc: 'Traditional couriers lack the scheduling precision needed for JIT manufacturing.' }
+        ],
+        features: [
+            { title: 'JIT Replenishment', desc: 'Deliveries timed precisely to your production cycles to reduce on-site storage.', icon: 'Clock', imageUrl: '' },
+            { title: 'Pallet & Bulk Freight', desc: 'Full capacity for raw materials and finished goods with lift-gate support.', icon: 'Layers', imageUrl: '' },
+            { title: 'Dedicated Contract Runs', desc: 'Permanent vehicles and drivers allocated to your daily supply chain needs.', icon: 'Briefcase', imageUrl: '' }
+        ],
+        useCases: [
+            { title: 'Line Feed Support', desc: 'Just-in-time delivery of components to the production floor.', badge: 'PRECISION' },
+            { title: 'Wholesale Distribution', desc: 'Structured multi-drop runs to your trade customer network.', badge: 'SCALABLE' },
+            { title: 'Raw Material Transit', desc: 'Reliable movement of bulk stock from port to factory.', badge: 'FREIGHT' }
+        ]
     },
     'aog-aviation': {
         id: 'aog-aviation',
@@ -968,25 +1045,43 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
             'Dangerous goods (ADR) awareness'
         ],
         whyChooseUs: [
-            'Sub-hour response for AOG collection requests',
-            '24/7 operations desk availability',
-            'Security-cleared drivers with airside access experience',
-            'Full chain-of-custody documentation',
-            'Live GPS tracking for AOG desk visibility',
-            'SLA-based agreements with defined response tiers',
-            'Coverage across all major UK airports and MRO sites'
+            'Sub-hour AOG response',
+            '24/7 operations desk',
+            'Airside-cleared drivers',
+            'Full documentation chain'
         ],
-        stats: [],
+        stats: [
+            { label: 'Response Time', value: '<60m' },
+            { label: 'Airside Delivery', value: '100.0%' },
+            { label: 'Parts Traceability', value: '100.0%' },
+            { label: 'Back in Air', value: '8,000+' }
+        ],
         equipment: [],
         processSteps: [],
-        caseStudyTitle: 'Case Study: AOG Breakout',
+        caseStudyTitle: 'Grounding Success',
         caseStudyQuote: 'When an engine component was needed in Heathrow, CYVhub had a dedicated vehicle at our supplier within 18 minutes.',
-        caseStudyAuthor: 'AOG Operations Chief',
-        ctaHeading: 'Ready to Solve Your Aviation Logistics?',
-        ctaText: 'Get a Tailored Quote',
-        ctaButtonText: 'Get a Tailored Quote',
+        caseStudyAuthor: 'Airline Maintenance Chief',
+        ctaHeading: 'Clear your AOG faster with CYVhub',
+        ctaText: 'Deploy the UK\'s fastest aviation logistics response team to your next AOG event.',
+        ctaButtonText: 'Get an AOG Response Quote',
         metaTitle: 'AOG & Aviation Logistics | CYVhub',
-        metaDesc: 'Mission-critical AOG logistics delivering aviation components anywhere in the UK within hours.'
+        metaDesc: 'Mission-critical AOG logistics delivering aviation components anywhere in the UK within hours.',
+        accentColor: '#EF4444',
+        challenges: [
+            { icon: 'DollarSign', title: 'Grounded Costs', desc: 'Every minute an aircraft sits on the tarmac costs thousands in revenue and fees.' },
+            { icon: 'Lock', title: 'Security Protocols', desc: 'Airport access requires high-level security clearance and specific protocol knowledge.' },
+            { icon: 'FileText', title: 'Documentation Chain', desc: 'Traceability and chain-of-custody records are mandatory for aviation safety.' }
+        ],
+        features: [
+            { title: 'Ultra-Rapid Dispatch', desc: 'Dedicated vehicles are dispatched for collection the moment your ticket is logged.', icon: 'Zap', imageUrl: '' },
+            { title: 'Airside Security Clearance', desc: 'Vetted drivers capable of direct delivery to hangars and tarmac-side locations.', icon: 'Shield', imageUrl: '' },
+            { title: 'Full Chain of Custody', desc: 'Meticulous logging of all parts and documentation to meet CAA/EASA standards.', icon: 'CheckCircle', imageUrl: '' }
+        ],
+        useCases: [
+            { title: 'Engine Component Moves', desc: 'Urgent transport of life-limited parts for engine repairs.', badge: 'AOG-PRIORITY' },
+            { title: 'Avionics Transport', desc: 'Secure and sensitive handling of delicate flight electronics.', badge: 'SENSITIVE' },
+            { title: 'Tarmac-Side Support', desc: 'Direct delivery of tools and parts to stationary aircraft.', badge: 'AIRSIDE' }
+        ]
     },
     'reverse-logistics': {
         id: 'reverse-logistics',
@@ -1010,25 +1105,43 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
             'Faulty machinery extraction'
         ],
         whyChooseUs: [
-            'Scheduled and on-demand returns collection',
-            'Full proof of collection with item-level logging',
-            'Audit trail for warranty and refurbishment processing',
-            'Multi-drop consolidated return runs',
-            'Integration with outbound contract delivery routes',
-            'Reduced cost per return through route consolidation',
-            'Compatible with IT, healthcare, and manufacturing returns'
+            'Proof of collection logging',
+            'Multi-drop return consolidation',
+            'Contracted return integration',
+            'Full document audit trail'
         ],
-        stats: [],
+        stats: [
+            { label: 'Asset Recovery', value: '85.0%' },
+            { label: 'Return Processing', value: '-30% Time' },
+            { label: 'Managed Collections', value: '500k+' },
+            { label: 'Audit Accuracy', value: '100.0%' }
+        ],
         equipment: [],
         processSteps: [],
-        caseStudyTitle: 'Case Study: IT Asset Recovery',
-        caseStudyQuote: 'CYVhub\'s reverse logistics solution increased our successful laptop recoveries from remote employees by 65%.',
-        caseStudyAuthor: 'IT Procurement Manager',
-        ctaHeading: 'Need to recover your assets?',
-        ctaText: 'Get a Tailored Quote',
-        ctaButtonText: 'Get a Tailored Quote',
+        caseStudyTitle: 'Circular Success',
+        caseStudyQuote: 'Reverse logistics is no longer a headache. We have total visibility and control over our returns, saving us thousands in lost assets.',
+        caseStudyAuthor: 'B2B Returns Specialist, Tech Corp',
+        ctaHeading: 'Recover your assets with CYVhub',
+        ctaText: 'Simplify your returns process with a structured B2B reverse logistics solution.',
+        ctaButtonText: 'Get a Reverse Logistics Quote',
         metaTitle: 'Reverse Logistics | CYVhub',
-        metaDesc: 'End-to-end returns collection and reverse logistics for B2B operations — tracked, documented, and processed without the chaos.'
+        metaDesc: 'End-to-end returns collection and reverse logistics for B2B operations — tracked, documented, and processed without the chaos.',
+        accentColor: '#10B981',
+        challenges: [
+            { icon: 'AlertCircle', title: 'Chaos in Returns', desc: 'Unstructured returns lead to lost assets, missed warranties, and warehouse clutter.' },
+            { icon: 'DollarSign', title: 'High Retrieval Costs', desc: 'Individual collections for single items are prohibitively expensive for B2B.' },
+            { icon: 'Search', title: 'Lack of Documentation', desc: 'Returns often arrive back at the warehouse without tracking or verification.' }
+        ],
+        features: [
+            { title: 'Item-Level Logging', desc: 'Detailed tracking of every returned unit for easy processing by your team.', icon: 'ClipboardList', imageUrl: '' },
+            { title: 'Consolidated Returns', desc: 'Optimised multi-drop routes to pick up returns from multiple sites in one run.', icon: 'PlusSquare', imageUrl: '' },
+            { title: 'Recovery Audits', desc: 'Instant proof of collection and detailed logs for every recovered asset.', icon: 'FileSearch', imageUrl: '' }
+        ],
+        useCases: [
+            { title: 'Laptop Retrieval', desc: 'Collecting hardware from former employees or for tech refreshes.', badge: 'SECURE' },
+            { title: 'Faulty Machinery', desc: 'Returning industrial parts for repair or warranty assessment.', badge: 'AD-HOC' },
+            { title: 'Retail Consolidation', desc: 'Regular collection of B2B returns from store networks.', badge: 'SCHEDULED' }
+        ]
     },
     'automotive-parts': {
         id: 'automotive-parts',
@@ -1052,25 +1165,43 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
             'Multi-stop scheduled dealer routes'
         ],
         whyChooseUs: [
-            'Same-day delivery for urgent unplanned parts needs',
-            'Scheduled morning delivery runs for workshops',
-            'Multi-drop routes across dealership networks',
-            'Proof of delivery with named recipient and timestamp',
-            'Careful handling to prevent parts damage in transit',
-            'Dedicated contract runs for high-volume distributors',
-            'Returns logistics for warranty and incorrect parts'
+            'Bay-direct delivery speed',
+            'Morning window reliability',
+            'Damage-free handling',
+            'Full recipient verification'
         ],
-        stats: [],
+        stats: [
+            { label: 'Garage Network', value: '2,000+' },
+            { label: 'Bay Productivity', value: '+20%' },
+            { label: 'Parts Delivered', value: '4.5M+' },
+            { label: 'Order Accuracy', value: '99.8%' }
+        ],
         equipment: [],
         processSteps: [],
-        caseStudyTitle: 'Case Study: Dealership Network',
-        caseStudyQuote: 'CYVhub\'s overnight trunking and direct morning deliveries mean our mechanics start work without waiting for parts.',
-        caseStudyAuthor: 'Aftersales Director',
-        ctaHeading: 'Ready to Solve Your Automotive Logistics?',
-        ctaText: 'Get a Tailored Quote',
-        ctaButtonText: 'Get a Tailored Quote',
+        caseStudyTitle: 'Workshop Success',
+        caseStudyQuote: 'Keeping workshop bays filled requires precise parts delivery. CYVhub has significantly improved our turnaround times and customer satisfaction.',
+        caseStudyAuthor: 'Parts Manager, Regional Dealer Group',
+        ctaHeading: 'Streamline your workshop with CYVhub',
+        ctaText: 'Get parts delivered directly to your bay with same-day and scheduled support.',
+        ctaButtonText: 'Get an Automotive Quote',
         metaTitle: 'Automotive Parts Logistics | CYVhub',
-        metaDesc: 'Fast, accurate delivery of automotive parts to dealerships, bodyshops, and garages across the UK.'
+        metaDesc: 'Fast, accurate delivery of automotive parts to dealerships, bodyshops, and garages across the UK.',
+        accentColor: '#F97316',
+        challenges: [
+            { icon: 'Clock', title: 'Bay Idle Time', desc: 'Technicians stand down when parts don\'t arrive, killing garage productivity.' },
+            { icon: 'AlertTriangle', title: 'Parts Damage', desc: 'OEM parts are often fragile or heavy and easily damaged by standard couriers.' },
+            { icon: 'TrendingDown', title: 'Inconsistent Supply', desc: 'Unreliable deliveries prevent effective workshop scheduling and job card planning.' }
+        ],
+        features: [
+            { title: 'Bay-Direct Delivery', desc: 'Morning delivery windows ensuring parts are on-site before your day starts.', icon: 'CheckCircle', imageUrl: '' },
+            { title: 'Distributor Integration', desc: 'We sync with major motor factors and OEM distributors for rapid collection.', icon: 'Users', imageUrl: '' },
+            { title: 'Careful Handling', desc: 'Fleet equipped to handle engines, body panels, and delicate electronics safely.', icon: 'Package', imageUrl: '' }
+        ],
+        useCases: [
+            { title: 'Dealership Trunking', desc: 'Overnight and early morning movement of stock between branches.', badge: 'NETWORK' },
+            { title: 'Garage Replenishment', desc: 'Regular daily runs of aftermarket parts to independent workshops.', badge: 'DAILY' },
+            { title: 'Urgent Repair Support', desc: 'Same-day delivery of missing parts discovered during a job.', badge: 'EMERGENCY' }
+        ]
     },
     'hospitality': {
         id: 'hospitality',
@@ -1094,25 +1225,43 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
             'High-end catering and VIP support'
         ],
         whyChooseUs: [
-            'Same-day emergency deliveries for urgent shortages',
-            'Scheduled morning runs timed to kitchen prep windows',
-            'Event logistics with hour-specific delivery slots',
-            'Live tracking for events and operations managers',
-            'Multi-site account management for hospitality groups',
-            'Careful handling of fragile and perishable consignments',
-            'Consolidated account invoicing across properties'
+            'Discreet branded delivery',
+            'Access window coordination',
+            'Event-grade precision',
+            'Multi-site management'
         ],
-        stats: [],
+        stats: [
+            { label: 'Multi-Site Support', value: '80+' },
+            { label: 'Operational Continuity', value: '100.0%' },
+            { label: 'Event Success Rate', value: '100.0%' },
+            { label: 'Discretion Level', value: '100.0%' }
+        ],
         equipment: [],
         processSteps: [],
-        caseStudyTitle: 'Case Study: Luxury Hotel Chain',
-        caseStudyQuote: 'Our linen and luxury amenity replenishment is now seamless and invisible to our guests, exactly as it should be.',
-        caseStudyAuthor: 'Group Procurement Head',
-        ctaHeading: 'Ready to Solve Your Hospitality Logistics?',
-        ctaText: 'Get a Tailored Quote',
-        ctaButtonText: 'Get a Tailored Quote',
+        caseStudyTitle: 'Guest Success',
+        caseStudyQuote: 'In hospitality, the logistics should be invisible to the guest. CYVhub handles our multi-site replenishment with absolute discretion and reliability.',
+        caseStudyAuthor: 'Events Operations Lead, Luxury Venue Group',
+        ctaHeading: 'Elevate your hospitality logistics',
+        ctaText: 'Partner with a logistics provider that understands the nuances of the hospitality sector.',
+        ctaButtonText: 'Get a Hospitality Quote',
         metaTitle: 'Hospitality Logistics | CYVhub',
-        metaDesc: 'Reliable, time-critical delivery for hotels, restaurants, and event venues — so your front of house never suffers.'
+        metaDesc: 'Reliable, time-critical delivery for hotels, restaurants, and event venues — so your front of house never suffers.',
+        accentColor: '#EC4899',
+        challenges: [
+            { icon: 'Shield', title: 'Reputational Risk', desc: 'A missing ingredient or late linen delivery can lead to instant poor reviews.' },
+            { icon: 'Lock', title: 'Access Restrictions', desc: 'Hotels and venues often have strict, limited delivery windows during off-peak hours.' },
+            { icon: 'Clock', title: 'Event Deadlines', desc: 'There are no second chances when equipment is needed for a fixed event start time.' }
+        ],
+        features: [
+            { title: 'Discretion-First Logistics', desc: 'Professional drivers and clean vehicles that maintain your venue\'s brand standards.', icon: 'Check', imageUrl: '' },
+            { title: 'Access Window Coordination', desc: 'We sync with your front-of-house to deliver exactly when the site is ready.', icon: 'Maximize', imageUrl: '' },
+            { title: 'Event-Grade Precision', desc: 'Timed-to-the-hour deliveries for AV, décor, and catering equipment.', icon: 'Zap', imageUrl: '' }
+        ],
+        useCases: [
+            { title: 'Multi-Site Replenishment', desc: 'Daily delivery of essentials to a network of hotels or restaurants.', badge: 'CONSISTENT' },
+            { title: 'AV/Event Setup', desc: 'Timed delivery of critical equipment for corporate and private events.', badge: 'TIMED' },
+            { title: 'Fragile Decor Transit', desc: 'Sensitive handling of flowers, furniture, and unique event pieces.', badge: 'SENSITIVE' }
+        ]
     }
 };
 export const initialServiceDetails: Record<string, ServicePageDetail> = {

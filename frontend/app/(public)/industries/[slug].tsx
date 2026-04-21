@@ -1,22 +1,24 @@
 import React from 'react';
-import {
-    View, Text, StyleSheet, ScrollView, Image,
-    TouchableOpacity, useWindowDimensions, ActivityIndicator, Pressable
+import { 
+    View, Text, StyleSheet, ScrollView, Image, 
+    TouchableOpacity, useWindowDimensions, ActivityIndicator 
 } from 'react-native';
-import { useLocalSearchParams, useRouter, Link } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCMS } from '@/context/CMSContext';
 import Colors from '@/constants/colors';
-import {
-    AlertTriangle, Zap, ShieldCheck, ArrowRight, Truck, HardHat,
-    Building2, Settings, Factory, Recycle, Package, Quote,
-    BriefcaseMedical, Plane, Utensils, ChevronRight, Home,
-    CheckCircle2, Monitor, Shield, ShoppingBag, ArrowLeft,
-    ArrowLeftRight, MapPin, Clock, Phone
+import { 
+    ArrowRight, Package, Truck, AlertTriangle, Zap, ShieldCheck, 
+    HardHat, Building2, Settings, Factory, Recycle, 
+    BriefcaseMedical, Plane, Utensils, Monitor, Shield, 
+    ShoppingBag, ArrowLeftRight 
 } from 'lucide-react-native';
 import Head from 'expo-router/head';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { 
+    HeroSection, StatsBar, ChallengeSection, 
+    SolutionSection, UseCaseSection, TestimonialBlock,
+    IndustryFooterCTA 
+} from '@/components/industries/IndustryComponents';
 
 const IconMap: any = {
     Truck, AlertTriangle, Zap, ShieldCheck, HardHat, Building2,
@@ -29,29 +31,15 @@ const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
     return <C size={size} color={color} />;
 };
 
-// Industry accent colors for visual variety
-const ACCENT_COLORS: Record<string, string> = {
-    'medical-healthcare':        '#0D9488',
-    'construction-trades':       '#F59E0B',
-    'it-spare-parts-field-service': '#6366F1',
-    'manufacturing-wholesale':   '#0EA5E9',
-    'aog-aviation':              '#EF4444',
-    'reverse-logistics':         '#10B981',
-    'automotive-parts':          '#F97316',
-    'hospitality':               '#EC4899',
-};
-
 function IndustryDetailPage() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const { industryDetails, isLoaded } = useCMS();
     const router = useRouter();
     const { width: W } = useWindowDimensions();
     const isMobile = W < 768;
-    const isTablet = W >= 768 && W < 1100;
 
     const config = industryDetails[slug as string];
-    const accent = ACCENT_COLORS[slug as string] || Colors.primary;
-
+    
     if (!isLoaded) {
         return (
             <View style={s.centered}>
@@ -74,15 +62,7 @@ function IndustryDetailPage() {
         );
     }
 
-    const solutionParagraphs = (config.solutionContent || '')
-        .split('\n\n')
-        .map((p: string) => p.trim())
-        .filter((p: string) => p.length > 0);
-
-    const benefits = config.whyChooseUs || [];
-    const mid = Math.ceil(benefits.length / 2);
-    const col1 = benefits.slice(0, mid);
-    const col2 = benefits.slice(mid);
+    const accent = config.accentColor || Colors.primary;
 
     return (
         <ScrollView style={s.root} showsVerticalScrollIndicator={false}>
@@ -91,227 +71,52 @@ function IndustryDetailPage() {
                 <meta name="description" content={config.metaDesc || config.description} />
             </Head>
 
-            {/* ── HERO ── */}
-            <View style={{ height: isMobile ? 560 : 720, position: 'relative' }}>
-                <Image
-                    source={{ uri: config.heroImageUrl }}
-                    style={StyleSheet.absoluteFillObject}
-                    resizeMode="cover"
-                />
-                <LinearGradient
-                    colors={['rgba(10,14,30,0.25)', 'rgba(10,14,30,0.88)']}
-                    style={StyleSheet.absoluteFillObject}
-                />
-                {/* accent bar */}
-                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, backgroundColor: accent }} />
+            <HeroSection
+                accentColor={accent}
+                eyebrow="Industry Sector"
+                title={config.title}
+                subtitle={config.subtitle}
+                imageUrl={config.heroImageUrl}
+                onGetStarted={() => router.push('/contact')}
+                onLearnMore={() => {/* Smooth scroll to next section */}}
+            />
 
-                {/* back button */}
-                <TouchableOpacity
-                    style={s.backBtn}
-                    onPress={() => router.push('/industries')}
-                >
-                    <BlurView intensity={40} style={s.backBlur}>
-                        <ArrowLeft size={18} color="#fff" />
-                        <Text style={s.backText}>Industries</Text>
-                    </BlurView>
-                </TouchableOpacity>
-
-                {/* hero content */}
-                <View style={[s.heroContent, { paddingHorizontal: isMobile ? 24 : 60 }]}>
-                    {/* badge */}
-                    <View style={[s.badge, { borderColor: accent + '60', backgroundColor: accent + '22' }]}>
-                        <DynamicIcon name={config.icon} size={16} color={accent} />
-                        <Text style={[s.badgeText, { color: accent }]}>Sector Specialism</Text>
-                    </View>
-
-                    <Text style={[s.heroTitle, { fontSize: isMobile ? 42 : isTablet ? 64 : 80 }]}>
-                        {config.title}
-                    </Text>
-                    <Text style={[s.heroTagline, { fontSize: isMobile ? 18 : 24 }]}>
-                        {config.subtitle}
-                    </Text>
-
-                    <View style={s.heroActions}>
-                        <TouchableOpacity
-                            style={[s.heroCta, { backgroundColor: accent }]}
-                            onPress={() => router.push('/contact')}
-                        >
-                            <Text style={s.heroCtaText}>Get a Tailored Quote</Text>
-                            <ArrowRight size={18} color="#fff" />
-                        </TouchableOpacity>
-                        {!isMobile && (
-                            <TouchableOpacity
-                                style={s.heroCtaGhost}
-                                onPress={() => router.push('/services')}
-                            >
-                                <Text style={s.heroCtaGhostText}>View All Services</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                </View>
-            </View>
-
-            {/* ── BREADCRUMB ── */}
-            <View style={s.breadcrumbBar}>
-                <View style={[s.row, { paddingHorizontal: isMobile ? 20 : 60 }]}>
-                    <Link href="/" asChild>
-                        <TouchableOpacity style={s.row}>
-                            <Home size={13} color={Colors.textMuted} />
-                            <Text style={s.crumbText}>Home</Text>
-                        </TouchableOpacity>
-                    </Link>
-                    <ChevronRight size={12} color={Colors.textMuted} style={{ marginHorizontal: 8 }} />
-                    <Link href="/industries" asChild>
-                        <TouchableOpacity>
-                            <Text style={s.crumbText}>Industries</Text>
-                        </TouchableOpacity>
-                    </Link>
-                    <ChevronRight size={12} color={Colors.textMuted} style={{ marginHorizontal: 8 }} />
-                    <Text style={[s.crumbText, { color: accent, fontWeight: '700' }]}>{config.title}</Text>
-                </View>
-            </View>
-
-            {/* ── OVERVIEW STRIP ── */}
-            <View style={[s.overviewStrip, { paddingHorizontal: isMobile ? 24 : 60 }]}>
-                <View style={{ maxWidth: 1100, alignSelf: 'center', width: '100%' }}>
-                    <View style={[s.row, { flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center' }]}>
-                        <View style={[s.accentLine, { backgroundColor: accent }]} />
-                        <Text style={s.overviewText}>{config.description}</Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* ── THE CHALLENGE ── */}
-            <View style={s.challengeSection}>
-                <LinearGradient colors={['#0a0e1e', '#0f172a']} style={StyleSheet.absoluteFillObject} />
-                <View style={[s.sectionInner, { paddingHorizontal: isMobile ? 24 : 60 }]}>
-                    <View style={[s.challengeCard, { flexDirection: isMobile ? 'column' : 'row' }]}>
-                        <View style={s.challengeIconCol}>
-                            <View style={[s.challengeIconWrap, { borderColor: '#DC2626' + '40' }]}>
-                                <AlertTriangle size={40} color="#DC2626" />
-                            </View>
-                            <Text style={s.challengeLabel}>THE CHALLENGE</Text>
-                        </View>
-                        <View style={{ flex: 1, marginLeft: isMobile ? 0 : 48, marginTop: isMobile ? 32 : 0 }}>
-                            <Text style={s.challengeTitle}>{config.problemTitle}</Text>
-                            <Text style={s.challengeBody}>{config.problemContent}</Text>
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* ── HOW CYVHUB HELPS ── */}
-            <View style={[s.helpSection, { paddingHorizontal: isMobile ? 24 : 60 }]}>
-                <View style={{ maxWidth: 1100, alignSelf: 'center', width: '100%' }}>
-                    {/* section header */}
-                    <View style={s.sectionHeader}>
-                        <View style={[s.headerPill, { backgroundColor: accent + '18', borderColor: accent + '40' }]}>
-                            <Zap size={14} color={accent} />
-                            <Text style={[s.headerPillText, { color: accent }]}>HOW WE HELP</Text>
-                        </View>
-                        <Text style={[s.sectionTitle, { fontSize: isMobile ? 32 : 48 }]}>
-                            {config.solutionTitle}
-                        </Text>
-                    </View>
-
-                    {/* numbered paragraphs */}
-                    {solutionParagraphs.map((para: string, idx: number) => (
-                        <View key={idx} style={[s.helpCard, isMobile && { flexDirection: 'column' }]}>
-                            <View style={[s.helpNum, { backgroundColor: accent }]}>
-                                <Text style={s.helpNumText}>{String(idx + 1).padStart(2, '0')}</Text>
-                            </View>
-                            <View style={{ flex: 1, marginLeft: isMobile ? 0 : 32, marginTop: isMobile ? 20 : 0 }}>
-                                <Text style={s.helpPara}>{para}</Text>
-                            </View>
-                        </View>
-                    ))}
-                </View>
-            </View>
-
-            {/* ── KEY BENEFITS ── */}
-            <View style={s.benefitsSection}>
-                <LinearGradient colors={[accent + '12', '#f8fafc']} style={StyleSheet.absoluteFillObject} />
-                <View style={[s.sectionInner, { paddingHorizontal: isMobile ? 24 : 60 }]}>
-                    <View style={{ maxWidth: 1100, alignSelf: 'center', width: '100%' }}>
-                        <View style={s.sectionHeader}>
-                            <View style={[s.headerPill, { backgroundColor: accent + '18', borderColor: accent + '40' }]}>
-                                <ShieldCheck size={14} color={accent} />
-                                <Text style={[s.headerPillText, { color: accent }]}>KEY BENEFITS</Text>
-                            </View>
-                            <Text style={[s.sectionTitle, { fontSize: isMobile ? 30 : 44 }]}>
-                                Why Industry Leaders Choose CYVhub
-                            </Text>
-                        </View>
-
-                        <View style={[s.benefitsGrid, { flexDirection: isMobile ? 'column' : 'row' }]}>
-                            {[col1, col2].map((col, ci) => (
-                                <View key={ci} style={[s.benefitsCol, !isMobile && ci === 0 && { marginRight: 24 }]}>
-                                    {col.map((benefit: string, bi: number) => (
-                                        <View key={bi} style={s.benefitRow}>
-                                            <View style={[s.checkCircle, { backgroundColor: accent + '20', borderColor: accent + '40' }]}>
-                                                <CheckCircle2 size={18} color={accent} />
-                                            </View>
-                                            <Text style={s.benefitText}>{benefit}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* ── CASE STUDY QUOTE ── */}
-            {!!config.caseStudyQuote && (
-                <View style={s.quoteSection}>
-                    <View style={{ maxWidth: 900, alignSelf: 'center', alignItems: 'center', paddingHorizontal: isMobile ? 24 : 60 }}>
-                        <View style={[s.quoteIconWrap, { backgroundColor: accent + '18' }]}>
-                            <Quote size={32} color={accent} />
-                        </View>
-                        <Text style={[s.quoteTagline, { color: accent }]}>{config.caseStudyTitle}</Text>
-                        <Text style={[s.quoteBody, { fontSize: isMobile ? 20 : 28 }]}>
-                            "{config.caseStudyQuote}"
-                        </Text>
-                        <View style={[s.quoteDivider, { backgroundColor: accent }]} />
-                        <Text style={s.quoteAuthor}>{config.caseStudyAuthor}</Text>
-                    </View>
-                </View>
+            {config.stats && config.stats.length > 0 && (
+                <StatsBar accentColor={accent} stats={config.stats} />
             )}
 
-            {/* ── CTA BANNER ── */}
-            <View style={s.ctaSection}>
-                <LinearGradient
-                    colors={[accent, accent + 'CC']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
+            <ChallengeSection 
+                accentColor={accent} 
+                industryName={config.title} 
+                challenges={config.challenges || []} 
+            />
+
+            <SolutionSection 
+                accentColor={accent} 
+                features={config.features || []} 
+            />
+
+            <UseCaseSection 
+                accentColor={accent} 
+                industryName={config.title} 
+                useCases={config.useCases || []} 
+            />
+
+            {!!config.caseStudyQuote && (
+                <TestimonialBlock 
+                    accentColor={accent}
+                    quote={config.caseStudyQuote}
+                    author={config.caseStudyAuthor}
+                    role="Operations Lead"
+                    company={config.caseStudyTitle}
                 />
-                {/* subtle pattern overlay */}
-                <View style={s.ctaPattern} />
-                <View style={[s.ctaInner, { paddingHorizontal: isMobile ? 24 : 60, flexDirection: isMobile ? 'column' : 'row', alignItems: 'center' }]}>
-                    <View style={{ flex: 1, marginBottom: isMobile ? 32 : 0 }}>
-                        <Text style={[s.ctaTitle, { fontSize: isMobile ? 26 : 36 }]}>
-                            {config.ctaHeading}
-                        </Text>
-                        <Text style={s.ctaSub}>{config.ctaText}</Text>
-                    </View>
-                    <View style={[s.ctaBtns, { marginLeft: isMobile ? 0 : 48 }]}>
-                        <TouchableOpacity
-                            style={s.ctaWhiteBtn}
-                            onPress={() => router.push('/contact')}
-                        >
-                            <Text style={[s.ctaWhiteBtnText, { color: accent }]}>{config.ctaButtonText}</Text>
-                            <ArrowRight size={18} color={accent} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={s.ctaGhostBtn}
-                            onPress={() => router.push('/guest-quote')}
-                        >
-                            <Text style={s.ctaGhostBtnText}>Get Instant Quote</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
+            )}
+
+            <IndustryFooterCTA 
+                accentColor={accent}
+                title={config.ctaHeading}
+                subtext={config.ctaText}
+            />
 
             {/* ── RELATED INDUSTRIES ── */}
             <View style={[s.relatedSection, { paddingHorizontal: isMobile ? 24 : 60 }]}>
@@ -322,7 +127,7 @@ function IndustryDetailPage() {
                             .filter((ind: any) => ind.slug !== slug && ind.publishStatus)
                             .slice(0, isMobile ? 3 : 4)
                             .map((ind: any) => {
-                                const indAccent = ACCENT_COLORS[ind.slug] || Colors.primary;
+                                const indAccent = ind.accentColor || Colors.primary;
                                 return (
                                     <TouchableOpacity
                                         key={ind.slug}

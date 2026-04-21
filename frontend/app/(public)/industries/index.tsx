@@ -25,15 +25,15 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 
 const IconMap: any = {
     'medical-healthcare': BriefcaseMedical,
-    'construction-infrastructure': Truck,
-    'it-tech': Monitor,
+    'construction-trades': Truck,
+    'it-spare-parts-field-service': Monitor,
     'manufacturing-wholesale': Factory,
-    'aviation-aog': Plane,
-    'retail-ecommerce': Recycle,
-    'public-sector': ShieldCheck,
-    'professional-services': ShieldCheck,
-    'hospitality-events': Utensils,
-    'automotive': Settings
+    'aog-aviation': Plane,
+    'reverse-logistics': Recycle,
+    'hospitality': Utensils,
+    'automotive-parts': Settings,
+    'it-tech': Monitor, // Fallback
+    'construction-infrastructure': Truck // Fallback
 };
 
 function IndustriesIndexPage() {
