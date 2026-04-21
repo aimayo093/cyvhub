@@ -144,6 +144,54 @@ export default function IndustriesCMS() {
         updateField(id, 'processSteps', industries[id].processSteps.filter((_, i) => i !== index));
     };
 
+    // --- Antigravity Helpers ---
+    const updateChallenge = (id: string, index: number, key: 'icon' | 'title' | 'desc', val: string) => {
+        const updated = [...(industries[id].challenges || [])];
+        updated[index] = { ...updated[index], [key]: val };
+        updateField(id, 'challenges', updated);
+    };
+
+    const addChallenge = (id: string) => {
+        updateField(id, 'challenges', [...(industries[id].challenges || []), { icon: 'AlertTriangle', title: '', desc: '' }]);
+    };
+
+    const removeChallenge = (id: string, index: number) => {
+        updateField(id, 'challenges', (industries[id].challenges || []).filter((_, i) => i !== index));
+    };
+
+    const updateFeature = (id: string, index: number, key: 'title' | 'desc' | 'icon' | 'imageUrl', val: string) => {
+        const updated = [...(industries[id].features || [])];
+        updated[index] = { ...updated[index], [key]: val };
+        updateField(id, 'features', updated);
+    };
+
+    const addFeature = (id: string) => {
+        updateField(id, 'features', [...(industries[id].features || []), { title: '', desc: '', icon: 'Zap', imageUrl: '' }]);
+    };
+
+    const removeFeature = (id: string, index: number) => {
+        updateField(id, 'features', (industries[id].features || []).filter((_, i) => i !== index));
+    };
+
+    const updateUseCase = (id: string, index: number, key: 'title' | 'desc' | 'badge', val: string) => {
+        const updated = [...(industries[id].useCases || [])];
+        updated[index] = { ...updated[index], [key]: val };
+        updateField(id, 'useCases', updated);
+    };
+
+    const addUseCase = (id: string) => {
+        updateField(id, 'useCases', [...(industries[id].useCases || []), { title: '', desc: '', badge: 'NEW' }]);
+    };
+
+    const removeUseCase = (id: string, index: number) => {
+        updateField(id, 'useCases', (industries[id].useCases || []).filter((_, i) => i !== index));
+    };
+
+    const updateTestimonial = (id: string, key: 'quote' | 'author' | 'role' | 'company', val: string) => {
+        const updated = { ...(industries[id].testimonial || { quote: '', author: '', role: '', company: '' }), [key]: val };
+        updateField(id, 'testimonial', updated);
+    };
+
     const detail = activeId ? industries[activeId] : null;
 
     return (
@@ -260,11 +308,11 @@ export default function IndustriesCMS() {
                             <View style={styles.card}>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>Intro Heading</Text>
-                                    <TextInput style={styles.input} value={pageConfig.introHeading} onChangeText={t => updatePageField('introHeading', t)} />
+                                    <TextInput style={styles.input} value={pageConfig.cardIntroHeading} onChangeText={t => updatePageField('cardIntroHeading', t)} />
                                 </View>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>Intro Main Text</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={pageConfig.introText} onChangeText={t => updatePageField('introText', t)} multiline />
+                                    <TextInput style={[styles.input, styles.textArea]} value={pageConfig.cardIntroText} onChangeText={t => updatePageField('cardIntroText', t)} multiline />
                                 </View>
                             </View>
                         </View>
@@ -282,7 +330,7 @@ export default function IndustriesCMS() {
                                 </View>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>CTA Button Label</Text>
-                                    <TextInput style={styles.input} value={pageConfig.ctaButtonText} onChangeText={t => updatePageField('ctaButtonText', t)} />
+                                    <TextInput style={styles.input} value={pageConfig.ctaButton} onChangeText={t => updatePageField('ctaButton', t)} />
                                 </View>
                             </View>
                         </View>
@@ -359,6 +407,145 @@ export default function IndustriesCMS() {
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>Icon (Lucide name)</Text>
                                     <TextInput style={styles.input} value={detail.icon} onChangeText={t => updateField(activeId, 'icon', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Accent Color (Hex)</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                        <TextInput style={[styles.input, { flex: 1 }]} value={detail.accentColor} onChangeText={t => updateField(activeId, 'accentColor', t)} placeholder="#000000" />
+                                        <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: detail.accentColor || '#000' }} />
+                                    </View>
+                                    <View style={styles.colorPresets}>
+                                        {['#DC2626', '#EA580C', '#2563EB', '#0D9488', '#1D4ED8', '#16A34A', '#CA8A04', '#7C3AED'].map(c => (
+                                            <TouchableOpacity key={c} style={[styles.colorPreset, { backgroundColor: c }]} onPress={() => updateField(activeId, 'accentColor', c)} />
+                                        ))}
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Antigravity Challenges */}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>Antigravity Challenges</Text>
+                                <TouchableOpacity style={styles.addButton} onPress={() => addChallenge(activeId)}>
+                                    <Plus size={16} color="#FFF" />
+                                    <Text style={styles.addButtonText}>Add Challenge</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.card}>
+                                {(detail.challenges || []).map((c, idx) => (
+                                    <View key={idx} style={[styles.card, { padding: 16, marginBottom: 12, borderStyle: 'dashed' }]}>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Icon (Lucide)</Text>
+                                            <TextInput style={styles.input} value={c.icon} onChangeText={t => updateChallenge(activeId, idx, 'icon', t)} />
+                                        </View>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Title</Text>
+                                            <TextInput style={styles.input} value={c.title} onChangeText={t => updateChallenge(activeId, idx, 'title', t)} />
+                                        </View>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Description</Text>
+                                            <TextInput style={[styles.input, styles.textArea]} value={c.desc} onChangeText={t => updateChallenge(activeId, idx, 'desc', t)} multiline />
+                                        </View>
+                                        <TouchableOpacity onPress={() => removeChallenge(activeId, idx)} style={[styles.trashBtn, { alignSelf: 'flex-end' }]}>
+                                            <Trash2 size={16} color={Colors.danger} />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Antigravity Features */}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>Antigravity Solution Features</Text>
+                                <TouchableOpacity style={styles.addButton} onPress={() => addFeature(activeId)}>
+                                    <Plus size={16} color="#FFF" />
+                                    <Text style={styles.addButtonText}>Add Feature</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.card}>
+                                {(detail.features || []).map((f, idx) => (
+                                    <View key={idx} style={[styles.card, { padding: 16, marginBottom: 12, borderStyle: 'dashed' }]}>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Icon (Lucide)</Text>
+                                            <TextInput style={styles.input} value={f.icon} onChangeText={t => updateFeature(activeId, idx, 'icon', t)} />
+                                        </View>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Title</Text>
+                                            <TextInput style={styles.input} value={f.title} onChangeText={t => updateFeature(activeId, idx, 'title', t)} />
+                                        </View>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Description</Text>
+                                            <TextInput style={[styles.input, styles.textArea]} value={f.desc} onChangeText={t => updateFeature(activeId, idx, 'desc', t)} multiline />
+                                        </View>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Image URL</Text>
+                                            <CMSImagePicker
+                                                value={f.imageUrl}
+                                                onSelect={(url: string) => updateFeature(activeId, idx, 'imageUrl', url)}
+                                                label="Feature Image"
+                                            />
+                                        </View>
+                                        <TouchableOpacity onPress={() => removeFeature(activeId, idx)} style={[styles.trashBtn, { alignSelf: 'flex-end' }]}>
+                                            <Trash2 size={16} color={Colors.danger} />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Antigravity Use Cases */}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>Antigravity Use Cases</Text>
+                                <TouchableOpacity style={styles.addButton} onPress={() => addUseCase(activeId)}>
+                                    <Plus size={16} color="#FFF" />
+                                    <Text style={styles.addButtonText}>Add Use Case</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.card}>
+                                {(detail.useCases || []).map((uc, idx) => (
+                                    <View key={idx} style={[styles.card, { padding: 16, marginBottom: 12, borderStyle: 'dashed' }]}>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Badge</Text>
+                                            <TextInput style={styles.input} value={uc.badge} onChangeText={t => updateUseCase(activeId, idx, 'badge', t)} />
+                                        </View>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Title</Text>
+                                            <TextInput style={styles.input} value={uc.title} onChangeText={t => updateUseCase(activeId, idx, 'title', t)} />
+                                        </View>
+                                        <View style={styles.inputGroup}>
+                                            <Text style={styles.inputLabel}>Description</Text>
+                                            <TextInput style={[styles.input, styles.textArea]} value={uc.desc} onChangeText={t => updateUseCase(activeId, idx, 'desc', t)} multiline />
+                                        </View>
+                                        <TouchableOpacity onPress={() => removeUseCase(activeId, idx)} style={[styles.trashBtn, { alignSelf: 'flex-end' }]}>
+                                            <Trash2 size={16} color={Colors.danger} />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Antigravity Testimonial */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Antigravity Testimonial</Text>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Quote</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.testimonial?.quote} onChangeText={t => updateTestimonial(activeId, 'quote', t)} multiline />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Author</Text>
+                                    <TextInput style={styles.input} value={detail.testimonial?.author} onChangeText={t => updateTestimonial(activeId, 'author', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Role</Text>
+                                    <TextInput style={styles.input} value={detail.testimonial?.role} onChangeText={t => updateTestimonial(activeId, 'role', t)} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Company</Text>
+                                    <TextInput style={styles.input} value={detail.testimonial?.company} onChangeText={t => updateTestimonial(activeId, 'company', t)} />
                                 </View>
                             </View>
                         </View>
@@ -799,5 +986,18 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         marginTop: 4,
         fontStyle: 'italic',
+    },
+    colorPresets: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 12,
+    },
+    colorPreset: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     }
 });
