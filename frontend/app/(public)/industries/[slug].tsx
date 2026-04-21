@@ -223,7 +223,15 @@ function IndustryDetailPage() {
                                 <Zap size={32} color={Colors.primary} />
                                 <Text style={[styles.blockTitle, { color: '#FFF' }]}>{config?.solutionTitle || 'CYVhub Solutions'}</Text>
                             </View>
-                            <Text style={[styles.blockText, { color: 'rgba(255,255,255,0.7)' }]}>{config?.solutionContent || 'We deliver specialized logistics expertise tailored to your industry.'}</Text>
+                            {(config?.solutionContent || 'We deliver specialized logistics expertise tailored to your industry.')
+                                .split('\n\n')
+                                .filter((p: string) => p.trim().length > 0)
+                                .map((paragraph: string, idx: number) => (
+                                    <Text key={idx} style={[styles.blockText, { color: 'rgba(255,255,255,0.82)', marginBottom: 20, zIndex: 1 }]}>
+                                        {paragraph.trim()}
+                                    </Text>
+                                ))
+                            }
                         </View>
                     </View>
                 </View>
