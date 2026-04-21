@@ -1,31 +1,17 @@
-
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
+import React from 'react';
+import {
+    View, Text, StyleSheet, ScrollView, Image,
+    TouchableOpacity, useWindowDimensions, ActivityIndicator, Pressable
+} from 'react-native';
 import { useLocalSearchParams, useRouter, Link } from 'expo-router';
 import { useCMS } from '@/context/CMSContext';
 import Colors from '@/constants/colors';
-import { 
-    AlertTriangle, 
-    Zap, 
-    ShieldCheck, 
-    ArrowRight, 
-    Truck, 
-    HardHat, 
-    Building2, 
-    Settings, 
-    Factory, 
-    Recycle, 
-    Package, 
-    Quote,
-    BriefcaseMedical,
-    Plane,
-    Utensils,
-    ChevronRight,
-    Home,
-    CheckCircle2,
-    Monitor,
-    Shield,
-    ShoppingBag,
-    ArrowLeft
+import {
+    AlertTriangle, Zap, ShieldCheck, ArrowRight, Truck, HardHat,
+    Building2, Settings, Factory, Recycle, Package, Quote,
+    BriefcaseMedical, Plane, Utensils, ChevronRight, Home,
+    CheckCircle2, Monitor, Shield, ShoppingBag, ArrowLeft,
+    ArrowLeftRight, MapPin, Clock, Phone
 } from 'lucide-react-native';
 import Head from 'expo-router/head';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,306 +19,330 @@ import { BlurView } from 'expo-blur';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 const IconMap: any = {
-    Truck, 
-    AlertTriangle, 
-    Zap, 
-    ShieldCheck, 
-    HardHat, 
-    Building2, 
-    Settings, 
-    Factory, 
-    Recycle, 
-    Package, 
-    BriefcaseMedical, 
-    Plane, 
-    Utensils, 
-    Monitor,
-    Shield,
-    ShoppingBag
+    Truck, AlertTriangle, Zap, ShieldCheck, HardHat, Building2,
+    Settings, Factory, Recycle, Package, BriefcaseMedical, Plane,
+    Utensils, Monitor, Shield, ShoppingBag, ArrowLeftRight,
 };
 
 const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
-    const IconComponent = IconMap[name] || Package;
-    return <IconComponent size={size} color={color} />;
+    const C = IconMap[name] || Package;
+    return <C size={size} color={color} />;
+};
+
+// Industry accent colors for visual variety
+const ACCENT_COLORS: Record<string, string> = {
+    'medical-healthcare':        '#0D9488',
+    'construction-trades':       '#F59E0B',
+    'it-spare-parts-field-service': '#6366F1',
+    'manufacturing-wholesale':   '#0EA5E9',
+    'aog-aviation':              '#EF4444',
+    'reverse-logistics':         '#10B981',
+    'automotive-parts':          '#F97316',
+    'hospitality':               '#EC4899',
 };
 
 function IndustryDetailPage() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const { industryDetails, isLoaded } = useCMS();
     const router = useRouter();
-    const { width: SCREEN_WIDTH } = useWindowDimensions();
+    const { width: W } = useWindowDimensions();
+    const isMobile = W < 768;
+    const isTablet = W >= 768 && W < 1100;
 
     const config = industryDetails[slug as string];
+    const accent = ACCENT_COLORS[slug as string] || Colors.primary;
 
     if (!isLoaded) {
         return (
-            <View style={styles.loadingContainer}>
+            <View style={s.centered}>
                 <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={s.loadingText}>Loading…</Text>
             </View>
         );
     }
 
     if (!config || !config.publishStatus) {
         return (
-            <View style={styles.errorContainer}>
-                <Text style={styles.errorTitle}>Industry Not Found</Text>
-                <Text style={styles.errorSubtitle}>We couldn't find the industry you're looking for.</Text>
-                <TouchableOpacity style={styles.homeBtn} onPress={() => router.push('/industries')}>
-                    <Text style={styles.homeBtnText}>Back to Industries</Text>
+            <View style={s.centered}>
+                <Package size={64} color={Colors.textMuted} />
+                <Text style={s.errTitle}>Industry Not Found</Text>
+                <Text style={s.errSub}>We couldn't find the industry you're looking for.</Text>
+                <TouchableOpacity style={[s.pill, { backgroundColor: Colors.primary }]} onPress={() => router.push('/industries')}>
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>← Back to Industries</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
-    const isMobile = SCREEN_WIDTH < 768;
+    const solutionParagraphs = (config.solutionContent || '')
+        .split('\n\n')
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0);
+
+    const benefits = config.whyChooseUs || [];
+    const mid = Math.ceil(benefits.length / 2);
+    const col1 = benefits.slice(0, mid);
+    const col2 = benefits.slice(mid);
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView style={s.root} showsVerticalScrollIndicator={false}>
             <Head>
-                <title>{config?.metaTitle || `${config?.title || 'Industry'} Specialized Logistics | CYVhub`}</title>
-                <meta name="description" content={config?.metaDesc || `Specialized transport and supply chain solutions for the ${config?.title || 'this'} sector. ${config?.subtitle || ''}`} />
+                <title>{config.metaTitle || `${config.title} Logistics | CYVhub`}</title>
+                <meta name="description" content={config.metaDesc || config.description} />
             </Head>
 
-            {/* STICKY HEADER / NAV BAR */}
-            <View style={styles.headerWrapper}>
-                <BlurView intensity={80} style={styles.blurHeader}>
-                    <View style={styles.contentMax}>
-                        <View style={styles.headerInner}>
-                            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                                <ArrowLeft size={20} color={Colors.navy} />
-                                <Text style={styles.backBtnText}>Back to Industries</Text>
-                            </TouchableOpacity>
-                            {!isMobile && (
-                                <View style={styles.headerStats}>
-                                    <View style={styles.headerStatItem}>
-                                        <ShieldCheck size={16} color={Colors.primary} />
-                                        <Text style={styles.headerStatText}>Fully Insured</Text>
-                                    </View>
-                                    <View style={styles.headerStatItem}>
-                                        <Zap size={16} color={Colors.primary} />
-                                        <Text style={styles.headerStatText}>Rapid Response</Text>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                </BlurView>
-            </View>
-
-            {/* HERO SECTION */}
-            <View style={[styles.heroSection, { height: isMobile ? 500 : 700 }]}>
+            {/* ── HERO ── */}
+            <View style={{ height: isMobile ? 560 : 720, position: 'relative' }}>
                 <Image
-                    source={{ uri: config?.heroImageUrl || 'https://images.unsplash.com/photo-1565701451180-93bd4f1265a2?q=80&w=2070&auto=format&fit=crop' }}
+                    source={{ uri: config.heroImageUrl }}
                     style={StyleSheet.absoluteFillObject}
                     resizeMode="cover"
                 />
                 <LinearGradient
-                    colors={['rgba(15, 23, 42, 0.4)', 'rgba(15, 23, 42, 0.95)']}
+                    colors={['rgba(10,14,30,0.25)', 'rgba(10,14,30,0.88)']}
                     style={StyleSheet.absoluteFillObject}
                 />
-                <View style={[styles.contentMax, styles.heroContent]}>
-                    <View style={styles.heroTextContainer}>
-                        <View style={styles.badge}>
-                            <Text style={styles.heroTag}>Sector Specialism</Text>
-                        </View>
-                        <Text style={[styles.titleText, { fontSize: isMobile ? 48 : 84, lineHeight: isMobile ? 56 : 92 }]}>
-                            {config?.title || 'Industry'}
-                        </Text>
-                        <Text style={styles.heroSubtitle}>{config?.subtitle || 'Specialized logistics solutions'}</Text>
+                {/* accent bar */}
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, backgroundColor: accent }} />
 
-                        <View style={styles.heroActions}>
-                            <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push('/contact')}>
-                                <Text style={styles.primaryBtnText}>Request a Consultation</Text>
-                                <ArrowRight size={20} color="#FFF" />
-                            </TouchableOpacity>
-                            {!isMobile && (
-                                <TouchableOpacity style={styles.secondaryBtn} onPress={() => router.push('/services')}>
-                                    <Text style={styles.secondaryBtnText}>View All Services</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* BREADCRUMBS SECURED BELOW HERO ON SCROLL */}
-            <View style={styles.breadcrumbBar}>
-                <View style={styles.contentMax}>
-                    <View style={styles.breadcrumbInner}>
-                        <Link href="/" asChild>
-                            <TouchableOpacity style={styles.breadcrumbLink}>
-                                <Home size={14} color={Colors.textSecondary} />
-                                <Text style={styles.breadcrumbText}>Home</Text>
-                            </TouchableOpacity>
-                        </Link>
-                        <ChevronRight size={12} color={Colors.textSecondary} style={{ marginHorizontal: 8 }} />
-                        <Link href="/industries" asChild>
-                            <TouchableOpacity style={styles.breadcrumbLink}>
-                                <Text style={styles.breadcrumbText}>Industries</Text>
-                            </TouchableOpacity>
-                        </Link>
-                        <ChevronRight size={12} color={Colors.textSecondary} style={{ marginHorizontal: 8 }} />
-                        <Text style={[styles.breadcrumbText, { color: Colors.primary, fontWeight: '700' }]}>{config?.title || 'Sector'}</Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* OVERVIEW SECTION */}
-            <View style={styles.overviewSection}>
-                <View style={styles.contentMax}>
-                    <View style={[styles.dualLayout, { flexDirection: isMobile ? 'column' : 'row' }]}>
-                        <View style={styles.overviewMain}>
-                            <View style={styles.tagWrapper}>
-                                <View style={styles.activeLine} />
-                                <Text style={styles.sectionTag}>Executive Overview</Text>
-                            </View>
-                            <Text style={styles.overviewText}>{config?.overview || ''}</Text>
-                            <Text style={styles.descriptionText}>{config?.description || ''}</Text>
-                        </View>
-                        <View style={styles.statsSidebar}>
-                            {config?.stats && Array.isArray(config.stats) && config.stats.map((stat, index) => (
-                                <View key={index} style={styles.statCard}>
-                                    <Text style={styles.statValue}>{stat?.value || '-'}</Text>
-                                    <Text style={styles.statLabel}>{stat?.label || ''}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* PROBLEM & SOLUTION SECTION - DARK THEMED INTERLUDE */}
-            <View style={styles.darkSection}>
-                <View style={styles.contentMax}>
-                    <View style={[styles.dualGrid, { flexDirection: isMobile ? 'column' : 'row' }]}>
-                        <View style={styles.contentBlockLight}>
-                            <View style={styles.problemHeader}>
-                                <AlertTriangle size={32} color="#DC2626" />
-                                <Text style={styles.blockTitle}>{config?.problemTitle || 'Industry Challenges'}</Text>
-                            </View>
-                            <Text style={styles.blockText}>{config?.problemContent || 'Complex logistics demands require specialized solutions.'}</Text>
-                        </View>
-                        <View style={styles.contentBlockDark}>
-                            <LinearGradient
-                                colors={[Colors.navy, '#1e293b']}
-                                style={StyleSheet.absoluteFillObject}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                            />
-                            <View style={styles.solutionHeader}>
-                                <Zap size={32} color={Colors.primary} />
-                                <Text style={[styles.blockTitle, { color: '#FFF' }]}>{config?.solutionTitle || 'CYVhub Solutions'}</Text>
-                            </View>
-                            {(config?.solutionContent || 'We deliver specialized logistics expertise tailored to your industry.')
-                                .split('\n\n')
-                                .filter((p: string) => p.trim().length > 0)
-                                .map((paragraph: string, idx: number) => (
-                                    <Text key={idx} style={[styles.blockText, { color: 'rgba(255,255,255,0.82)', marginBottom: 20, zIndex: 1 }]}>
-                                        {paragraph.trim()}
-                                    </Text>
-                                ))
-                            }
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* VALUE PROPOSITION & SERVICES */}
-            <View style={styles.section}>
-                <View style={styles.contentMax}>
-                    <View style={[styles.dualLayout, { flexDirection: isMobile ? 'column' : 'row' }]}>
-                        <View style={{ flex: 1, marginRight: isMobile ? 0 : 100, marginBottom: isMobile ? 40 : 0 }}>
-                            <Text style={styles.sectionHeaderSmall}>Strategic Advantage</Text>
-                            <Text style={styles.subHeaderLarge}>Why Industry Leaders Trust CYVhub</Text>
-                             <View style={styles.listContainer}>
-                                {config?.whyChooseUs && Array.isArray(config.whyChooseUs) && config.whyChooseUs.map((item: string, idx: number) => (
-                                    <View key={idx} style={styles.listItem}>
-                                        <View style={styles.checkWrapper}>
-                                            <CheckCircle2 size={20} color={Colors.primary} />
-                                        </View>
-                                        <Text style={styles.listText}>{item || ''}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                        <View style={styles.servicesBox}>
-                            <Text style={styles.servicesHeader}>Typical Workflows</Text>
-                            <View style={styles.serviceList}>
-                                {config?.typicalServices && Array.isArray(config.typicalServices) && config.typicalServices.map((service: string, idx: number) => (
-                                    <View key={idx} style={styles.serviceRow}>
-                                        <View style={styles.serviceIconWrap}>
-                                            <ArrowRight size={14} color={Colors.primary} />
-                                        </View>
-                                        <Text style={styles.serviceRowText}>{service || ''}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* EQUIPMENT & CAPABILITY */}
-            {config?.equipment && Array.isArray(config.equipment) && config.equipment.length > 0 && (
-                <View style={styles.lightSection}>
-                    <View style={styles.contentMax}>
-                        <View style={styles.centeredHeader}>
-                            <Text style={styles.sectionTag}>Technical Capability</Text>
-                            <Text style={styles.sectionHeaderLarge}>Specialized Fleet & Equipment</Text>
-                        </View>
-                        <View style={styles.equipmentGrid}>
-                            {config.equipment?.map((item: any, index: number) => (
-                                <View key={index} style={[styles.equipmentCard, { width: isMobile ? '100%' : '31%' }]}>
-                                    <View style={styles.equipmentIconBox}>
-                                        <DynamicIcon name={item?.icon || 'Package'} size={32} color={Colors.primary} />
-                                    </View>
-                                    <Text style={styles.equipmentTitle}>{item?.title || ''}</Text>
-                                    <Text style={styles.equipmentDesc}>{item?.desc || ''}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                </View>
-            )}
-
-            {/* QUOTE / CASE STUDY SECTION */}
-            {config?.caseStudyQuote && (
-                <View style={styles.caseStudySection}>
-                    <View style={styles.contentMax}>
-                        <View style={styles.caseStudyCard}>
-                            <View style={styles.quoteIcon}>
-                                <Quote size={60} color={Colors.primary} />
-                            </View>
-                            <Text style={styles.caseStudyTitle}>{config?.caseStudyTitle || 'Success Narrative'}</Text>
-                            <Text style={[styles.caseStudyQuote, { fontSize: isMobile ? 22 : 36 }]}>
-                                "{config?.caseStudyQuote || ''}"
-                            </Text>
-                            <View style={styles.authorBox}>
-                                <View style={styles.authorLine} />
-                                <Text style={styles.authorName}>{config?.caseStudyAuthor || 'Industry Partner'}</Text>
-                                <Text style={styles.authorRole}>Verified Industry Partner</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            )}
-
-            {/* FINAL CTA */}
-            <View style={styles.ctaWrapper}>
-                <LinearGradient
-                    colors={[Colors.navy, '#0f172a']}
-                    style={styles.ctaSection}
+                {/* back button */}
+                <TouchableOpacity
+                    style={s.backBtn}
+                    onPress={() => router.push('/industries')}
                 >
-                    <View style={styles.ctaContent}>
-                        <Text style={styles.ctaHeadline}>{config?.ctaHeading || 'Ready to Transform Your Logistics?'}</Text>
-                        <Text style={styles.ctaSubline}>{config?.ctaText || 'Connect with our industry specialists today.'}</Text>
-                        <TouchableOpacity style={styles.whiteBtn} onPress={() => router.push('/contact')}>
-                            <Text style={styles.whiteBtnText}>{config?.ctaButtonText || 'Contact Us'}</Text>
-                            <ArrowRight size={20} color={Colors.navy} />
+                    <BlurView intensity={40} style={s.backBlur}>
+                        <ArrowLeft size={18} color="#fff" />
+                        <Text style={s.backText}>Industries</Text>
+                    </BlurView>
+                </TouchableOpacity>
+
+                {/* hero content */}
+                <View style={[s.heroContent, { paddingHorizontal: isMobile ? 24 : 60 }]}>
+                    {/* badge */}
+                    <View style={[s.badge, { borderColor: accent + '60', backgroundColor: accent + '22' }]}>
+                        <DynamicIcon name={config.icon} size={16} color={accent} />
+                        <Text style={[s.badgeText, { color: accent }]}>Sector Specialism</Text>
+                    </View>
+
+                    <Text style={[s.heroTitle, { fontSize: isMobile ? 42 : isTablet ? 64 : 80 }]}>
+                        {config.title}
+                    </Text>
+                    <Text style={[s.heroTagline, { fontSize: isMobile ? 18 : 24 }]}>
+                        {config.subtitle}
+                    </Text>
+
+                    <View style={s.heroActions}>
+                        <TouchableOpacity
+                            style={[s.heroCta, { backgroundColor: accent }]}
+                            onPress={() => router.push('/contact')}
+                        >
+                            <Text style={s.heroCtaText}>Get a Tailored Quote</Text>
+                            <ArrowRight size={18} color="#fff" />
+                        </TouchableOpacity>
+                        {!isMobile && (
+                            <TouchableOpacity
+                                style={s.heroCtaGhost}
+                                onPress={() => router.push('/services')}
+                            >
+                                <Text style={s.heroCtaGhostText}>View All Services</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+            </View>
+
+            {/* ── BREADCRUMB ── */}
+            <View style={s.breadcrumbBar}>
+                <View style={[s.row, { paddingHorizontal: isMobile ? 20 : 60 }]}>
+                    <Link href="/" asChild>
+                        <TouchableOpacity style={s.row}>
+                            <Home size={13} color={Colors.textMuted} />
+                            <Text style={s.crumbText}>Home</Text>
+                        </TouchableOpacity>
+                    </Link>
+                    <ChevronRight size={12} color={Colors.textMuted} style={{ marginHorizontal: 8 }} />
+                    <Link href="/industries" asChild>
+                        <TouchableOpacity>
+                            <Text style={s.crumbText}>Industries</Text>
+                        </TouchableOpacity>
+                    </Link>
+                    <ChevronRight size={12} color={Colors.textMuted} style={{ marginHorizontal: 8 }} />
+                    <Text style={[s.crumbText, { color: accent, fontWeight: '700' }]}>{config.title}</Text>
+                </View>
+            </View>
+
+            {/* ── OVERVIEW STRIP ── */}
+            <View style={[s.overviewStrip, { paddingHorizontal: isMobile ? 24 : 60 }]}>
+                <View style={{ maxWidth: 1100, alignSelf: 'center', width: '100%' }}>
+                    <View style={[s.row, { flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center' }]}>
+                        <View style={[s.accentLine, { backgroundColor: accent }]} />
+                        <Text style={s.overviewText}>{config.description}</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* ── THE CHALLENGE ── */}
+            <View style={s.challengeSection}>
+                <LinearGradient colors={['#0a0e1e', '#0f172a']} style={StyleSheet.absoluteFillObject} />
+                <View style={[s.sectionInner, { paddingHorizontal: isMobile ? 24 : 60 }]}>
+                    <View style={[s.challengeCard, { flexDirection: isMobile ? 'column' : 'row' }]}>
+                        <View style={s.challengeIconCol}>
+                            <View style={[s.challengeIconWrap, { borderColor: '#DC2626' + '40' }]}>
+                                <AlertTriangle size={40} color="#DC2626" />
+                            </View>
+                            <Text style={s.challengeLabel}>THE CHALLENGE</Text>
+                        </View>
+                        <View style={{ flex: 1, marginLeft: isMobile ? 0 : 48, marginTop: isMobile ? 32 : 0 }}>
+                            <Text style={s.challengeTitle}>{config.problemTitle}</Text>
+                            <Text style={s.challengeBody}>{config.problemContent}</Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+
+            {/* ── HOW CYVHUB HELPS ── */}
+            <View style={[s.helpSection, { paddingHorizontal: isMobile ? 24 : 60 }]}>
+                <View style={{ maxWidth: 1100, alignSelf: 'center', width: '100%' }}>
+                    {/* section header */}
+                    <View style={s.sectionHeader}>
+                        <View style={[s.headerPill, { backgroundColor: accent + '18', borderColor: accent + '40' }]}>
+                            <Zap size={14} color={accent} />
+                            <Text style={[s.headerPillText, { color: accent }]}>HOW WE HELP</Text>
+                        </View>
+                        <Text style={[s.sectionTitle, { fontSize: isMobile ? 32 : 48 }]}>
+                            {config.solutionTitle}
+                        </Text>
+                    </View>
+
+                    {/* numbered paragraphs */}
+                    {solutionParagraphs.map((para: string, idx: number) => (
+                        <View key={idx} style={[s.helpCard, isMobile && { flexDirection: 'column' }]}>
+                            <View style={[s.helpNum, { backgroundColor: accent }]}>
+                                <Text style={s.helpNumText}>{String(idx + 1).padStart(2, '0')}</Text>
+                            </View>
+                            <View style={{ flex: 1, marginLeft: isMobile ? 0 : 32, marginTop: isMobile ? 20 : 0 }}>
+                                <Text style={s.helpPara}>{para}</Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            </View>
+
+            {/* ── KEY BENEFITS ── */}
+            <View style={s.benefitsSection}>
+                <LinearGradient colors={[accent + '12', '#f8fafc']} style={StyleSheet.absoluteFillObject} />
+                <View style={[s.sectionInner, { paddingHorizontal: isMobile ? 24 : 60 }]}>
+                    <View style={{ maxWidth: 1100, alignSelf: 'center', width: '100%' }}>
+                        <View style={s.sectionHeader}>
+                            <View style={[s.headerPill, { backgroundColor: accent + '18', borderColor: accent + '40' }]}>
+                                <ShieldCheck size={14} color={accent} />
+                                <Text style={[s.headerPillText, { color: accent }]}>KEY BENEFITS</Text>
+                            </View>
+                            <Text style={[s.sectionTitle, { fontSize: isMobile ? 30 : 44 }]}>
+                                Why Industry Leaders Choose CYVhub
+                            </Text>
+                        </View>
+
+                        <View style={[s.benefitsGrid, { flexDirection: isMobile ? 'column' : 'row' }]}>
+                            {[col1, col2].map((col, ci) => (
+                                <View key={ci} style={[s.benefitsCol, !isMobile && ci === 0 && { marginRight: 24 }]}>
+                                    {col.map((benefit: string, bi: number) => (
+                                        <View key={bi} style={s.benefitRow}>
+                                            <View style={[s.checkCircle, { backgroundColor: accent + '20', borderColor: accent + '40' }]}>
+                                                <CheckCircle2 size={18} color={accent} />
+                                            </View>
+                                            <Text style={s.benefitText}>{benefit}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                </View>
+            </View>
+
+            {/* ── CASE STUDY QUOTE ── */}
+            {!!config.caseStudyQuote && (
+                <View style={s.quoteSection}>
+                    <View style={{ maxWidth: 900, alignSelf: 'center', alignItems: 'center', paddingHorizontal: isMobile ? 24 : 60 }}>
+                        <View style={[s.quoteIconWrap, { backgroundColor: accent + '18' }]}>
+                            <Quote size={32} color={accent} />
+                        </View>
+                        <Text style={[s.quoteTagline, { color: accent }]}>{config.caseStudyTitle}</Text>
+                        <Text style={[s.quoteBody, { fontSize: isMobile ? 20 : 28 }]}>
+                            "{config.caseStudyQuote}"
+                        </Text>
+                        <View style={[s.quoteDivider, { backgroundColor: accent }]} />
+                        <Text style={s.quoteAuthor}>{config.caseStudyAuthor}</Text>
+                    </View>
+                </View>
+            )}
+
+            {/* ── CTA BANNER ── */}
+            <View style={s.ctaSection}>
+                <LinearGradient
+                    colors={[accent, accent + 'CC']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                />
+                {/* subtle pattern overlay */}
+                <View style={s.ctaPattern} />
+                <View style={[s.ctaInner, { paddingHorizontal: isMobile ? 24 : 60, flexDirection: isMobile ? 'column' : 'row', alignItems: 'center' }]}>
+                    <View style={{ flex: 1, marginBottom: isMobile ? 32 : 0 }}>
+                        <Text style={[s.ctaTitle, { fontSize: isMobile ? 26 : 36 }]}>
+                            {config.ctaHeading}
+                        </Text>
+                        <Text style={s.ctaSub}>{config.ctaText}</Text>
+                    </View>
+                    <View style={[s.ctaBtns, { marginLeft: isMobile ? 0 : 48 }]}>
+                        <TouchableOpacity
+                            style={s.ctaWhiteBtn}
+                            onPress={() => router.push('/contact')}
+                        >
+                            <Text style={[s.ctaWhiteBtnText, { color: accent }]}>{config.ctaButtonText}</Text>
+                            <ArrowRight size={18} color={accent} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={s.ctaGhostBtn}
+                            onPress={() => router.push('/guest-quote')}
+                        >
+                            <Text style={s.ctaGhostBtnText}>Get Instant Quote</Text>
                         </TouchableOpacity>
                     </View>
-                </LinearGradient>
+                </View>
             </View>
+
+            {/* ── RELATED INDUSTRIES ── */}
+            <View style={[s.relatedSection, { paddingHorizontal: isMobile ? 24 : 60 }]}>
+                <View style={{ maxWidth: 1100, alignSelf: 'center', width: '100%' }}>
+                    <Text style={s.relatedLabel}>EXPLORE OTHER INDUSTRIES</Text>
+                    <View style={[s.relatedGrid, { flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap' }]}>
+                        {Object.values(industryDetails)
+                            .filter((ind: any) => ind.slug !== slug && ind.publishStatus)
+                            .slice(0, isMobile ? 3 : 4)
+                            .map((ind: any) => {
+                                const indAccent = ACCENT_COLORS[ind.slug] || Colors.primary;
+                                return (
+                                    <TouchableOpacity
+                                        key={ind.slug}
+                                        style={[s.relatedCard, !isMobile && { width: '23%' }]}
+                                        onPress={() => router.push(`/industries/${ind.slug}` as any)}
+                                    >
+                                        <View style={[s.relatedIconWrap, { backgroundColor: indAccent + '18' }]}>
+                                            <DynamicIcon name={ind.icon} size={22} color={indAccent} />
+                                        </View>
+                                        <Text style={s.relatedTitle}>{ind.title}</Text>
+                                        <View style={s.relatedArrow}>
+                                            <ArrowRight size={14} color={indAccent} />
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                    </View>
+                </View>
+            </View>
+
         </ScrollView>
     );
 }
@@ -345,515 +355,178 @@ export default function IndustryDetailPageWithBoundary() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: 400,
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-        minHeight: 600,
-    },
-    errorTitle: {
-        fontSize: 32,
-        fontWeight: '900',
-        color: Colors.navy,
-        marginBottom: 12,
-    },
-    errorSubtitle: {
-        fontSize: 18,
-        color: 'gray',
-        marginBottom: 32,
-        textAlign: 'center',
-    },
-    homeBtn: {
-        backgroundColor: Colors.primary,
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 12,
-    },
-    homeBtnText: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-        fontSize: 16,
-    },
-    headerWrapper: {
-        zIndex: 10,
-        backgroundColor: 'transparent',
-    },
-    blurHeader: {
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(226, 232, 240, 0.5)',
-    },
-    headerInner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    backBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    backBtnText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: Colors.navy,
-        marginLeft: 12,
-    },
-    headerStats: {
-        flexDirection: 'row',
-    },
-    headerStatItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginLeft: 32,
-    },
-    headerStatText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: Colors.textSecondary,
-        marginLeft: 8,
-    },
-    contentMax: {
-        maxWidth: 1200,
-        width: '100%',
-        alignSelf: 'center',
-        paddingHorizontal: 24,
-    },
-    heroSection: {
-        position: 'relative',
-        justifyContent: 'center',
-        marginTop: -80, // Offset for header overlap effect
-    },
+const s = StyleSheet.create({
+    root: { flex: 1, backgroundColor: '#fff' },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, minHeight: 500 },
+    loadingText: { marginTop: 16, fontSize: 16, color: Colors.textSecondary },
+    errTitle: { fontSize: 28, fontWeight: '900', color: Colors.navy, marginTop: 24, marginBottom: 8 },
+    errSub: { fontSize: 16, color: Colors.textSecondary, textAlign: 'center', marginBottom: 32 },
+    pill: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 100 },
+    row: { flexDirection: 'row', alignItems: 'center' },
+
+    // HERO
     heroContent: {
-        zIndex: 1,
-    },
-    heroTextContainer: {
-        maxWidth: 900,
+        position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: 60,
+        justifyContent: 'flex-end',
     },
     badge: {
+        flexDirection: 'row', alignItems: 'center',
         alignSelf: 'flex-start',
-        backgroundColor: 'rgba(56, 189, 248, 0.15)',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 100,
-        marginBottom: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(56, 189, 248, 0.3)',
-    },
-    heroTag: {
-        color: Colors.primary,
-        fontSize: 12,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-    },
-    titleText: {
-        fontWeight: '900', 
-        color: '#FFF', 
-    },
-    heroSubtitle: {
-        fontSize: 24,
-        color: 'rgba(255,255,255,0.7)',
-        lineHeight: 38,
-        marginTop: 24,
-        fontWeight: '500',
-    },
-    heroActions: {
-        flexDirection: 'row',
-        marginTop: 48,
-    },
-    primaryBtn: {
-        backgroundColor: Colors.primary,
-        paddingHorizontal: 36,
-        paddingVertical: 20,
-        borderRadius: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        elevation: 10,
-    },
-    primaryBtnText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '800',
-        marginRight: 12,
-    },
-    secondaryBtn: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        paddingHorizontal: 36,
-        paddingVertical: 20,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
-        marginLeft: 24,
-    },
-    secondaryBtnText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    breadcrumbBar: {
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
-    },
-    breadcrumbInner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    breadcrumbLink: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    breadcrumbText: {
-        fontSize: 13,
-        color: Colors.textSecondary,
-        fontWeight: '600',
-        marginLeft: 6,
-    },
-    overviewSection: {
-        paddingVertical: 100,
-        backgroundColor: '#FFFFFF',
-    },
-    dualLayout: {
-    },
-    overviewMain: {
-        flex: 1.5,
-    },
-    tagWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    activeLine: {
-        width: 40,
-        height: 3,
-        backgroundColor: Colors.primary,
-        borderRadius: 2,
-    },
-    sectionTag: {
-        color: Colors.primary,
-        fontWeight: '900',
-        fontSize: 13,
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        marginLeft: 16,
-    },
-    overviewText: {
-        fontSize: 26,
-        color: Colors.navy,
-        lineHeight: 42,
-        fontWeight: '700',
-        marginBottom: 32,
-    },
-    descriptionText: {
-        fontSize: 18,
-        color: Colors.textSecondary,
-        lineHeight: 32,
-        fontWeight: '400',
-    },
-    statsSidebar: {
-        flex: 1,
-        width: '100%',
-    },
-    statCard: {
-        backgroundColor: '#F8FAFC',
-        padding: 40,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-        elevation: 4,
-        marginBottom: 24,
-    },
-    statValue: {
-        fontSize: 48,
-        fontWeight: '900',
-        color: Colors.primary,
-        marginBottom: 8,
-    },
-    statLabel: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: Colors.navy,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    darkSection: {
-        paddingVertical: 100,
-        backgroundColor: '#0F172A',
-    },
-    dualGrid: {
-    },
-    contentBlockLight: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-        padding: 56,
-        borderRadius: 32,
-    },
-    contentBlockDark: {
-        flex: 1,
-        padding: 56,
-        borderRadius: 32,
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    problemHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    solutionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 24,
-        zIndex: 1,
-    },
-    blockTitle: {
-        fontSize: 28,
-        fontWeight: '900',
-        color: Colors.navy,
-        marginLeft: 16,
-    },
-    blockText: {
-        fontSize: 18,
-        color: Colors.textSecondary,
-        lineHeight: 30,
-        zIndex: 1,
-    },
-    section: {
-        paddingVertical: 120,
-    },
-    sectionHeaderSmall: {
-        color: Colors.primary,
-        fontWeight: '900',
-        fontSize: 13,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-        marginBottom: 16,
-    },
-    subHeaderLarge: {
-        fontSize: 44,
-        fontWeight: '900',
-        color: Colors.navy,
-        marginBottom: 48,
-        lineHeight: 54,
-    },
-    listContainer: {
-    },
-    listItem: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 24,
-    },
-    checkWrapper: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: Colors.primary + '10',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 2,
-    },
-    listText: {
-        fontSize: 19,
-        color: Colors.textSecondary,
-        lineHeight: 28,
-        fontWeight: '500',
-        flex: 1,
-        marginLeft: 16,
-    },
-    servicesBox: {
-        flex: 0.9,
-        backgroundColor: '#F8FAFC',
-        padding: 56,
-        borderRadius: 32,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-    },
-    servicesHeader: {
-        fontSize: 24,
-        fontWeight: '900',
-        color: Colors.navy,
-        marginBottom: 40,
-    },
-    serviceList: {
-    },
-    serviceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-    },
-    serviceIconWrap: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        backgroundColor: '#FFF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 2,
-    },
-    serviceRowText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: Colors.textSecondary,
-        marginLeft: 16,
-    },
-    lightSection: {
-        paddingVertical: 120,
-        backgroundColor: '#F8FAFC',
-    },
-    centeredHeader: {
-        alignItems: 'center',
-        marginBottom: 80,
-    },
-    sectionHeaderLarge: {
-        fontSize: 44,
-        fontWeight: '900',
-        color: Colors.navy,
-        marginTop: 16,
-        textAlign: 'center',
-    },
-    equipmentGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-    },
-    equipmentCard: {
-        backgroundColor: '#FFFFFF',
-        padding: 48,
-        borderRadius: 24,
-        elevation: 2,
-        alignItems: 'flex-start',
-        margin: 16,
-    },
-    equipmentIconBox: {
-        width: 64,
-        height: 64,
-        borderRadius: 16,
-        backgroundColor: Colors.primary + '10',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    equipmentTitle: {
-        fontSize: 22,
-        fontWeight: '900',
-        color: Colors.navy,
-        marginBottom: 16,
-    },
-    equipmentDesc: {
-        fontSize: 16,
-        color: 'gray',
-        lineHeight: 26,
-    },
-    caseStudySection: {
-        paddingVertical: 140,
-        backgroundColor: '#FFFFFF',
-    },
-    caseStudyCard: {
-        backgroundColor: '#F1F5F9',
-        borderRadius: 48,
-        padding: 80,
-        alignItems: 'center',
-        position: 'relative',
-    },
-    quoteIcon: {
-        marginBottom: 40,
-        opacity: 0.15,
-    },
-    caseStudyTitle: {
-        color: Colors.primary,
-        fontWeight: '900',
-        letterSpacing: 2,
-        textTransform: 'uppercase',
-        fontSize: 14,
-        marginBottom: 24,
-    },
-    caseStudyQuote: {
-        fontWeight: '800',
-        textAlign: 'center',
-        color: Colors.navy,
-        lineHeight: 52,
-        maxWidth: 900,
-    },
-    authorBox: {
-        marginTop: 48,
-        alignItems: 'center',
-    },
-    authorLine: {
-        width: 60,
-        height: 2,
-        backgroundColor: Colors.primary,
-        marginBottom: 16,
-    },
-    authorName: {
-        fontWeight: '900',
-        fontSize: 22,
-        color: Colors.navy,
-    },
-    authorRole: {
-        color: Colors.primary,
-        fontWeight: '700',
-        marginTop: 6,
-        fontSize: 16,
-    },
-    ctaWrapper: {
-        paddingHorizontal: 24,
-        paddingBottom: 48,
-        backgroundColor: '#FFFFFF',
-    },
-    ctaSection: {
-        borderRadius: 40,
-        paddingVertical: 100,
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    ctaContent: {
-        maxWidth: 800,
-        alignItems: 'center',
-        paddingHorizontal: 24,
-    },
-    ctaHeadline: {
-        fontSize: 48,
-        fontWeight: '900',
-        color: '#FFFFFF',
-        textAlign: 'center',
-        marginBottom: 24,
-    },
-    ctaSubline: {
-        fontSize: 22,
-        color: '#94A3B8',
-        textAlign: 'center',
-        marginBottom: 56,
-        lineHeight: 34,
-        fontWeight: '500',
-    },
-    whiteBtn: {
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 48,
-        paddingVertical: 22,
-        borderRadius: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
+        paddingHorizontal: 14, paddingVertical: 7,
+        borderRadius: 100, borderWidth: 1,
+        marginBottom: 20,
+    },
+    badgeText: { fontSize: 11, fontWeight: '900', letterSpacing: 1.5, marginLeft: 8, textTransform: 'uppercase' },
+    heroTitle: { fontWeight: '900', color: '#fff', lineHeight: undefined, marginBottom: 16 },
+    heroTagline: { color: 'rgba(255,255,255,0.72)', fontWeight: '500', lineHeight: 36, marginBottom: 40, maxWidth: 700 },
+    heroActions: { flexDirection: 'row', flexWrap: 'wrap' },
+    heroCta: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 32, paddingVertical: 18,
+        borderRadius: 14, marginRight: 16, marginBottom: 12,
         elevation: 8,
     },
-    whiteBtnText: {
-        color: Colors.navy,
-        fontSize: 20,
-        fontWeight: '900',
-        marginLeft: 16,
-    }
+    heroCtaText: { color: '#fff', fontSize: 16, fontWeight: '800', marginRight: 10 },
+    heroCtaGhost: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 28, paddingVertical: 18,
+        borderRadius: 14, borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.4)',
+        marginBottom: 12,
+    },
+    heroCtaGhostText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    backBtn: { position: 'absolute', top: 56, left: 24, zIndex: 10 },
+    backBlur: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 16, paddingVertical: 10,
+        borderRadius: 100, overflow: 'hidden',
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    },
+    backText: { color: '#fff', fontWeight: '700', fontSize: 14, marginLeft: 8 },
+
+    // BREADCRUMB
+    breadcrumbBar: {
+        backgroundColor: '#fff',
+        paddingVertical: 14,
+        borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    },
+    crumbText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600', marginLeft: 6 },
+
+    // OVERVIEW
+    overviewStrip: { paddingVertical: 48, backgroundColor: '#fff' },
+    accentLine: { width: 5, height: 60, borderRadius: 3, marginRight: 28, flexShrink: 0 },
+    overviewText: { fontSize: 20, color: Colors.navy, fontWeight: '600', lineHeight: 34, flex: 1 },
+
+    // CHALLENGE
+    challengeSection: { paddingVertical: 80, position: 'relative', overflow: 'hidden' },
+    sectionInner: { position: 'relative', zIndex: 1 },
+    challengeCard: {
+        maxWidth: 1100, alignSelf: 'center', width: '100%',
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderRadius: 28, padding: 48,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    },
+    challengeIconCol: { alignItems: 'center', minWidth: 100 },
+    challengeIconWrap: {
+        width: 88, height: 88, borderRadius: 44,
+        backgroundColor: 'rgba(220,38,38,0.12)',
+        justifyContent: 'center', alignItems: 'center',
+        borderWidth: 1, marginBottom: 16,
+    },
+    challengeLabel: { color: '#DC2626', fontSize: 10, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase' },
+    challengeTitle: { fontSize: 28, fontWeight: '900', color: '#fff', marginBottom: 20 },
+    challengeBody: { fontSize: 17, color: 'rgba(255,255,255,0.72)', lineHeight: 30 },
+
+    // HOW WE HELP
+    helpSection: { paddingVertical: 100, backgroundColor: '#fff' },
+    sectionHeader: { marginBottom: 56 },
+    headerPill: {
+        flexDirection: 'row', alignItems: 'center',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 14, paddingVertical: 7,
+        borderRadius: 100, borderWidth: 1, marginBottom: 20,
+    },
+    headerPillText: { fontSize: 11, fontWeight: '900', letterSpacing: 1.5, marginLeft: 6, textTransform: 'uppercase' },
+    sectionTitle: { fontWeight: '900', color: Colors.navy, lineHeight: undefined },
+    helpCard: {
+        flexDirection: 'row',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 24, padding: 40,
+        marginBottom: 20,
+        borderWidth: 1, borderColor: '#F1F5F9',
+        elevation: 2,
+    },
+    helpNum: {
+        width: 56, height: 56, borderRadius: 16,
+        justifyContent: 'center', alignItems: 'center',
+        flexShrink: 0,
+    },
+    helpNumText: { color: '#fff', fontSize: 20, fontWeight: '900' },
+    helpPara: { fontSize: 17, color: Colors.textSecondary, lineHeight: 30 },
+
+    // BENEFITS
+    benefitsSection: { paddingVertical: 100, position: 'relative', overflow: 'hidden' },
+    benefitsGrid: {},
+    benefitsCol: { flex: 1 },
+    benefitRow: {
+        flexDirection: 'row', alignItems: 'flex-start',
+        marginBottom: 24,
+    },
+    checkCircle: {
+        width: 40, height: 40, borderRadius: 20,
+        justifyContent: 'center', alignItems: 'center',
+        borderWidth: 1, marginRight: 16, flexShrink: 0,
+    },
+    benefitText: { fontSize: 16, fontWeight: '600', color: Colors.navy, lineHeight: 26, flex: 1, paddingTop: 10 },
+
+    // QUOTE
+    quoteSection: { paddingVertical: 100, backgroundColor: '#F8FAFC' },
+    quoteIconWrap: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+    quoteTagline: { fontSize: 11, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 },
+    quoteBody: { fontWeight: '800', color: Colors.navy, lineHeight: 44, textAlign: 'center', marginBottom: 40 },
+    quoteDivider: { width: 48, height: 3, borderRadius: 2, marginBottom: 16 },
+    quoteAuthor: { fontSize: 16, fontWeight: '700', color: Colors.textSecondary },
+
+    // CTA
+    ctaSection: { paddingVertical: 80, position: 'relative', overflow: 'hidden' },
+    ctaPattern: {
+        position: 'absolute', top: -100, right: -100,
+        width: 400, height: 400, borderRadius: 200,
+        backgroundColor: 'rgba(255,255,255,0.06)',
+    },
+    ctaInner: { position: 'relative', zIndex: 1, maxWidth: 1100, alignSelf: 'center', width: '100%' },
+    ctaTitle: { fontWeight: '900', color: '#fff', marginBottom: 12, lineHeight: undefined },
+    ctaSub: { fontSize: 16, color: 'rgba(255,255,255,0.75)', lineHeight: 26 },
+    ctaBtns: { flexDirection: 'row', flexWrap: 'wrap' },
+    ctaWhiteBtn: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: '#fff',
+        paddingHorizontal: 28, paddingVertical: 16,
+        borderRadius: 14, marginRight: 16, marginBottom: 12,
+        elevation: 4,
+    },
+    ctaWhiteBtnText: { fontWeight: '800', fontSize: 15, marginRight: 8 },
+    ctaGhostBtn: {
+        paddingHorizontal: 24, paddingVertical: 16,
+        borderRadius: 14, borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.5)',
+        marginBottom: 12,
+    },
+    ctaGhostBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+    // RELATED
+    relatedSection: { paddingVertical: 80, backgroundColor: '#fff' },
+    relatedLabel: { fontSize: 11, fontWeight: '900', color: Colors.textMuted, letterSpacing: 2, marginBottom: 28 },
+    relatedGrid: { flexWrap: 'wrap' },
+    relatedCard: {
+        flex: 1, minWidth: 160,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 20, padding: 24,
+        marginBottom: 16, marginRight: 16,
+        borderWidth: 1, borderColor: '#F1F5F9',
+        elevation: 1,
+    },
+    relatedIconWrap: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+    relatedTitle: { fontSize: 14, fontWeight: '800', color: Colors.navy, marginBottom: 16, lineHeight: 20 },
+    relatedArrow: {},
 });
