@@ -252,6 +252,7 @@ export type IndustryDetail = {
     metaDesc?: string;
     // --- Antigravity New Fields ---
     accentColor: string;
+    layoutTheme?: 'left' | 'center';
     challenges: { icon: string; title: string; desc: string }[];
     features: { title: string; desc: string; icon: string; imageUrl: string }[];
     useCases: { title: string; desc: string; badge: string }[];

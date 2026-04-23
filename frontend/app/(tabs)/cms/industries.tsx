@@ -372,6 +372,32 @@ export default function IndustriesCMS() {
                             </View>
                         </View>
 
+                        {/* Design & Layout */}
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Design & Layout</Text>
+                            <View style={styles.card}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>Page Content Alignment</Text>
+                                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                                        <TouchableOpacity 
+                                            style={[styles.statusToggle, detail.layoutTheme !== 'center' ? styles.statusToggleActive : styles.statusToggleInactive, { flex: 1, paddingVertical: 10 }]} 
+                                            onPress={() => updateField(activeId, 'layoutTheme', 'left')}
+                                        >
+                                            <Layout size={16} color={detail.layoutTheme !== 'center' ? '#fff' : Colors.textMuted} style={{ marginRight: 6 }} />
+                                            <Text style={styles.statusToggleText}>Left Aligned (Classic)</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            style={[styles.statusToggle, detail.layoutTheme === 'center' ? styles.statusToggleActive : styles.statusToggleInactive, { flex: 1, paddingVertical: 10 }]} 
+                                            onPress={() => updateField(activeId, 'layoutTheme', 'center')}
+                                        >
+                                            <Layout size={16} color={detail.layoutTheme === 'center' ? '#fff' : Colors.textMuted} style={{ marginRight: 6 }} />
+                                            <Text style={styles.statusToggleText}>Center Aligned (Modern)</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+
                         {/* Basic Info */}
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Page Content</Text>
@@ -533,114 +559,25 @@ export default function IndustriesCMS() {
                             <View style={styles.card}>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>Quote</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={detail.testimonial?.quote} onChangeText={t => updateTestimonial(activeId, 'quote', t)} multiline />
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.testimonial?.quote || detail.caseStudyQuote || ''} onChangeText={t => updateTestimonial(activeId, 'quote', t)} multiline />
                                 </View>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>Author</Text>
-                                    <TextInput style={styles.input} value={detail.testimonial?.author} onChangeText={t => updateTestimonial(activeId, 'author', t)} />
+                                    <TextInput style={styles.input} value={detail.testimonial?.author || detail.caseStudyAuthor || ''} onChangeText={t => updateTestimonial(activeId, 'author', t)} />
                                 </View>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>Role</Text>
-                                    <TextInput style={styles.input} value={detail.testimonial?.role} onChangeText={t => updateTestimonial(activeId, 'role', t)} />
+                                    <TextInput style={styles.input} value={detail.testimonial?.role || 'Operations Lead'} onChangeText={t => updateTestimonial(activeId, 'role', t)} />
                                 </View>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>Company</Text>
-                                    <TextInput style={styles.input} value={detail.testimonial?.company} onChangeText={t => updateTestimonial(activeId, 'company', t)} />
+                                    <TextInput style={styles.input} value={detail.testimonial?.company || detail.caseStudyTitle || ''} onChangeText={t => updateTestimonial(activeId, 'company', t)} />
                                 </View>
                             </View>
                         </View>
 
                         {/* Challenges & Solutions */}
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Sector Problem & Solution</Text>
-                            <View style={styles.card}>
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Problem Heading</Text>
-                                    <TextInput style={styles.input} value={detail.problemTitle} onChangeText={t => updateField(activeId, 'problemTitle', t)} />
-                                </View>
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Problem Detail</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={detail.problemContent} onChangeText={t => updateField(activeId, 'problemContent', t)} multiline />
-                                </View>
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Solution Heading</Text>
-                                    <TextInput style={styles.input} value={detail.solutionTitle} onChangeText={t => updateField(activeId, 'solutionTitle', t)} />
-                                </View>
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Solution Detail</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={detail.solutionContent} onChangeText={t => updateField(activeId, 'solutionContent', t)} multiline />
-                                    <Text style={styles.inputHint}>Use double newlines (\n\n) to separate the 4 paragraphs.</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* SEO Settings */}
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Search Engine Optimization (SEO)</Text>
-                            <View style={styles.card}>
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Meta Title</Text>
-                                    <TextInput style={styles.input} value={detail.metaTitle} onChangeText={t => updateField(activeId, 'metaTitle', t)} placeholder="SEO Title..." />
-                                </View>
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Meta Description</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={detail.metaDesc} onChangeText={t => updateField(activeId, 'metaDesc', t)} multiline placeholder="SEO Description..." />
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* Lists Editor */}
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Why Choose CYVhub?</Text>
-                                <TouchableOpacity style={styles.addButton} onPress={() => addArrayItem(activeId, 'whyChooseUs')}>
-                                    <Plus size={16} color="#FFF" />
-                                    <Text style={styles.addButtonText}>Add</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.card}>
-                                {(detail.whyChooseUs || []).map((item, idx) => (
-                                    <View key={idx} style={styles.listItemRow}>
-                                        <TextInput
-                                            style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                                            value={item}
-                                            onChangeText={t => updateArrayItem(activeId, 'whyChooseUs', idx, t)}
-                                            placeholder="..."
-                                        />
-                                        <TouchableOpacity onPress={() => removeArrayItem(activeId, 'whyChooseUs', idx)} style={styles.trashBtn}>
-                                            <Trash2 size={16} color={Colors.danger} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Typical Industry Services</Text>
-                                <TouchableOpacity style={styles.addButton} onPress={() => addArrayItem(activeId, 'typicalServices')}>
-                                    <Plus size={16} color="#FFF" />
-                                    <Text style={styles.addButtonText}>Add</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.card}>
-                                {(detail.typicalServices || []).map((item, idx) => (
-                                    <View key={idx} style={styles.listItemRow}>
-                                        <TextInput
-                                            style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                                            value={item}
-                                            onChangeText={t => updateArrayItem(activeId, 'typicalServices', idx, t)}
-                                            placeholder="..."
-                                        />
-                                        <TouchableOpacity onPress={() => removeArrayItem(activeId, 'typicalServices', idx)} style={styles.trashBtn}>
-                                            <Trash2 size={16} color={Colors.danger} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-
-                        {/* Sector Specific Stats */}
+                        {/* Sector Performance Stats */}
                         <View style={styles.section}>
                             <View style={styles.sectionHeaderRow}>
                                 <Text style={styles.sectionTitle}>Sector Performance Stats</Text>
@@ -662,81 +599,17 @@ export default function IndustriesCMS() {
                             </View>
                         </View>
 
-                        {/* Equipment Section */}
+                        {/* SEO Settings */}
                         <View style={styles.section}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Specialized Equipment</Text>
-                                <TouchableOpacity style={styles.addButton} onPress={() => addEquipment(activeId)}>
-                                    <Plus size={16} color="#FFF" />
-                                    <Text style={styles.addButtonText}>Add Item</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.card}>
-                                {detail.equipment.map((item, idx) => (
-                                    <View key={idx} style={[styles.card, { padding: 16, marginBottom: 12, borderStyle: 'dashed' }]}>
-                                        <View style={styles.inputGroup}>
-                                            <Text style={styles.inputLabel}>Title</Text>
-                                            <TextInput style={styles.input} value={item.title} onChangeText={t => updateEquipment(activeId, idx, 'title', t)} />
-                                        </View>
-                                        <View style={styles.inputGroup}>
-                                            <Text style={styles.inputLabel}>Description</Text>
-                                            <TextInput style={[styles.input, styles.textArea]} value={item.desc} onChangeText={t => updateEquipment(activeId, idx, 'desc', t)} multiline />
-                                        </View>
-                                        <View style={styles.inputGroup}>
-                                            <Text style={styles.inputLabel}>Icon Name (Lucide)</Text>
-                                            <TextInput style={styles.input} value={item.icon} onChangeText={t => updateEquipment(activeId, idx, 'icon', t)} />
-                                        </View>
-                                        <TouchableOpacity onPress={() => removeEquipment(activeId, idx)} style={[styles.trashBtn, { alignSelf: 'flex-end' }]}>
-                                            <Trash2 size={16} color={Colors.danger} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-
-                        {/* Process Steps */}
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Sector Workflow Steps</Text>
-                                <TouchableOpacity style={styles.addButton} onPress={() => addStep(activeId)}>
-                                    <Plus size={16} color="#FFF" />
-                                    <Text style={styles.addButtonText}>Add Step</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.card}>
-                                {detail.processSteps.map((step, idx) => (
-                                    <View key={idx} style={[styles.card, { padding: 16, marginBottom: 12, borderStyle: 'dotted' }]}>
-                                        <View style={styles.inputGroup}>
-                                            <Text style={styles.inputLabel}>Step {idx + 1} Title</Text>
-                                            <TextInput style={styles.input} value={step.title} onChangeText={t => updateStep(activeId, idx, 'title', t)} />
-                                        </View>
-                                        <View style={styles.inputGroup}>
-                                            <Text style={styles.inputLabel}>Step {idx + 1} Description</Text>
-                                            <TextInput style={[styles.input, styles.textArea]} value={step.desc} onChangeText={t => updateStep(activeId, idx, 'desc', t)} multiline />
-                                        </View>
-                                        <TouchableOpacity onPress={() => removeStep(activeId, idx)} style={[styles.trashBtn, { alignSelf: 'flex-end' }]}>
-                                            <Trash2 size={16} color={Colors.danger} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-
-                        {/* Case Study Section */}
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Case Study / Testimonial</Text>
+                            <Text style={styles.sectionTitle}>Search Engine Optimization (SEO)</Text>
                             <View style={styles.card}>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Success Title</Text>
-                                    <TextInput style={styles.input} value={detail.caseStudyTitle} onChangeText={t => updateField(activeId, 'caseStudyTitle', t)} />
+                                    <Text style={styles.inputLabel}>Meta Title</Text>
+                                    <TextInput style={styles.input} value={detail.metaTitle} onChangeText={t => updateField(activeId, 'metaTitle', t)} placeholder="SEO Title..." />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Quote Content</Text>
-                                    <TextInput style={[styles.input, styles.textArea]} value={detail.caseStudyQuote} onChangeText={t => updateField(activeId, 'caseStudyQuote', t)} multiline />
-                                </View>
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Author / Attribution</Text>
-                                    <TextInput style={styles.input} value={detail.caseStudyAuthor} onChangeText={t => updateField(activeId, 'caseStudyAuthor', t)} />
+                                    <Text style={styles.inputLabel}>Meta Description</Text>
+                                    <TextInput style={[styles.input, styles.textArea]} value={detail.metaDesc} onChangeText={t => updateField(activeId, 'metaDesc', t)} multiline placeholder="SEO Description..." />
                                 </View>
                             </View>
                         </View>

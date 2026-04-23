@@ -86,7 +86,7 @@ export default function CMSDashboard() {
                                 <FileText size={20} color={Colors.primary} />
                             </View>
                             <View style={styles.menuText}>
-                                <Text style={styles.menuTitle}>Services Pages</Text>
+                                <Text style={styles.menuTitle}>Services Manager</Text>
                                 <Text style={styles.menuSubtitle}>Add or modify service offerings and FAQs</Text>
                             </View>
                             <ChevronRight size={20} color={Colors.textMuted} />

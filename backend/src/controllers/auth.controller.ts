@@ -417,3 +417,50 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * POST /auth/change-password
+ * Allows an authenticated user to change their password by providing the old password.
+ */
+export const changePassword = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+        const { oldPassword, newPassword } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        if (!oldPassword || !newPassword || typeof oldPassword !== 'string' || typeof newPassword !== 'string') {
+            return res.status(400).json({ error: 'Old password and new password are required' });
+        }
+
+        if (newPassword.length < 8 || !PASSWORD_REGEX.test(newPassword)) {
+            return res.status(400).json({
+                error: 'New password must be at least 8 characters and include uppercase, lowercase, and a number',
+            });
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const isValid = await bcrypt.compare(oldPassword, user.passwordHash);
+        if (!isValid) {
+            return res.status(401).json({ error: 'Incorrect old password' });
+        }
+
+        const newHash = await bcrypt.hash(newPassword, 12);
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { passwordHash: newHash },
+        });
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+        console.error('Change Password Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+

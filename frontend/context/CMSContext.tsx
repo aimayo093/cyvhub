@@ -192,7 +192,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
             const lastFetched = lastFetchedStr ? parseInt(lastFetchedStr, 10) : 0;
 
             if (!force && (now - lastFetched < 5 * 60 * 1000)) {
-                return;
+                // return; // Temporarily disabled to prevent stale cache overwriting the DB
             }
 
             const response = await apiClient(`/cms/config/${CMS_CONFIG_KEY}`);

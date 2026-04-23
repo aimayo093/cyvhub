@@ -9,13 +9,18 @@ import {
     ShieldCheck, ArrowLeftRight, ClipboardList,
     PlusSquare, FileSearch, CheckCircle, CheckCircle2,
     Maximize, Check, Thermometer, HardHat, Monitor,
-    Factory, Plane, Utensils, Settings
+    Factory, Plane, Utensils, Settings, HeartPulse,
+    Cpu, Car, RefreshCw, ShieldAlert, UserCheck,
+    BarChart, Layers, Repeat, Eye, Wrench, Lock,
+    Target, PauseCircle, Link, TrendingDown, AlertCircle,
+    DollarSign
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
 // ─── Shared Types ─────────────────────────────────────────
 interface IndustryComponentProps {
     accentColor: string;
+    layoutTheme?: 'left' | 'center';
 }
 
 // ─── DynamicIcon ──────────────────────────────────────────
@@ -25,7 +30,43 @@ export const DynamicIcon = ({ name, size, color }: { name: string; size: number;
         FileText, Signal, ShieldCheck, ArrowLeftRight, ClipboardList,
         PlusSquare, FileSearch, CheckCircle, CheckCircle2, Maximize,
         Check, Thermometer, HardHat, Monitor, Factory, Plane,
-        Utensils, Settings,
+        Utensils, Settings, HeartPulse, Cpu, Car, RefreshCw,
+        ShieldAlert, UserCheck, BarChart, Layers, Repeat, Eye,
+        Wrench, Lock,
+        // Also support lowercase/dashed names for easier CMS entry
+        'heart-pulse': HeartPulse,
+        'hard-hat': HardHat,
+        'cpu': Cpu,
+        'factory': Factory,
+        'plane': Plane,
+        'refresh-cw': RefreshCw,
+        'car': Car,
+        'utensils': Utensils,
+        'shield-alert': ShieldAlert,
+        'user-check': UserCheck,
+        'bar-chart': BarChart,
+        'layers': Layers,
+        'repeat': Repeat,
+        'eye': Eye,
+        'wrench': Wrench,
+        'lock': Lock,
+        'check-circle': CheckCircle,
+        'package': Package,
+        'clock': Clock,
+        'zap': Zap,
+        'shield': Shield,
+        'target': Target,
+        'pause-circle': PauseCircle,
+        'link': Link,
+        'trending-down': TrendingDown,
+        'alert-circle': AlertCircle,
+        'dollar-sign': DollarSign,
+        'shield-check': ShieldCheck,
+        'clipboard-list': ClipboardList,
+        'file-search': FileSearch,
+        'arrow-left-right': ArrowLeftRight,
+        'plus-square': PlusSquare,
+        'signal': Signal,
     };
     const Icon = icons[name] || AlertTriangle;
     return <Icon size={size} color={color} />;
@@ -34,6 +75,7 @@ export const DynamicIcon = ({ name, size, color }: { name: string; size: number;
 // ─── 1. Hero Section ─────────────────────────────────────
 export const HeroSection = ({
     accentColor,
+    layoutTheme,
     eyebrow,
     title,
     subtitle,
@@ -50,15 +92,16 @@ export const HeroSection = ({
 }) => {
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
+    const isCenter = layoutTheme === 'center';
 
     return (
         <View style={[s.heroOuter]}>
-            <View style={[s.heroContainer, isMobile && s.heroContainerMobile]}>
-                <View style={[s.heroTextCol, isMobile && s.heroTextColMobile]}>
-                    <Text style={s.heroEyebrow}>{eyebrow.toUpperCase()}</Text>
-                    <Text style={[s.heroTitle, isMobile && s.heroTitleMobile]}>{title}</Text>
-                    <Text style={s.heroSubtitle}>{subtitle}</Text>
-                    <View style={[s.row, s.heroActions]}>
+            <View style={[s.heroContainer, isMobile && s.heroContainerMobile, isCenter && { flexDirection: 'column', textAlign: 'center' }]}>
+                <View style={[s.heroTextCol, isMobile && s.heroTextColMobile, isCenter && { alignItems: 'center', paddingRight: 0, marginBottom: isCenter && imageUrl ? 48 : 0 }]}>
+                    <Text style={[s.heroEyebrow, isCenter && { textAlign: 'center' }]}>{eyebrow.toUpperCase()}</Text>
+                    <Text style={[s.heroTitle, isMobile && s.heroTitleMobile, isCenter && { textAlign: 'center' }]}>{title}</Text>
+                    <Text style={[s.heroSubtitle, isCenter && { textAlign: 'center' }]}>{subtitle}</Text>
+                    <View style={[s.row, s.heroActions, isCenter && { justifyContent: 'center' }]}>
                         <TouchableOpacity
                             style={[s.primaryBtn, { backgroundColor: accentColor }]}
                             onPress={onGetStarted}
@@ -92,13 +135,14 @@ export const HeroSection = ({
 // ─── 2. Stats Bar ─────────────────────────────────────────
 export const StatsBar = ({
     accentColor,
+    layoutTheme,
     stats,
 }: IndustryComponentProps & { stats: { label: string; value: string }[] }) => (
     <View style={s.statsBar}>
         <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.statsBarInner}
+            contentContainerStyle={[s.statsBarInner, layoutTheme === 'center' && { justifyContent: 'center', width: '100%' }]}
         >
             {stats.map((stat, i) => (
                 <View key={i} style={s.statItem}>
@@ -113,6 +157,7 @@ export const StatsBar = ({
 // ─── 3. Challenge Section ────────────────────────────────
 export const ChallengeSection = ({
     accentColor,
+    layoutTheme,
     industryName,
     challenges,
 }: IndustryComponentProps & {
@@ -121,20 +166,21 @@ export const ChallengeSection = ({
 }) => {
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
+    const isCenter = layoutTheme === 'center';
 
     return (
         <View style={s.section}>
-            <View style={s.sectionInner}>
-                <Text style={s.sectionEyebrow}>THE CHALLENGE</Text>
-                <Text style={s.sectionH2}>What {industryName} teams face every day</Text>
-                <View style={[s.grid, isMobile && s.gridMobile]}>
+            <View style={[s.sectionInner, isCenter && { alignItems: 'center' }]}>
+                <Text style={[s.sectionEyebrow, isCenter && { textAlign: 'center' }]}>THE CHALLENGE</Text>
+                <Text style={[s.sectionH2, isCenter && { textAlign: 'center' }]}>What {industryName} teams face every day</Text>
+                <View style={[s.grid, isMobile && s.gridMobile, isCenter && { justifyContent: 'center' }]}>
                     {challenges.map((c, i) => (
-                        <View key={i} style={[s.challengeCard, !isMobile && s.challengeCardDesktop]}>
+                        <View key={i} style={[s.challengeCard, !isMobile && s.challengeCardDesktop, isCenter && { alignItems: 'center' }]}>
                             <View style={[s.iconWrap, { backgroundColor: accentColor + '12' }]}>
                                 <DynamicIcon name={c.icon} size={22} color={accentColor} />
                             </View>
-                            <Text style={s.cardTitle}>{c.title}</Text>
-                            <Text style={s.cardBody}>{c.desc}</Text>
+                            <Text style={[s.cardTitle, isCenter && { textAlign: 'center' }]}>{c.title}</Text>
+                            <Text style={[s.cardBody, isCenter && { textAlign: 'center' }]}>{c.desc}</Text>
                         </View>
                     ))}
                 </View>
@@ -146,12 +192,14 @@ export const ChallengeSection = ({
 // ─── 4. Solution Section ─────────────────────────────────
 export const SolutionSection = ({
     accentColor,
+    layoutTheme,
     features,
 }: IndustryComponentProps & {
     features: { title: string; desc: string; icon: string; imageUrl?: string }[];
 }) => {
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
+    const isCenter = layoutTheme === 'center';
 
     return (
         <View style={[s.section, s.bgGrey]}>
@@ -197,6 +245,7 @@ export const SolutionSection = ({
 // ─── 5. Use Case Section ─────────────────────────────────
 export const UseCaseSection = ({
     accentColor,
+    layoutTheme,
     industryName,
     useCases,
 }: IndustryComponentProps & {
@@ -205,12 +254,13 @@ export const UseCaseSection = ({
 }) => {
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
+    const isCenter = layoutTheme === 'center';
 
     return (
         <View style={s.section}>
-            <View style={s.sectionInner}>
-                <Text style={s.sectionEyebrow}>USE CASES</Text>
-                <Text style={s.sectionH2}>Built for how {industryName} actually works</Text>
+            <View style={[s.sectionInner, isCenter && { alignItems: 'center' }]}>
+                <Text style={[s.sectionEyebrow, isCenter && { textAlign: 'center' }]}>USE CASES</Text>
+                <Text style={[s.sectionH2, isCenter && { textAlign: 'center' }]}>Built for how {industryName} actually works</Text>
                 <ScrollView
                     horizontal={isMobile}
                     showsHorizontalScrollIndicator={false}
@@ -218,12 +268,12 @@ export const UseCaseSection = ({
                 >
                     <View style={[s.useCaseGrid, isMobile && s.useCaseGridMobile]}>
                         {useCases.map((uc, i) => (
-                            <View key={i} style={s.useCaseCard}>
-                                <View style={[s.badge, { backgroundColor: accentColor + '12' }]}>
+                            <View key={i} style={[s.useCaseCard, isCenter && { alignItems: 'center' }]}>
+                                <View style={[s.badge, { backgroundColor: accentColor + '12' }, isCenter && { alignSelf: 'center' }]}>
                                     <Text style={[s.badgeText, { color: accentColor }]}>{uc.badge}</Text>
                                 </View>
-                                <Text style={s.useCaseTitle}>{uc.title}</Text>
-                                <Text style={s.cardBody}>{uc.desc}</Text>
+                                <Text style={[s.useCaseTitle, isCenter && { textAlign: 'center' }]}>{uc.title}</Text>
+                                <Text style={[s.cardBody, isCenter && { textAlign: 'center' }]}>{uc.desc}</Text>
                             </View>
                         ))}
                     </View>
@@ -236,6 +286,7 @@ export const UseCaseSection = ({
 // ─── 6. Testimonial Block ────────────────────────────────
 export const TestimonialBlock = ({
     accentColor,
+    layoutTheme,
     quote,
     author,
     role,
@@ -245,8 +296,10 @@ export const TestimonialBlock = ({
     author: string;
     role: string;
     company: string;
-}) => (
-    <View style={[s.testimonialContainer, { backgroundColor: accentColor + '0C' }]}>
+}) => {
+    const isCenter = layoutTheme === 'center';
+    return (
+    <View style={[s.testimonialContainer, { backgroundColor: accentColor + '0C' }, isCenter && { alignItems: 'center' }]}>
         <View style={[s.testimonialIconWrap, { backgroundColor: accentColor + '18' }]}>
             <Quote size={26} color={accentColor} />
         </View>
@@ -255,11 +308,13 @@ export const TestimonialBlock = ({
         <Text style={s.testimonialAuthor}>{author}</Text>
         <Text style={s.testimonialRole}>{role}, {company}</Text>
     </View>
-);
+    );
+};
 
 // ─── 7. Related Industries ───────────────────────────────
 export const RelatedIndustries = ({
     accentColor,
+    layoutTheme,
     industries,
     onPress,
 }: IndustryComponentProps & {
@@ -268,11 +323,12 @@ export const RelatedIndustries = ({
 }) => {
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
+    const isCenter = layoutTheme === 'center';
 
     return (
         <View style={s.relatedSection}>
-            <View style={s.sectionInner}>
-                <Text style={s.sectionEyebrow}>EXPLORE OTHER INDUSTRIES</Text>
+            <View style={[s.sectionInner, isCenter && { alignItems: 'center' }]}>
+                <Text style={[s.sectionEyebrow, isCenter && { textAlign: 'center' }]}>EXPLORE OTHER INDUSTRIES</Text>
                 <View style={[s.relatedGrid, isMobile && s.relatedGridMobile]}>
                     {industries.map((ind) => {
                         const ia = ind.accentColor || accentColor;

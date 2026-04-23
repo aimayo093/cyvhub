@@ -89,6 +89,7 @@ function IndustryDetailPage() {
             {/* ── Hero ── */}
             <HeroSection
                 accentColor={accent}
+                layoutTheme={config.layoutTheme}
                 eyebrow="Industry Sector"
                 title={config.title}
                 subtitle={config.subtitle}
@@ -99,13 +100,14 @@ function IndustryDetailPage() {
 
             {/* ── Stats ── */}
             {config.stats && config.stats.length > 0 && (
-                <StatsBar accentColor={accent} stats={config.stats} />
+                <StatsBar accentColor={accent} layoutTheme={config.layoutTheme} stats={config.stats} />
             )}
 
             {/* ── Challenges ── */}
             {config.challenges && config.challenges.length > 0 && (
                 <ChallengeSection
                     accentColor={accent}
+                    layoutTheme={config.layoutTheme}
                     industryName={config.title}
                     challenges={config.challenges}
                 />
@@ -115,6 +117,7 @@ function IndustryDetailPage() {
             {config.features && config.features.length > 0 && (
                 <SolutionSection
                     accentColor={accent}
+                    layoutTheme={config.layoutTheme}
                     features={config.features}
                 />
             )}
@@ -123,6 +126,7 @@ function IndustryDetailPage() {
             {config.useCases && config.useCases.length > 0 && (
                 <UseCaseSection
                     accentColor={accent}
+                    layoutTheme={config.layoutTheme}
                     industryName={config.title}
                     useCases={config.useCases}
                 />
@@ -132,6 +136,7 @@ function IndustryDetailPage() {
             {hasTestimonial && (
                 <TestimonialBlock
                     accentColor={accent}
+                    layoutTheme={config.layoutTheme}
                     quote={quoteText}
                     author={quoteAuthor}
                     role={quoteRole}
@@ -143,6 +148,7 @@ function IndustryDetailPage() {
             {relatedList.length > 0 && (
                 <RelatedIndustries
                     accentColor={accent}
+                    layoutTheme={config.layoutTheme}
                     industries={relatedList}
                     onPress={(s) => router.push(`/industries/${s}` as any)}
                 />

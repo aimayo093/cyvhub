@@ -26,7 +26,7 @@ import {
 import Colors from '@/constants/colors';
 import { apiClient } from '@/services/api';
 
-type TabView = 'email' | 'sms' | 'rules';
+type TabView = 'email' | 'sms' | 'rules' | 'security';
 
 interface NotificationSettings {
   emailEnabled: boolean;
@@ -69,6 +69,11 @@ export default function AdminNotificationSettings() {
   
   const [testEmail, setTestEmail] = useState('');
   const [testSms, setTestSms] = useState('');
+
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const [settings, setSettings] = useState<NotificationSettings>({
     emailEnabled: false,
@@ -175,6 +180,31 @@ export default function AdminNotificationSettings() {
       fetchLogs();
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to send test SMS');
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return Alert.alert('Error', 'Please fill out all password fields');
+    }
+    if (newPassword !== confirmPassword) {
+      return Alert.alert('Error', 'New password and confirm password do not match');
+    }
+    
+    setChangingPassword(true);
+    try {
+      await apiClient('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ oldPassword, newPassword })
+      });
+      Alert.alert('Success', 'Password changed successfully!');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -472,6 +502,65 @@ export default function AdminNotificationSettings() {
     </ScrollView>
   );
 
+  const renderSecurityTab = () => (
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContent}>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Change Admin Password</Text>
+        <Text style={styles.cardDesc}>Update your administrator password. You will use this new password on your next login.</Text>
+        <View style={styles.divider} />
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Current Password</Text>
+          <TextInput
+            style={styles.input}
+            value={oldPassword}
+            onChangeText={setOldPassword}
+            placeholder="********"
+            placeholderTextColor={Colors.textMuted}
+            secureTextEntry
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>New Password</Text>
+          <TextInput
+            style={styles.input}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="********"
+            placeholderTextColor={Colors.textMuted}
+            secureTextEntry
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Confirm New Password</Text>
+          <TextInput
+            style={styles.input}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="********"
+            placeholderTextColor={Colors.textMuted}
+            secureTextEntry
+          />
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.testBtn, { marginTop: 16 }]} 
+          onPress={handlePasswordChange}
+          disabled={changingPassword}
+        >
+          {changingPassword ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.testBtnText}>Update Password</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
@@ -511,6 +600,13 @@ export default function AdminNotificationSettings() {
             <SettingsIcon size={16} color={activeTab === 'rules' ? Colors.adminPrimary : Colors.textMuted} />
             <Text style={[styles.tabText, activeTab === 'rules' && styles.tabTextActive]}>Rules</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'security' && styles.tabActive]}
+            onPress={() => setActiveTab('security')}
+          >
+            <SettingsIcon size={16} color={activeTab === 'security' ? Colors.adminPrimary : Colors.textMuted} />
+            <Text style={[styles.tabText, activeTab === 'security' && styles.tabTextActive]}>Security</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Content */}
@@ -518,6 +614,7 @@ export default function AdminNotificationSettings() {
           {activeTab === 'email' && renderEmailTab()}
           {activeTab === 'sms' && renderSmsTab()}
           {activeTab === 'rules' && renderRulesTab()}
+          {activeTab === 'security' && renderSecurityTab()}
         </View>
       </View>
     </SafeAreaView>

@@ -1,718 +1,927 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('Starting seed...');
+    console.log('Cleaning up existing data...');
+    // Wipe all related tables in correct order to prevent constraint errors
+    await prisma.cMSRevision.deleteMany({});
+    await prisma.cMSSection.deleteMany({});
+    await prisma.cMSPage.deleteMany({});
+    await prisma.globalConfig.deleteMany({});
+    await prisma.jobOpening.deleteMany({});
+    await prisma.industry.deleteMany({});
+    await prisma.service.deleteMany({});
+    await prisma.pageContent.deleteMany({});
+    console.log('Database wiped.');
 
-    // Default password 'Password123!'
-    const passwordHash = await bcrypt.hash('Password123!', 10);
-
-    const users = [
-        {
-            email: 'admin@cyvhub.com',
-            firstName: 'System',
-            lastName: 'Admin',
-            role: 'admin',
-        },
-        {
-            email: 'driver@cyvhub.com',
-            firstName: 'John',
-            lastName: 'Doe',
-            role: 'driver',
-        },
-        {
-            email: 'customer@cyvhub.com',
-            firstName: 'Jane',
-            lastName: 'Smith',
-            role: 'customer',
-        },
-        {
-            email: 'carrier@cyvhub.com',
-            firstName: 'Global',
-            lastName: 'Logistics',
-            role: 'carrier',
-        }
-    ];
-
-    for (const user of users) {
-        await prisma.user.upsert({
-            where: { email: user.email },
-            update: {
-                emailVerified: true,
-                status: 'ACTIVE',
-            },
-            create: {
-                ...user,
-                passwordHash,
-                emailVerified: true,
-                status: 'ACTIVE',
-            },
-        });
-        console.log(`Created/Ensured user: ${user.email}`);
-    }
-
-    // Seed mock Carriers
-    const carrier = await prisma.carrierProfile.create({
-        data: {
-            companyName: 'Swift Transport Solutions',
-            tradingName: 'Swift Logistics',
-            contactFirstName: 'David',
-            contactLastName: 'Miller',
-            email: 'operations@swiftlogistics.co.uk',
-            phone: '0800 123 4567',
-            registrationNumber: 'GB12345678',
-            vatNumber: 'GB 123 4567 89',
-            insuranceExpiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // 6 months from now
-            operatorLicence: 'OL-987654321',
-            operatorLicenceExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-            coverageRegions: JSON.stringify(['London', 'South East', 'Midlands']),
-            status: 'APPROVED',
-            totalJobsCompleted: 1450,
-            slaScore: 98.5,
-            rating: 4.8,
-            vehicles: {
-                create: [
-                    {
-                        registration: 'LD24 ABC',
-                        type: 'Medium Van',
-                        make: 'Ford',
-                        model: 'Transit Custom',
-                        year: 2024,
-                        capacity: '1000kg',
-                        motExpiry: new Date(Date.now() + 300 * 24 * 60 * 60 * 1000),
-                        insuranceExpiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-                        lastService: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                        status: 'ACTIVE'
-                    },
-                    {
-                        registration: 'MA23 XYZ',
-                        type: 'Luton Van',
-                        make: 'Mercedes-Benz',
-                        model: 'Sprinter',
-                        year: 2023,
-                        capacity: '1200kg / Tail Lift',
-                        motExpiry: new Date(Date.now() + 200 * 24 * 60 * 60 * 1000),
-                        insuranceExpiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-                        lastService: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-                        status: 'ACTIVE'
-                    }
-                ]
-            },
-            complianceDocs: {
-                create: [
-                    {
-                        type: 'INSURANCE',
-                        status: 'VALID',
-                        fileUrl: 'https://example.com/insurance.pdf',
-                        expiryDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000)
-                    },
-                    {
-                        type: 'LICENCE',
-                        status: 'VALID',
-                        fileUrl: 'https://example.com/licence.pdf',
-                        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-                    }
-                ]
-            }
-        }
-    });
-
-    console.log(`Seeded carrier profile: ${carrier.companyName}`);
-
-    // Seed Business Account
-    const business = await prisma.businessAccount.create({
-        data: {
-            tradingName: 'TechCorp Solutions',
-            companyName: 'TechCorp Ltd',
-            contactEmail: 'billing@techcorp.com',
-            status: 'ACTIVE',
-            billingTerms: 'Net 30',
-            currentBalance: 1250.00
-        }
-    });
-
-    // Link Jane Smith to this business
-    const jane = await prisma.user.findUnique({ where: { email: 'customer@cyvhub.com' } });
-    if (jane) {
-        await prisma.user.update({
-            where: { id: jane.id },
-            data: { businessAccountId: business.id }
-        });
-    }
-
-    // Seed some Jobs for invoicing
-    await prisma.job.create({
-        data: {
-            jobNumber: 'JOB-9901',
-            status: 'DELIVERED',
-            priority: 'NORMAL',
-            pickupContactName: 'Warehouse 1',
-            pickupContactPhone: '0123456789',
-            pickupAddressLine1: 'Swansea Industrial Estate',
-            pickupCity: 'Swansea',
-            pickupPostcode: 'SA1 1AA',
-            pickupLatitude: 51.6214,
-            pickupLongitude: -3.9436,
-            pickupWindowStart: '09:00',
-            pickupWindowEnd: '11:00',
-            dropoffContactName: 'TechCorp HQ',
-            dropoffContactPhone: '0987654321',
-            dropoffAddressLine1: 'Cardiff Business Park',
-            dropoffCity: 'Cardiff',
-            dropoffPostcode: 'CF10 1AA',
-            dropoffLatitude: 51.4816,
-            dropoffLongitude: -3.1791,
-            dropoffWindowStart: '13:00',
-            dropoffWindowEnd: '15:00',
-            vehicleType: 'Small Van',
-            calculatedPrice: 85.00,
-            customerId: jane?.id || 'placeholder',
-            businessAccountId: business.id,
-            completedAt: new Date()
-        }
-    });
-
-    // Seed Invoices
-    await prisma.invoice.create({
-        data: {
-            invoiceNumber: 'INV-2023-001',
-            status: 'PENDING',
-            amount: 1250.00,
-            date: new Date(Date.now() - 86400000 * 5),
-            dueDate: new Date(Date.now() + 86400000 * 25),
-            businessAccountId: business.id,
-            description: 'Monthly Logistics Retainer - October'
-        }
-    });
-
-    // Seed Activity Logs
-    await prisma.activityLog.createMany({
-        data: [
-            {
-                type: 'delivery_created',
-                title: 'New Delivery Created',
-                message: 'Your delivery from Swansea to Cardiff is being processed.',
-                severity: 'info',
-                userId: jane?.id
-            },
-            {
-                type: 'payment',
-                title: 'Payment Received',
-                message: 'Payment for INV-2023-002 has been confirmed.',
-                severity: 'info',
-                amount: 450.50,
-                userId: jane?.id
-            }
-        ]
-    });
-
-    // Seed Vehicle Classes & Pricing Engine
-    const vehicleClasses = [
-        { 
-            name: 'SMALL_VAN', 
-            maxWeight: 400.0, 
-            length: 1.0, 
-            width: 1.2, 
-            height: 1.0, 
-            baseFee: 35.00, 
-            mileage: 1.25,
-            desc: 'Small Van (1x1.2x1m)'
-        },
-        { 
-            name: 'MEDIUM_VAN', 
-            maxWeight: 800.0, 
-            length: 2.0, 
-            width: 1.2, 
-            height: 1.0, 
-            baseFee: 45.00, 
-            mileage: 1.45,
-            desc: 'Medium Van (2x1.2x1m)'
-        },
-        { 
-            name: 'LARGE_VAN', 
-            maxWeight: 1100.0, 
-            length: 3.0, 
-            width: 1.2, 
-            height: 1.7, 
-            baseFee: 65.00, 
-            mileage: 1.75,
-            desc: 'Large Van (3x1.2x1.7m)'
-        },
-        { 
-            name: 'HGV', 
-            maxWeight: 5000.0, 
-            length: 6.0, 
-            width: 2.4, 
-            height: 2.5, 
-            baseFee: 150.00, 
-            mileage: 3.50,
-            desc: 'HGV / Large Truck (6x2.4x2.5m)'
-        }
-    ];
-
-    for (const vc of vehicleClasses) {
-        await (prisma as any).vehicleClass.upsert({
-            where: { name: vc.name },
-            update: {
-                maxWeightKg: vc.maxWeight,
-                maxLengthCm: vc.length * 100, // Convert to CM
-                maxWidthCm: vc.width * 100,
-                maxHeightCm: vc.height * 100,
-                baseFee: vc.baseFee,
-                mileageRate: vc.mileage
-            },
-            create: {
-                name: vc.name,
-                maxWeightKg: vc.maxWeight,
-                maxLengthCm: vc.length * 100,
-                maxWidthCm: vc.width * 100,
-                maxHeightCm: vc.height * 100,
-                baseFee: vc.baseFee,
-                mileageRate: vc.mileage,
-                pricingRules: {
-                    create: [
-                        { name: 'Base Pickup Fee', type: 'BASE_FEE', amount: vc.baseFee },
-                        { name: 'Standard Mileage Rate', type: 'MILEAGE', amount: vc.mileage }
-                    ]
-                }
-            }
-        });
-    console.log('Ensured Vehicle Class: ${vc.name}');
-    }
-
-    // Seed Services
-    const services = [
+    // 1. Seed Services (10 Professional Services)
+    const servicesData = [
         {
             title: 'Same-Day Delivery',
             slug: 'same-day-delivery',
             tagline: 'Critical shipments delivered within hours',
             shortDescription: 'Urgent same-day delivery for time-sensitive business-critical shipments across the UK.',
-            fullDescription: 'Our Same-Day Delivery service ensures your most urgent shipments reach their destination on the same day they\'re dispatched. Ideal for last-minute orders, emergency supplies, and time-critical manufacturing components. We maintain a network of available drivers ready to pick up and deliver throughout the day.\n\nWith real-time GPS tracking and dedicated driver support, you\'ll know exactly when your shipment will arrive. Our same-day service covers major UK cities and surrounding regions, with guaranteed collection and delivery windows.\n\nWe handle everything from small parcels to full van loads, with professional drivers trained in careful handling and time management. Perfect for e-commerce, manufacturing, and service industries where delays cost money.',
-            keyBenefits: [
-                'Next-4-hour delivery window',
-                'Real-time GPS tracking',
-                'Professional, insured drivers',
-                'Damage-free guarantee',
-                'Competitive hourly rates',
-                ' Collections from anywhere in the UK',
-                'Electronic proof of delivery'
-            ],
+            fullDescription: 'Our Same-Day Delivery service ensures your most urgent shipments reach their destination on the same day they\'re dispatched. Ideal for last-minute orders, emergency supplies, and time-critical manufacturing components.',
+            keyBenefits: ['Next-4-hour delivery window', 'Real-time GPS tracking', 'Professional, insured drivers', 'Electronic proof of delivery'],
             featureBlocks: [],
             icon: 'Zap',
             seoTitle: 'Same-Day Delivery Service UK | CYVhub',
-            seoDescription: 'Urgent same-day delivery for business-critical shipments. Next 4-hour windows, real-time tracking, guaranteed delivery.',
+            seoDescription: 'Urgent same-day delivery for business-critical shipments.',
             displayOrder: 1,
-            isActive: true
+            isActive: true,
+            // Premium Fields for GlobalConfig
+            premium: {
+                summary: 'Fast and dependable same-day logistics support for urgent business consignments.',
+                heroHeading: 'Same-Day Delivery for Time-Critical Business Requirements',
+                heroSubtext: 'CYVhub helps businesses move urgent consignments quickly and professionally.',
+                overview: 'Same-day delivery is essential for businesses that cannot afford delays.',
+                benefits: ['Faster response', 'Reduced downtime', 'Improved continuity', 'Visibility'],
+                useCases: ['Urgent spare parts', 'Documents', 'Medical supplies'],
+                whyChooseUs: ['Speed', 'Accountability', 'B2B Focus'],
+                howItWorks: 'Assign, track, and deliver in one straight run.',
+                ctaHeading: 'Need an urgent delivery?',
+                ctaText: 'Contact CYVhub for responsive support.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8669966155'
+            }
         },
         {
             title: 'Scheduled Collections',
             slug: 'scheduled-collections',
-            tagline: 'Reliable weekly or daily collections on your schedule',
+            tagline: 'Reliable weekly or daily collections',
             shortDescription: 'Regular scheduled collection service tailored to your business demands.',
-            fullDescription: 'Scheduled Collections are perfect for businesses with predictable, recurring shipment volumes. Whether you need daily pick-ups or weekly collections, we coordinate with your operational schedule to ensure seamless logistics integration.\n\nOur scheduling system integrates with your order management, allowing automated collection requests based on your inventory levels and sales patterns. We collect at the same time each day or week, building reliability into your supply chain.\n\nIdeal for retail businesses, manufacturers, and service providers who need consistent outbound logistics. You benefit from guaranteed capacity, priority driver assignment, and stable pricing through our collection contracts.',
-            keyBenefits: [
-                'Predictable collection times',
-                'Weekly or daily service options',
-                'Dedicated driver routes',
-                'Volume-based pricing',
-                'Integration with your systems',
-                'Automated invoicing',
-                'Flexible contract terms'
-            ],
+            fullDescription: 'Scheduled Collections are perfect for businesses with predictable, recurring shipment volumes.',
+            keyBenefits: ['Predictable timing', 'Daily/Weekly options', 'Volume pricing'],
             featureBlocks: [],
-            icon: 'Clock',
+            icon: 'Calendar',
             seoTitle: 'Scheduled Collection Service | CYVhub',
-            seoDescription: 'Reliable weekly and daily collection service for businesses. Predictable logistics, dedicated routes, volume-based pricing.',
+            seoDescription: 'Reliable weekly and daily collection service.',
             displayOrder: 2,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Planned collection services for consistent business movement.',
+                heroHeading: 'Scheduled Collections That Support Consistent Operations',
+                heroSubtext: 'Simplify recurring collections with reliable logistics.',
+                overview: 'Create consistency in the movement of goods between sites.',
+                benefits: ['Consistency', 'Time saved', 'Better planning'],
+                useCases: ['Supplier pickups', 'Warehouse collections', 'Branch transfers'],
+                whyChooseUs: ['Structure', 'Reliability'],
+                howItWorks: 'Choose a pattern, we manage the timing.',
+                ctaHeading: 'Need recurring collections?',
+                ctaText: 'Talk to us about a tailored schedule.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1580674285054-bed31e145f59'
+            }
         },
         {
             title: 'Multi-Drop Business Routes',
             slug: 'multi-drop-business-routes',
             tagline: 'Optimized routes for multi-stop deliveries',
-            shortDescription: 'Efficient multi-drop delivery routes that maximize efficiency and minimize costs.',
-            fullDescription: 'Multi-Drop Business Routes consolidate multiple deliveries into optimized vehicle routes, reducing per-delivery costs and environmental impact. Perfect for businesses with customers spread across regional territories.\n\nWe use advanced route optimization algorithms to sequence your deliveries for maximum efficiency. A single vehicle handles 8-15 stops per route, reducing fuel consumption and delivery times compared to individual shipments.\n\nOur drivers are trained in professional customer service and secure signature collection. Real-time tracking keeps your customers informed, while our dispatch center monitors all vehicles for performance and on-time delivery.\n\nIdeal for wholesale distributors, service technicians, and field sales teams who need to visit multiple locations daily.',
-            keyBenefits: [
-                '8-15 stops per route optimized',
-                'Reduced per-delivery costs',
-                'Lower carbon footprint',
-                'Professional customer interaction',
-                'Real-time stop tracking',
-                'Digital signature proof',
-                'Performance analytics'
-            ],
+            shortDescription: 'Efficient multi-drop delivery routes that maximize efficiency.',
+            fullDescription: 'Consolidate multiple deliveries into optimized vehicle routes.',
+            keyBenefits: ['Consolidated stops', 'Lower costs', 'Route optimization'],
             featureBlocks: [],
-            icon: 'MapPin',
+            icon: 'Map',
             seoTitle: 'Multi-Drop Delivery Routes | CYVhub',
-            seoDescription: 'Optimized multi-stop delivery routes. Reduce costs, improve efficiency, serve more customers per route.',
+            seoDescription: 'Optimized multi-stop delivery routes for business.',
             displayOrder: 3,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Efficient multi-stop route delivery support for business locations.',
+                heroHeading: 'Efficient Multi-Drop Delivery Routes for Business Operations',
+                heroSubtext: 'Manage multiple deliveries on structured routes with improved efficiency.',
+                overview: 'Ideal for regular deliveries to multiple destinations.',
+                benefits: ['Efficiency', 'Resource optimization', 'Visibility'],
+                useCases: ['Retail replenishment', 'Parts routes', 'Trade runs'],
+                whyChooseUs: ['Cost reduction', 'Consistency'],
+                howItWorks: 'Plan stops, assign resource, track execution.',
+                ctaHeading: 'Need better route management?',
+                ctaText: 'Speak to us about multi-drop logistics.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c'
+            }
         },
         {
             title: 'Dedicated Contract Delivery',
             slug: 'dedicated-contract-delivery',
-            tagline: 'Exclusive drivers and vehicles for your business',
-            shortDescription: 'Dedicated delivery service with committed resources exclusively for your company.',
-            fullDescription: 'Dedicated Contract Delivery provides your business with exclusive access to assigned drivers and vehicles. Your dedicated team becomes an extension of your logistics department, with consistent service delivery and deep familiarity with your operational requirements.\n\nThis model is perfect for businesses with consistent volume that requires specialized handling or specific service requirements. Your dedicated driver learns your customer base, understands your product requirements, and builds relationships with your key accounts.\n\nWe provide flexibility with scalable vehicle options (small van to HGV) and can expand or contract your fleet as seasonal demand fluctuates. Your team receives priority support and customized reporting aligned to your KPIs.\n\nCommonly used by e-commerce companies, specialized retailers, and manufacturers with significant outbound logistics needs.',
-            keyBenefits: [
-                'Dedicated driver assignment',
-                'Exclusive vehicle fleet',
-                'Consistent service quality',
-                'Customized collection schedule',
-                'Direct performance accountability',
-                'Flexible fleet sizing',
-                'Priority customer support'
-            ],
+            tagline: 'Exclusive drivers and vehicles',
+            shortDescription: 'Dedicated delivery service with committed resources for your company.',
+            fullDescription: 'Your own delivery team as an extension of your business.',
+            keyBenefits: ['Exclusive assignment', 'Consistent quality', 'Scalable fleet'],
             featureBlocks: [],
-            icon: 'Truck',
-            seoTitle: 'Dedicated Contract Delivery Service | CYVhub',
-            seoDescription: 'Exclusive delivery fleet and drivers dedicated to your business. Consistent quality, customized service, scalable resources.',
+            icon: 'Briefcase',
+            seoTitle: 'Dedicated Contract Delivery | CYVhub',
+            seoDescription: 'Exclusive delivery fleet and drivers dedicated to your business.',
             displayOrder: 4,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Long-term delivery support tailored through dedicated arrangements.',
+                heroHeading: 'Dedicated Contract Delivery for Ongoing Business Needs',
+                heroSubtext: 'Structured, contract-based logistics designed for consistency.',
+                overview: 'Dependable long-term support rather than one-off transport.',
+                benefits: ['Predictability', 'Continuity', 'Operational planning'],
+                useCases: ['Branch deliveries', 'Contract routes', 'Trade programmes'],
+                whyChooseUs: ['Stability', 'Accountability'],
+                howItWorks: 'Set up a framework around your specific needs.',
+                ctaHeading: 'Need contract-based support?',
+                ctaText: 'Talk to us about a dedicated solution.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55'
+            }
         },
         {
             title: 'Pallet & Freight Movement',
-            slug: 'pallet-freight-movement',
-            tagline: 'Bulk shipments and palletized freight nationwide',
-            shortDescription: 'Full-truck and part-load freight services for heavy, bulky, and palletized goods.',
-            fullDescription: 'Pallet & Freight Movement handles larger shipments that require specialized equipment and professional handling. Whether you need a full truck (FTL), part load (PTL), or LTL services, we coordinate efficient freight consolidation to optimize your transportation costs.\n\nOur fleet includes standard flat-bed trucks, refrigerated vehicles, and bespoke solutions for oversized loads. All drivers are trained in safe loading, weight distribution, and secure cargo fastening.\n\nWe offer nationwide coverage with hub-and-spoke consolidation points for cost-effective part-load shipping. Your freight is tracked from collection through final delivery, with photographic evidence at each handling stage.\n\nPerfect for manufacturing, construction, retail, and wholesale businesses moving significant volumes between locations.',
-            keyBenefits: [
-                'Full and part-load options',
-                'Nationwide hub-and-spoke network',
-                'Refrigerated vehicle options',
-                'Specialist equipment available',
-                'Real-time freight tracking',
-                'Photo documentation',
-                'Competitive consolidation pricing'
-            ],
+            slug: 'pallet-and-freight-movement',
+            tagline: 'Bulk shipments and palletized freight',
+            shortDescription: 'Full-truck and part-load freight services for heavy goods.',
+            fullDescription: 'Handle larger shipments with specialized equipment.',
+            keyBenefits: ['FTL/PTL options', 'Nationwide network', 'Heavy load experts'],
             featureBlocks: [],
-            icon: 'Package',
-            seoTitle: 'Pallet & Freight Movement Services | CYVhub',
-            seoDescription: 'Full and part-load freight services. Palletized goods, bulk shipments, specialized equipment, nationwide delivery.',
+            icon: 'Truck',
+            seoTitle: 'Pallet & Freight Movement | CYVhub',
+            seoDescription: 'Professional transport for palletised goods and bulk freight.',
             displayOrder: 5,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Professional transport support for palletised goods and bulk consignments.',
+                heroHeading: 'Reliable Pallet and Freight Movement for supply chains',
+                heroSubtext: 'Move palletised goods and freight efficiently and professionally.',
+                overview: 'Essential for larger consignments and wholesale movement.',
+                benefits: ['Bulk support', 'Reliability', 'Coordinated handling'],
+                useCases: ['Warehouse runs', 'Manufacturing stock', 'Wholesale distribution'],
+                whyChooseUs: ['Coordination', 'Execution'],
+                howItWorks: 'Coordinate collection and route based on load size.',
+                ctaHeading: 'Need freight support?',
+                ctaText: 'Discuss a freight solution tailored to your business.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1509391366360-2e959784a276'
+            }
         },
         {
             title: 'Returns Logistics',
             slug: 'returns-logistics',
-            tagline: 'Streamlined reverse logistics and product returns',
-            shortDescription: 'Efficient handling of customer returns, refurbishment, and reverse supply chain logistics.',
-            fullDescription: 'Returns Logistics provides end-to-end management of reverse supply chains. We collect returns from end customers, sort by condition, and route items to refurbishment, recycling, or disposal as required.\n\nOur service reduces the complexity and cost of managing returned goods. We coordinate collection from customers, maintain secure chain-of-custody documentation, and process items according to your specifications.\n\nIdeal for e-commerce businesses managing high return volumes. We integrate with your returns portal, allowing customers to schedule collections and providing tracking for their return shipments.\n\nWe handle inspection, categorization, and disposition decisions based on your guidelines. Refurbished items can be restocked, while non-repairable items are responsibly recycled or disposed of.\n\nTypically reduces logistics costs by 25-40% compared to handling returns manually.',
-            keyBenefits: [
-                'Customer collection coordination',
-                'Automated return intake portal',
-                'Condition assessment',
-                'Refurbishment routing',
-                'Responsible disposal',
-                'Return tracking for customers',
-                'Cost reduction vs. manual handling'
-            ],
+            tagline: 'Streamlined reverse logistics',
+            shortDescription: 'Efficient handling of customer returns and reverse supply chain.',
+            fullDescription: 'Manage the flow of goods back to point of origin.',
+            keyBenefits: ['Asset recovery', 'Consolidated returns', 'Visibility'],
             featureBlocks: [],
-            icon: 'Recycle',
-            seoTitle: 'Returns Logistics & Reverse Supply Chain | CYVhub',
-            seoDescription: 'End-to-end returns management. Customer collections, inspection, refurbishment routing, responsible disposal.',
+            icon: 'ArrowLeftRight',
+            seoTitle: 'Returns Logistics | CYVhub',
+            seoDescription: 'Structured logistics support for returns and recovery flows.',
             displayOrder: 6,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Structured logistics support for returns, recovery, and reverse movement.',
+                heroHeading: 'Returns Logistics That Bring Structure to Reverse Flow',
+                heroSubtext: 'Manage returns with better visibility, control, and consistency.',
+                overview: 'Regain control of reverse movement and failed deliveries.',
+                benefits: ['Control', 'Reduced disruption', 'Asset recovery'],
+                useCases: ['Customer returns', 'Failed delivery recovery', 'Asset retrieval'],
+                whyChooseUs: ['Structure', 'Professionalism'],
+                howItWorks: 'Manage the collection and return tracking process.',
+                ctaHeading: 'Need a smarter approach to returns?',
+                ctaText: 'Talk to us about reverse logistics.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b'
+            }
         },
         {
             title: 'SLA-Based Delivery Service',
-            slug: 'sla-based-delivery',
-            tagline: 'Guaranteed delivery performance with SLA penalties',
-            shortDescription: 'Performance-backed delivery service with guaranteed SLA metrics and penalty clauses.',
-            fullDescription: 'SLA-Based Delivery Service provides the highest level of accountability with contractual service levels and performance penalties. We guarantee specific delivery times (e.g., 95% on-time delivery) and compensate you if we miss targets.\n\nThis service is designed for mission-critical deliveries where operational failures have significant business consequences. Common SLAs include on-time delivery percentage, damage rates, customer satisfaction scores, and response times for issues.\n\nWe provide detailed performance reporting, weekly reviews, and continuous improvement initiatives to maintain your SLAs. Our dispatch center prioritizes SLA deliveries and has backup drivers on standby.\n\nCommonly used by financial services, healthcare supply chains, and high-value retail where service failure directly impacts revenue or patient care.',
-            keyBenefits: [
-                'Contractual delivery guarantees',
-                'Performance penalties if missed',
-                'Detailed tracking and reporting',
-                'Weekly SLA reviews',
-                'Backup driver contingency',
-                'Proactive issue management',
-                'Priority dispatch routing'
-            ],
+            slug: 'sla-based-delivery-service',
+            tagline: 'Guaranteed performance metrics',
+            shortDescription: 'Performance-backed delivery service with agreed SLAs.',
+            fullDescription: 'Highest accountability with contractual service levels.',
+            keyBenefits: ['Performance guarantees', 'Weekly reviews', 'Priority dispatch'],
             featureBlocks: [],
             icon: 'ShieldCheck',
             seoTitle: 'SLA-Based Delivery Service | CYVhub',
-            seoDescription: 'Guaranteed delivery performance with contractual SLAs and penalty clauses. Mission-critical logistics support.',
+            seoDescription: 'Logistics support built around agreed service levels.',
             displayOrder: 7,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Delivery services structured around agreed standards and accountability.',
+                heroHeading: 'SLA-Based Delivery Services Built Around Expectations',
+                heroSubtext: 'Align logistics to your specific operational priorities.',
+                overview: 'Clear response windows and dependable execution.',
+                benefits: ['Accountability', 'Predictability', 'Performance control'],
+                useCases: ['Managed contracts', 'Healthcare ops', 'Critical routes'],
+                whyChooseUs: ['Standards', 'Confidence'],
+                howItWorks: 'Define parameters, we deliver through a managed framework.',
+                ctaHeading: 'Need SLA-based support?',
+                ctaText: 'Speak to us about an SLA model for your business.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f'
+            }
         },
         {
             title: 'Live Tracking & Proof of Delivery',
-            slug: 'live-tracking-pod',
-            tagline: 'Real-time tracking with digital proof of delivery',
-            shortDescription: 'Advanced live GPS tracking and integrated digital proof of delivery for complete visibility.',
-            fullDescription: 'Live Tracking & Proof of Delivery (POD) gives your business and customers complete visibility throughout the delivery journey. Real-time GPS tracking shows exact vehicle location, with estimated arrival times updated continuously.\n\nOur mobile POD system captures digital signature, photo evidence, delivery time, and driver notes at each stop. This creates a legally defensible record of delivery and addresses any customer disputes immediately.\n\nCustomers receive SMS/email notifications when the driver is 30 minutes away, at delivery, and upon completion. QR codes on parcels allow instant access to tracking information.\n\nPerfect for high-value deliveries, customer-facing businesses, and operations where accountability is critical. Integrates with your inventory and customer systems for seamless status updates.\n\nReduces delivery disputes by 95% compared to traditional methods.',
-            keyBenefits: [
-                'Real-time GPS tracking',
-                'Digital signature capture',
-                'Photo evidence at delivery',
-                'Customer SMS/email notifications',
-                'QR-code enabled tracking',
-                'Dispute resolution documentation',
-                'Integration with your systems'
-            ],
+            slug: 'live-tracking-proof-of-delivery',
+            tagline: 'Real-time visibility and PODs',
+            shortDescription: 'Advanced GPS tracking and integrated digital proof of delivery.',
+            fullDescription: 'Complete visibility throughout the delivery journey.',
+            keyBenefits: ['GPS tracking', 'Digital signatures', 'Photo evidence'],
             featureBlocks: [],
             icon: 'Target',
-            seoTitle: 'Live Tracking & Proof of Delivery | CYVhub',
-            seoDescription: 'Real-time GPS tracking and digital proof of delivery. Complete visibility, customer notifications, dispute resolution.',
+            seoTitle: 'Live Tracking & POD | CYVhub',
+            seoDescription: 'Real-time visibility and proof of delivery support.',
             displayOrder: 8,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Real-time visibility and status updates that keep you informed.',
+                heroHeading: 'Live Tracking and Proof of Delivery for Visibility',
+                heroSubtext: 'Gain better visibility with real-time tracking and POD records.',
+                overview: 'Confidence and confirmation at every stage.',
+                benefits: ['Transparency', 'Communication', 'Accountability'],
+                useCases: ['Time-sensitive jobs', 'Client-facing work', 'High-value items'],
+                whyChooseUs: ['Confidence', 'Communication'],
+                howItWorks: 'Track progress live and capture POD on completion.',
+                ctaHeading: 'Need better visibility?',
+                ctaText: 'Contact us about tracking and POD support.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8669966155'
+            }
         },
         {
             title: 'Account-Based Invoicing',
             slug: 'account-based-invoicing',
-            tagline: 'Consolidated monthly invoicing for business accounts',
-            shortDescription: 'Flexible invoicing solutions for large businesses with multiple locations and volume discounts.',
-            fullDescription: 'Account-Based Invoicing consolidates all your logistics transactions into a single monthly invoice with volume-based discounts. Perfect for large businesses with multiple departments, locations, or franchise operations.\n\nWe offer flexible billing arrangements including cost-per-delivery, cost-per-km, or fixed monthly contracts. Detailed line-item invoicing shows breakdown by location, service type, and cost center for easy accounting integration.\n\nAutomated invoicing integrates with your accounting software (Sage, Xero, QuickBooks), reducing manual data entry and accelerating month-end close processes.\n\nLarge volume accounts receive tiered discounts, dedicated account management, and custom reporting. Payment terms can be negotiated from C.O.D. to 60-day net accounts depending on creditworthiness.\n\nCommon for national retailers, logistics service providers, and multi-location service businesses.',
-            keyBenefits: [
-                'Consolidated monthly invoicing',
-                'Volume-based discount tiers',
-                'Flexible billing arrangements',
-                'Accounting software integration',
-                'Detailed cost center reporting',
-                'Negotiable payment terms',
-                'Dedicated account management'
-            ],
+            tagline: 'Structured billing for business accounts',
+            shortDescription: 'Consolidated monthly invoicing and volume discounts.',
+            fullDescription: 'Simplify repeat logistics billing and financial administration.',
+            keyBenefits: ['Consolidated billing', 'Volume discounts', 'Accounting integration'],
             featureBlocks: [],
             icon: 'FileText',
             seoTitle: 'Account-Based Invoicing | CYVhub',
-            seoDescription: 'Consolidated invoicing for businesses. Volume discounts, accounting integration, detailed reporting.',
+            seoDescription: 'Business-friendly invoicing for account customers.',
             displayOrder: 9,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Structured billing and payment management for business accounts.',
+                heroHeading: 'Account-Based Invoicing for Billing Control',
+                heroSubtext: 'Simplify repeat logistics billing and improve administration.',
+                overview: 'A structured model that supports ongoing delivery arrangements.',
+                benefits: ['Easy management', 'Reduced admin', 'Better processing'],
+                useCases: ['Repeat customers', 'Contract clients', 'Multi-job accounts'],
+                whyChooseUs: ['Commercial ease', 'Professional workflow'],
+                howItWorks: 'Logistics support handled under a professional account structure.',
+                ctaHeading: 'Need structured invoicing?',
+                ctaText: 'Talk to us about account-based billing.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1454165833767-1246e7f2269a'
+            }
         },
         {
             title: 'Route Planning & Dispatch Management',
-            slug: 'route-planning-dispatch',
-            tagline: 'Advanced dispatch system with AI-powered route optimization',
-            shortDescription: 'Professional dispatch management with AI optimization for efficient multi-stop routes.',
-            fullDescription: 'Route Planning & Dispatch Management uses advanced algorithms to automatically optimize delivery routes based on real-time traffic, customer time windows, vehicle capacity, and driver availability.\n\nOur system analyzes historical delivery data to predict optimal routes and continuously adapts as conditions change. Machine learning models improve efficiency over time, with typical savings of 15-25% in distance and fuel consumption.\n\nDrivers receive turn-by-turn navigation with alternate route options if traffic develops. The system automatically handles dynamic requests (same-day additions, cancellations, re-sequences) without requiring manual intervention.\n\nDispatch staff monitor all vehicles in real-time with exception alerts for late deliveries, traffic incidents, or customer issues. Mobile alerts notify customers of delay updates automatically.\n\nPerfect for businesses with complex logistics needs like delivery networks, service technician fleets, and field sales teams managing 50+ daily deliveries.',
-            keyBenefits: [
-                'AI-powered route optimization',
-                'Real-time traffic adaptation',
-                'Time-window compliance',
-                'Dynamic request handling',
-                'Vehicle utilization maximization',
-                'Fuel savings 15-25%',
-                'Exception-based alerts'
-            ],
+            slug: 'route-planning-dispatch-management',
+            tagline: 'Organized route and dispatch control',
+            shortDescription: 'Professional route planning and dispatch coordination.',
+            fullDescription: 'Improve delivery flow and manage operations more effectively.',
+            keyBenefits: ['Efficient routing', 'Dispatch control', 'Operational visibility'],
             featureBlocks: [],
-            icon: 'BarChart3',
-            seoTitle: 'Route Planning & Dispatch Management | CYVhub',
-            seoDescription: 'AI-powered dispatch optimization. Real-time route management, time-window compliance, fuel efficiency.',
+            icon: 'Settings',
+            seoTitle: 'Route Planning & Dispatch | CYVhub',
+            seoDescription: 'Coordinated route planning and dispatch support.',
             displayOrder: 10,
-            isActive: true
+            isActive: true,
+            premium: {
+                summary: 'Coordinated route planning and dispatch support for better flow.',
+                heroHeading: 'Route Planning and Dispatch for Smarter Operations',
+                heroSubtext: 'Manage logistics more effectively through organized planning.',
+                overview: 'Structured support for frequent or complex operations.',
+                benefits: ['Efficiency', 'Coordination', 'Scalability'],
+                useCases: ['Daily routes', 'Multi-drop planning', 'Managed distribution'],
+                whyChooseUs: ['Reliability', 'Control'],
+                howItWorks: 'Coordinate planning, allocation, and oversight.',
+                ctaHeading: 'Need smarter planning?',
+                ctaText: 'Contact us about route and dispatch solutions.',
+                ctaButtonText: 'Contact Us',
+                ctaButtonUrl: '/contact',
+                heroImageUrl: 'https://images.unsplash.com/photo-1542296332-2e4473faf563'
+            }
         }
     ];
 
-    for (const service of services) {
-        await (prisma as any).service.upsert({
-            where: { slug: service.slug },
-            update: service,
-            create: service
-        });
-        console.log(`Seeded Service: ${service.title}`);
+    for (const s of servicesData) {
+        const { premium, ...dbData } = s;
+        await prisma.service.create({ data: dbData });
     }
 
-    // Seed Industries
-    const industries = [
+    // 2. Seed Industries (8 Premium Industries - UPDATED COPY)
+    const industriesData = [
         {
-            title: 'Medical & Healthcare',
-            slug: 'medical-healthcare',
-            tagline: 'Specialist logistics for healthcare and pharmaceutical supply chains',
-            shortDescription: 'Temperature-controlled and secure delivery for medical supplies, pharmaceuticals, and healthcare products.',
-            fullDescription: 'The medical and healthcare sector demands absolute reliability, temperature control, and strict compliance with regulatory requirements. We provide specialized logistics for hospitals, clinics, pharmacies, and healthcare suppliers.\n\nOur temperature-controlled vehicles maintain precise conditions for pharmaceutical products, vaccines, and perishable medical supplies. All drivers undergo DBS checks and receive healthcare-specific training.\n\nWe maintain comprehensive audit trails for regulatory compliance and can handle controlled substances with appropriate security measures. Our understanding of healthcare supply chains includes emergency protocols for urgent shipments (blood products, transplant organs).\n\nQuick turnaround times ensure medical supplies reach healthcare facilities when needed, minimizing disruption to patient care. We work with major pharmaceutical distributors and private healthcare providers.',
+            title: "Medical & Healthcare",
+            slug: "medical-healthcare",
+            tagline: "Precision Logistics for Life-Critical Deliveries",
+            shortDescription: "Time-critical, compliant delivery for medical supplies, diagnostics, and healthcare equipment — handled with the care your patients deserve.",
+            fullDescription: "Healthcare providers operate under zero tolerance for delays. Medical consumables, surgical kits, diagnostic samples, pharmaceutical supplies, and sterile equipment must arrive on time, intact, and within strict handling parameters. A missed or mishandled delivery can have direct consequences for patient safety and clinical outcomes. Standard courier networks were not built for these stakes — they lack the protocols, the accountability, and the urgency that healthcare logistics demands.",
             keyBenefits: [
-                'Temperature-controlled vehicles',
-                'DBS-checked drivers',
-                'Regulatory compliance documentation',
-                'Emergency handling protocols',
-                'Chain-of-custody tracking',
-                'Healthcare training',
-                'Secure handling for controlled substances'
+                "Same-day urgent delivery for surgical and clinical supplies",
+                "SLA-guaranteed time windows for clinical scheduling",
+                "Live GPS tracking with real-time visibility",
+                "Electronic POD with signature and timestamp",
+                "Cold-chain handling for temperature-sensitive consignments",
+                "Fully auditable records for CQC compliance",
+                "Dedicated account management for NHS and private clients"
             ],
             featureBlocks: [],
-            icon: 'BriefcaseMedical',
-            seoTitle: 'Healthcare & Pharmaceutical Logistics | CYVhub',
-            seoDescription: 'Specialist healthcare logistics. Temperature control, regulatory compliance, urgent medical supply delivery.',
+            icon: "heart-pulse",
+            seoTitle: "Medical & Healthcare Logistics | CYVhub",
+            seoDescription: "Time-critical, SLA-guaranteed delivery for NHS trusts, private clinics, and medical device companies across the UK. Live tracking, cold-chain handling, full audit trails.",
             displayOrder: 1,
-            isActive: true
+            isActive: true,
+            premium: {
+                subtitle: "Precision Logistics for Life-Critical Deliveries",
+                description: "CYVhub provides dedicated same-day and scheduled medical logistics across the UK, purpose-built for NHS trusts, private hospitals, dental practices, care homes, clinical laboratories, and medical device manufacturers. Every driver handling a medical consignment is briefed on handling requirements, and every delivery is treated with the same precision expected in a clinical environment.\n\nOur SLA-based delivery tiers guarantee defined time windows, giving clinical teams the certainty they need to plan procedures, schedule treatments, and manage patient flow. Live tracking and electronic proof of delivery provide real-time visibility and a fully auditable delivery record — essential for CQC compliance and internal governance.\n\nWe support cold-chain handling for temperature-sensitive consignments including biological samples, vaccines, and pharmaceutical products. Every collection and delivery is logged with GPS confirmation, recipient signature, timestamp, and condition notes — a complete traceability record from dispatch to receipt.\n\nAccount-based invoicing and dedicated account management give healthcare procurement teams consolidated billing, per-department cost coding, and a single point of contact for all logistics queries — eliminating the complexity of managing multiple carriers across multiple sites.",
+                layoutTheme: 'center',
+                accentColor: "#2563EB",
+                overview: "Healthcare providers operate under zero tolerance for delays. Medical consumables, surgical kits, diagnostic samples, pharmaceutical supplies, and sterile equipment must arrive on time, intact, and within strict handling parameters. A missed or mishandled delivery can have direct consequences for patient safety and clinical outcomes. Standard courier networks were not built for these stakes — they lack the protocols, the accountability, and the urgency that healthcare logistics demands.",
+                challenges: [
+                    { icon: 'ShieldAlert', title: 'Zero Tolerance', desc: 'Medical deliveries cannot wait.' },
+                    { icon: 'Thermometer', title: 'Temp Control', desc: 'Cold-chain integrity is non-negotiable.' }
+                ],
+                features: [
+                    { title: 'Validated Fleet', desc: 'Logistics in temperature-validated vehicles.', icon: 'Thermometer', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae' },
+                    { title: 'GXP Training', desc: 'Drivers trained in clinical handling.', icon: 'UserCheck', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118' }
+                ],
+                useCases: [
+                    { title: 'Pathology', desc: 'Regular lab runs.', badge: 'CRITICAL' },
+                    { title: 'Pharmacy', desc: 'Daily replenishment.', badge: 'DAILY' }
+                ],
+                stats: [{ label: 'On-Time', value: '99.9%' }, { label: 'Audit Score', value: '100%' }],
+                typicalServices: ['Diagnostic samples', 'Pharma delivery', 'Surgical kits'],
+                whyChooseUs: ['Clinical expertise', 'Emergency response'],
+                caseStudyTitle: 'Healthcare Success',
+                caseStudyQuote: 'Absolute reliability for our clinical teams.',
+                caseStudyAuthor: 'NHS Ops Director',
+                ctaHeading: 'Secure your medical supply chain',
+                ctaText: 'Partner with healthcare logistics specialists.',
+                ctaButtonText: 'Contact Medical Team',
+                heroImageUrl: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d',
+                benefits: [
+                    "Same-day urgent delivery for surgical and clinical supplies",
+                    "SLA-guaranteed time windows for clinical scheduling",
+                    "Live GPS tracking with real-time visibility",
+                    "Electronic POD with signature and timestamp",
+                    "Cold-chain handling for temperature-sensitive consignments",
+                    "Fully auditable records for CQC compliance",
+                    "Dedicated account management for NHS and private clients"
+                ],
+                metaTitle: "Medical & Healthcare Logistics | CYVhub",
+                metaDesc: "Time-critical, SLA-guaranteed delivery for NHS trusts, private clinics, and medical device companies across the UK. Live tracking, cold-chain handling, full audit trails."
+            }
         },
         {
-            title: 'Construction & Trades',
-            slug: 'construction-trades',
-            tagline: 'Robust logistics for building materials, tools, and site supplies',
-            shortDescription: 'Heavy-duty delivery service for construction materials, tools, and building site supplies.',
-            fullDescription: 'Construction and trades businesses need logistics that handles heavy materials, awkward shapes, and tight site delivery windows. We specialize in delivering everything from bricks and timber to scaffolding and heavy machinery.\n\nOur vehicles include flatbeds for materials, enclosed vans for tools and equipment, and specialized vehicles with tail lifts for heavy items. Drivers trained in site safety and material handling ensure safe delivery to busy construction sites.\n\nWe coordinate with site managers to ensure deliveries align with construction schedules, minimizing site delays and congestion. Early morning and weekend delivery options accommodate site requirements.\n\nCommon services include bulk building material consolidation, tool delivery to multiple sites, and equipment rental delivery. We handle everything from small electrician supply runs to major material shipments.',
+            title: "Construction & Trades",
+            slug: "construction-trades",
+            tagline: "Keeping Your Site Moving, Every Hour of the Day",
+            shortDescription: "Reliable, site-ready delivery of tools, materials, and equipment to active construction sites — timed to your programme, not ours.",
+            fullDescription: "Construction projects run on tight programmes and tighter margins. A delayed delivery of fixings, cable, specialist tools, or structural materials means idle operatives, missed milestones, and potential contractual penalties. Sites are often difficult to access, loads are frequently heavy or awkward, and delivery windows are dictated by site management — not by carrier convenience.",
             keyBenefits: [
-                'Heavy-duty vehicle fleet',
-                'Tail-lift equipment',
-                'Flatbed and enclosed options',
-                'Early morning/weekend delivery',
-                'Site safety trained drivers',
-                'Material consolidation',
-                'Multiple site delivery efficiency'
+                "Site-access-aware delivery scheduling",
+                "Multi-drop routes for multi-site contractors",
+                "Heavy and awkward load handling",
+                "Pallet and freight with tail-lift capability",
+                "Dedicated contract runs aligned to programme",
+                "Live tracking for site managers",
+                "Same-day options for urgent material shortages"
             ],
             featureBlocks: [],
-            icon: 'Factory',
-            seoTitle: 'Construction Material Delivery | CYVhub',
-            seoDescription: 'Heavy-duty construction logistics. Building materials, site supplies, equipment delivery to construction sites.',
+            icon: "hard-hat",
+            seoTitle: "Construction & Trades Logistics | CYVhub",
+            seoDescription: "Site-ready delivery for construction contractors across the UK. Multi-drop routes, pallet freight, and dedicated contract logistics.",
             displayOrder: 2,
-            isActive: true
+            isActive: true,
+            premium: {
+                subtitle: "Keeping Your Site Moving, Every Hour of the Day",
+                description: "CYVhub delivers to active construction sites, merchant yards, and trade depots across the UK using a fleet equipped for heavy, bulky, and awkward loads. We coordinate with site managers to work within access restrictions and unloading windows — ensuring every delivery arrives without disruption to site operations.\n\nOur multi-drop business routes are built for contractors managing multiple active sites simultaneously. A single scheduled run can cover all your project locations efficiently — reducing transport costs and vehicle movements without compromising reliability.\n\nDedicated contract delivery means we become a true extension of your supply chain. We learn your project schedules, material call-off patterns, and site-specific requirements — so your programme stays on track regardless of supply complexity.\n\nOur pallet and freight movement capability handles your heaviest consignments — structural fixings, bulk materials, and plant equipment — using vehicles with tail-lift capability. Every load is secured, tracked, and delivered with proof of receipt.",
+                layoutTheme: 'center',
+                accentColor: "#D97706",
+                overview: "Construction projects run on tight programmes and tighter margins. A delayed delivery of fixings, cable, specialist tools, or structural materials means idle operatives, missed milestones, and potential contractual penalties. Sites are often difficult to access, loads are frequently heavy or awkward, and delivery windows are dictated by site management — not by carrier convenience.",
+                challenges: [
+                    { icon: 'HardHat', title: 'Site Access', desc: 'Restricted access and safety protocols.' },
+                    { icon: 'Weight', title: 'Heavy Loads', desc: 'Awkward dimensions and heavy materials.' }
+                ],
+                features: [
+                    { title: 'Tail-Lift Fleet', desc: 'Vehicles equipped for heavy offloading.', icon: 'Truck', imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952' },
+                    { title: 'Site Compliance', desc: 'Drivers trained in CSCS and site protocols.', icon: 'CheckCircle', imageUrl: 'https://images.unsplash.com/photo-1541888086425-d81bb19240f5' }
+                ],
+                useCases: [
+                    { title: 'Material Runs', desc: 'Urgent bricks/timber.', badge: 'URGENT' },
+                    { title: 'Tool Recovery', desc: 'Site-to-site transfers.', badge: 'SECURE' }
+                ],
+                stats: [{ label: 'Site Success', value: '99.5%' }, { label: 'Avg Collection', value: '45m' }],
+                typicalServices: ['Equipment replacement', 'Material consolidation'],
+                whyChooseUs: ['Heavy load specialists', 'Timed site windows'],
+                caseStudyTitle: 'Site Success',
+                caseStudyQuote: 'They understand site windows perfectly.',
+                caseStudyAuthor: 'Project Manager',
+                ctaHeading: 'Keep your project on schedule',
+                ctaText: 'Get heavy-duty support today.',
+                ctaButtonText: 'Get Construction Quote',
+                heroImageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd',
+                benefits: [
+                    "Site-access-aware delivery scheduling",
+                    "Multi-drop routes for multi-site contractors",
+                    "Heavy and awkward load handling",
+                    "Pallet and freight with tail-lift capability",
+                    "Dedicated contract runs aligned to programme",
+                    "Live tracking for site managers",
+                    "Same-day options for urgent material shortages"
+                ],
+                metaTitle: "Construction & Trades Logistics | CYVhub",
+                metaDesc: "Site-ready delivery for construction contractors across the UK. Multi-drop routes, pallet freight, and dedicated contract logistics."
+            }
         },
         {
-            title: 'IT Spare Parts & Field Service',
-            slug: 'it-spare-parts-field-service',
-            tagline: 'Express delivery for IT equipment and field service technician support',
-            shortDescription: 'Fast, reliable delivery for IT spare parts, components, and technician support logistics.',
-            fullDescription: 'IT and technology businesses operate on tight timelines where equipment downtime directly impacts business operations and revenue. We understand the urgency of IT logistics and provide express delivery for spare parts and field service support.\n\nOur network ensures rapid delivery of replacement parts to corporate offices, data centers, and customer sites. We handle sensitive electronics with appropriate packaging and anti-static protection.\n\nSupporting field service technicians is our core competency. We coordinate technician visits with parts delivery, ensuring technicians arrive with all necessary components to complete jobs first-time. This reduces customer site visits and accelerates issue resolution.\n\nWe integrate with your inventory and ticketing systems, automatically routing parts to jobs and confirming technician arrival. Same-day delivery is available for London and major UK cities.\n\nCommon for IT support companies, hardware manufacturers, and corporate IT departments.',
+            title: "IT Spare Parts & Field Service",
+            slug: "it-spare-parts-field-service",
+            tagline: "Zero Downtime Starts with the Right Part, Right Now",
+            shortDescription: "Rapid, trackable delivery of IT spare parts and field service kits to engineers across the UK — because every minute of downtime costs money.",
+            fullDescription: "Field service engineers depend on receiving the correct part at the right location before stepping on site. IT failures are business-critical — every hour of downtime has a direct measurable cost. SLA clocks start when tickets open. Standard next-day services cannot support break-fix response requirements.",
             keyBenefits: [
-                'Express same-day delivery available',
-                'Technician-coordinated logistics',
-                'Anti-static secure packaging',
-                'Inventory system integration',
-                'Multiple site delivery optimization',
-                'Technician appointment coordination',
-                'First-time fix success rate focus'
+                "Same-day and SLA-tier delivery for break-fix",
+                "Real-time tracking for dispatch optimisation",
+                "Electronic POD before engineer departure",
+                "Returns logistics for warranty and loan units",
+                "Per-job cost coding for client chargeback",
+                "Multi-drop routes for field engineers",
+                "UK-wide coverage including remote locations"
             ],
             featureBlocks: [],
-            icon: 'Monitor',
-            seoTitle: 'IT Parts & Field Service Delivery | CYVhub',
-            seoDescription: 'Express IT spare parts delivery. Field service support coordination, technician logistics, same-day delivery.',
+            icon: "cpu",
+            seoTitle: "IT Spare Parts & Field Service Logistics | CYVhub",
+            seoDescription: "Same-day and SLA-based delivery of IT spare parts to field engineers across the UK. Real-time tracking, POD, and returns logistics.",
             displayOrder: 3,
-            isActive: true
+            isActive: true,
+            premium: {
+                subtitle: "Zero Downtime Starts with the Right Part, Right Now",
+                description: "CYVhub specialises in same-day and SLA-tier delivery of IT spare parts, replacement hardware, and field service kits to engineers and client sites across the UK. Our collection and delivery commitment starts the moment your support ticket opens.\n\nLive tracking gives field service dispatch teams real-time visibility of every part in transit. Engineers are updated dynamically on ETA, and electronic proof of delivery confirms receipt before they depart their base — eliminating wasted journeys.\n\nWe support MSPs, break-fix contractors, and hardware distributors with account-based invoicing and per-job cost coding — making client chargeback and internal cost allocation straightforward.\n\nOur returns logistics capability handles the reverse flow of failed components, warranty returns, and loan unit recoveries with full tracking and item-level confirmation at every stage.",
+                layoutTheme: 'center',
+                accentColor: "#0891B2",
+                overview: "Field service engineers depend on receiving the correct part at the right location before stepping on site. IT failures are business-critical — every hour of downtime has a direct measurable cost. SLA clocks start when tickets open. Standard next-day services cannot support break-fix response requirements.",
+                challenges: [
+                    { icon: 'Cpu', title: 'Fragility', desc: 'Sensitive parts need specialized handling.' },
+                    { icon: 'Zap', title: 'SLA Pressure', desc: '4-hour response windows are standard.' }
+                ],
+                features: [
+                    { title: 'Technician Sync', desc: 'Coordinate arrival with engineers.', icon: 'Users', imageUrl: 'https://images.unsplash.com/photo-1531297172867-4d6537b9c9f4' },
+                    { title: 'Secure Transit', desc: 'High-value asset protection.', icon: 'Shield', imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b' }
+                ],
+                useCases: [
+                    { title: 'Server Swap', desc: 'Mission-critical hardware.', badge: 'CRITICAL' },
+                    { title: 'Deployment', desc: 'New laptop rollouts.', badge: 'VOLUME' }
+                ],
+                stats: [{ label: 'SLA Compliance', value: '99.7%' }, { label: 'Security', value: '100%' }],
+                typicalServices: ['Data center relocation', 'Hardware swap-outs'],
+                whyChooseUs: ['Tech-sector expertise', '24/7 dispatch'],
+                caseStudyTitle: 'Tech Success',
+                caseStudyQuote: 'They speak the language of IT support.',
+                caseStudyAuthor: 'Service Manager',
+                ctaHeading: 'Minimize your hardware downtime',
+                ctaText: 'Partner with tech logistics experts.',
+                ctaButtonText: 'Contact IT Team',
+                heroImageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475',
+                benefits: [
+                    "Same-day and SLA-tier delivery for break-fix",
+                    "Real-time tracking for dispatch optimisation",
+                    "Electronic POD before engineer departure",
+                    "Returns logistics for warranty and loan units",
+                    "Per-job cost coding for client chargeback",
+                    "Multi-drop routes for field engineers",
+                    "UK-wide coverage including remote locations"
+                ],
+                metaTitle: "IT Spare Parts & Field Service Logistics | CYVhub",
+                metaDesc: "Same-day and SLA-based delivery of IT spare parts to field engineers across the UK. Real-time tracking, POD, and returns logistics."
+            }
         },
         {
-            title: 'Manufacturing & Wholesale',
-            slug: 'manufacturing-wholesale',
-            tagline: 'B2B logistics for manufacturing and wholesale distribution',
-            shortDescription: 'High-volume distribution and manufacturing logistics with consolidation and warehousing options.',
-            fullDescription: 'Manufacturing and wholesale businesses operate at scale, requiring efficient logistics that handles high volumes while maintaining cost control. We provide tailored solutions for manufacturers distributing products and wholesalers managing inventory across multiple retail locations.\n\nOur services include finished goods consolidation, cross-docking, and hub-and-spoke distribution networks. We optimize shipping costs through part-load consolidation, reducing per-unit delivery costs significantly.\n\nFor manufacturers, we handle new product launches with rapid inventory distribution to retail partners, managing time-sensitive delivery windows and promotional support.\n\nWholesale businesses benefit from our inventory visibility and route optimization, ensuring product reaches retail partners in optimal condition. We can provide dedicated account management and implement special handling for fragile products.\n\nScalable solutions grow with your business, from 5-van fleets to 100+ vehicles managing national distribution.',
+            title: "Manufacturing & Wholesale",
+            slug: "manufacturing-wholesale",
+            tagline: "Powering Your Supply Chain from Factory to Customer",
+            shortDescription: "Dependable B2B delivery for manufacturers and wholesalers — scheduled runs, pallet movements, and contract logistics that keep production and orders flowing.",
+            fullDescription: "A single missed inbound delivery can halt a production line. A delayed outbound order can damage a trade customer relationship built over years. Manufacturers and wholesalers need logistics partners who understand shift patterns, call-off schedules, and the ripple effect of every late delivery.",
             keyBenefits: [
-                'High-volume consolidation',
-                'Hub-and-spoke network',
-                'Cross-docking capabilities',
-                'Dedicated account management',
-                'Fragile product specialization',
-                'National retail distribution',
-                'Scalable fleet options'
+                "Contract runs aligned to production schedules",
+                "Pallet and bulk freight capability",
+                "Scheduled factory and warehouse collections",
+                "Multi-drop routes for wholesale customers",
+                "Account invoicing with job-level reporting",
+                "Route planning and dispatch integration",
+                "Scalable capacity for seasonal peaks"
             ],
             featureBlocks: [],
-            icon: 'Factory',
-            seoTitle: 'Manufacturing & Wholesale Distribution | CYVhub',
-            seoDescription: 'B2B logistics and distribution. Consolidation, retail delivery, manufacturing support, wholesale optimization.',
+            icon: "factory",
+            seoTitle: "Manufacturing & Wholesale Logistics | CYVhub",
+            seoDescription: "Dedicated contract delivery and pallet freight for UK manufacturers and wholesalers. Scheduled collections and account invoicing.",
             displayOrder: 4,
-            isActive: true
+            isActive: true,
+            premium: {
+                subtitle: "Powering Your Supply Chain from Factory to Customer",
+                description: "CYVhub provides dedicated contract delivery and scheduled collection services built around manufacturing shift patterns and wholesale dispatch schedules — integrating into your operation as a true logistics partner.\n\nPallet and freight movement capability handles bulk consignments, raw material inbound deliveries, and finished goods distribution using curtainsiders and flatbeds with tail-lift options.\n\nRoute planning and multi-drop delivery tools give your team real-time visibility and control, optimising sequences daily across your wholesale customer base.\n\nAccount-based invoicing with job-level reporting simplifies cost allocation for finance teams, and we scale capacity for seasonal peaks without compromising service.",
+                layoutTheme: 'center',
+                accentColor: "#1E40AF",
+                overview: "A single missed inbound delivery can halt a production line. A delayed outbound order can damage a trade customer relationship built over years. Manufacturers and wholesalers need logistics partners who understand shift patterns, call-off schedules, and the ripple effect of every late delivery.",
+                challenges: [
+                    { icon: 'BarChart', title: 'Scaling', desc: 'Managing 100+ retail locations.' },
+                    { icon: 'Layers', title: 'Inventory Flow', desc: 'Just-in-time material intake.' }
+                ],
+                features: [
+                    { title: 'Trunking', desc: 'Hub-to-hub scheduled movement.', icon: 'Repeat', imageUrl: 'https://images.unsplash.com/photo-1565514020179-026b92b84bb6' },
+                    { title: 'Dedicated Fleet', desc: 'Guaranteed capacity during peaks.', icon: 'Shield', imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8669966155' }
+                ],
+                useCases: [
+                    { title: 'Retail Launch', desc: 'Simultaneous nationwide drops.', badge: 'VOLUME' },
+                    { title: 'JIT Intake', desc: 'Production line components.', badge: 'JIT' }
+                ],
+                stats: [{ label: 'National Coverage', value: '100%' }, { label: 'Peak Capacity', value: '500+' }],
+                typicalServices: ['JIT support', 'Bulk replenishment'],
+                whyChooseUs: ['Scale readiness', 'Consolidated billing'],
+                caseStudyTitle: 'Supply Success',
+                caseStudyQuote: 'They scale perfectly with our peaks.',
+                caseStudyAuthor: 'Logistics Director',
+                ctaHeading: 'Optimize your distribution',
+                ctaText: 'Built for the scale of manufacturing.',
+                ctaButtonText: 'Get Wholesale Quote',
+                heroImageUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158',
+                benefits: [
+                    "Contract runs aligned to production schedules",
+                    "Pallet and bulk freight capability",
+                    "Scheduled factory and warehouse collections",
+                    "Multi-drop routes for wholesale customers",
+                    "Account invoicing with job-level reporting",
+                    "Route planning and dispatch integration",
+                    "Scalable capacity for seasonal peaks"
+                ],
+                metaTitle: "Manufacturing & Wholesale Logistics | CYVhub",
+                metaDesc: "Dedicated contract delivery and pallet freight for UK manufacturers and wholesalers. Scheduled collections and account invoicing."
+            }
         },
         {
-            title: 'AOG & Aviation',
-            slug: 'aog-aviation',
-            tagline: 'Time-critical aircraft on-ground logistics and aviation support',
-            shortDescription: 'Emergency logistics for aircraft on-ground (AOG) situations and aviation industry support.',
-            fullDescription: 'Aircraft on-ground (AOG) situations are high-pressure emergencies where every hour of aircraft downtime costs airlines tens of thousands of pounds. We provide emergency logistics support for critical spare parts and components needed to return aircraft to service.\n\nOur AOG-trained team coordinates with airlines and maintenance contractors to identify, source, and deliver critical parts with absolute minimum delay. We maintain relationships with parts distributors globally and can arrange international sourcing when needed.\n\nDedicated AOG drivers operate 24/7 with priority access to airport facilities and maintenance hangars. We understand airport security protocols and can expedite paperwork for international parts imports.\n\nBeyond AOG, we support aviation supply chains for routine maintenance, cabin supplies, catering, and passenger services. Our drivers have aviation security clearance and training.\n\nCommon for airlines, maintenance contractors, parts distributors, and aviation support companies.',
+            title: "AOG & Aviation",
+            slug: "aog-aviation",
+            tagline: "Aircraft on Ground Won't Wait — Neither Do We",
+            shortDescription: "Mission-critical AOG logistics delivering aviation components anywhere in the UK within hours — because a grounded aircraft costs thousands per minute.",
+            fullDescription: "An AOG event is among the most financially damaging situations in aviation. Every minute a commercial or private aircraft sits grounded translates directly into lost revenue, passenger disruption, and slot penalties. Components must be delivered with absolute urgency, correct documentation, and an unbroken chain of custody.",
             keyBenefits: [
-                '24/7 emergency response',
-                'AOG-trained operations',
-                'Global parts sourcing',
-                'Airport facility access',
-                'Aviation security clearance',
-                'International import coordination',
-                'Strict time accountability'
+                "Sub-hour collection response for AOG",
+                "24/7 operations desk",
+                "Security-cleared drivers with airside access",
+                "Full chain-of-custody documentation",
+                "Live GPS tracking for AOG desk",
+                "SLA agreements with defined response tiers",
+                "Coverage across all UK airports and MRO sites"
             ],
             featureBlocks: [],
-            icon: 'Plane',
-            seoTitle: 'AOG & Aviation Logistics | CYVhub',
-            seoDescription: 'Emergency AOG logistics. Aircraft on-ground support, critical parts delivery, aviation supply chain management.',
+            icon: "plane",
+            seoTitle: "AOG & Aviation Logistics | CYVhub",
+            seoDescription: "Sub-hour AOG response and same-day aviation component delivery across the UK. Security-cleared drivers and 24/7 operations.",
             displayOrder: 5,
-            isActive: true
+            isActive: true,
+            premium: {
+                subtitle: "Aircraft on Ground Won't Wait — Neither Do We",
+                description: "CYVhub operates a dedicated AOG response service providing same-day collection and delivery of aviation components, tooling, and documentation across the UK — responding within the hour with constant communication throughout.\n\nSecurity-cleared drivers with airside access experience handle documentation requirements including traceability records and chain-of-custody logs to meet airworthiness regulatory requirements.\n\nLive GPS tracking gives your AOG desk real-time consignment visibility. Our 24/7 operations team manages urgent requests, re-routes, and escalations immediately.\n\nSLA-based agreements with MRO operators, airlines, and ground handlers define response tiers, escalation paths, and reporting standards — a logistics partner you can rely on without exception.",
+                layoutTheme: 'center',
+                accentColor: "#10B981",
+                overview: "An AOG event is among the most financially damaging situations in aviation. Every minute a commercial or private aircraft sits grounded translates directly into lost revenue, passenger disruption, and slot penalties. Components must be delivered with absolute urgency, correct documentation, and an unbroken chain of custody.",
+                challenges: [
+                    { icon: 'Zap', title: 'Urgency', desc: 'Immediate dispatch day or night.' },
+                    { icon: 'Shield', title: 'Security', desc: 'Hangar-direct access requirements.' }
+                ],
+                features: [
+                    { title: 'Hot-Shot Dispatch', desc: '15-minute dispatch guarantee.', icon: 'Zap', imageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109c0f3' },
+                    { title: '24/7 Live Monitoring', desc: 'Dedicated AOG coordinators.', icon: 'Target', imageUrl: 'https://images.unsplash.com/photo-1556388275-bb554bc9ce9b' }
+                ],
+                useCases: [
+                    { title: 'Emergency AOG', desc: 'Critical fuel pump delivery.', badge: 'EMERGENCY' },
+                    { title: 'Hangar Supply', desc: 'Engine overhaul components.', badge: 'PLANNED' }
+                ],
+                stats: [{ label: 'Avg Response', value: '12m' }, { label: 'Success Rate', value: '100%' }],
+                typicalServices: ['AOG parts delivery', 'Engine transport'],
+                whyChooseUs: ['Specialist knowledge', 'Direct-to-Hangar'],
+                caseStudyTitle: 'Aviation Success',
+                caseStudyQuote: 'Our first and only call for AOG.',
+                caseStudyAuthor: 'AOG Desk Manager',
+                ctaHeading: 'Return your aircraft to service',
+                ctaText: 'Emergency response specialists.',
+                ctaButtonText: 'Contact AOG Desk',
+                heroImageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109c0f3',
+                benefits: [
+                    "Sub-hour collection response for AOG",
+                    "24/7 operations desk",
+                    "Security-cleared drivers with airside access",
+                    "Full chain-of-custody documentation",
+                    "Live GPS tracking for AOG desk",
+                    "SLA agreements with defined response tiers",
+                    "Coverage across all UK airports and MRO sites"
+                ],
+                metaTitle: "AOG & Aviation Logistics | CYVhub",
+                metaDesc: "Sub-hour AOG response and same-day aviation component delivery across the UK. Security-cleared drivers and 24/7 operations."
+            }
         },
         {
-            title: 'Reverse Logistics',
-            slug: 'reverse-logistics',
-            tagline: 'Specialized reverse supply chain and product return management',
-            shortDescription: 'Comprehensive reverse logistics for returns, refurbishment, and sustainable disposal.',
-            fullDescription: 'Reverse logistics manages the flow of products backwards through the supply chain—from customers back to retailers, manufacturers, or disposal facilities. This growing sector requires different expertise than forward logistics.\n\nWe handle consumer returns from retail and e-commerce customers, coordinating collections, inspecting condition, and routing items to refurbishment, resale channels, or responsible recycling.\n\nFor manufacturers, we manage end-of-life product returns for warranty claims, safety recalls, or upgrade programs. We maintain secure chain-of-custody documentation and can handle sensitive electronics with data security protocols.\n\nSustainability-focused businesses use our services to maximize circular economy outcomes, refurbishing products rather than disposing them. We work with certified refurbishment centers and recyclers meeting environmental standards.\n\nWe reduce logistics costs 25-40% versus manual handling and improve sustainability metrics simultaneously.',
+            title: "Reverse Logistics",
+            slug: "reverse-logistics",
+            tagline: "Closing the Loop on Returns, Cleanly and Efficiently",
+            shortDescription: "End-to-end returns collection and reverse logistics for B2B operations — tracked, documented, and processed without the operational chaos.",
+            fullDescription: "Without a structured reverse logistics process, returned goods accumulate unprocessed, warranty claims stall, and credit notes are delayed. Most carriers treat returns as secondary — the result is poor tracking, missed collections, and no audit trail.",
             keyBenefits: [
-                'Consumer returns collection',
-                'Condition assessment',
-                'Refurbishment routing',
-                'Recycling coordination',
-                'Data security compliance',
-                'Cost reduction vs. manual',
-                'Sustainability reporting'
+                "Scheduled and on-demand returns collection",
+                "Item-level POC with condition notes",
+                "Full audit trail for warranty processing",
+                "Multi-drop consolidated collection routes",
+                "Integration with outbound contract routes",
+                "Reduced cost per return",
+                "Supports IT, healthcare, and manufacturing"
             ],
             featureBlocks: [],
-            icon: 'Recycle',
-            seoTitle: 'Reverse Logistics & Returns Management | CYVhub',
-            seoDescription: 'Reverse logistics, product returns, refurbishment, sustainable recycling, end-of-life management.',
+            icon: "refresh-cw",
+            seoTitle: "Reverse Logistics & Returns | CYVhub",
+            seoDescription: "Structured B2B reverse logistics across the UK. Item-level tracking, audit trails, and consolidated multi-drop collection routes.",
             displayOrder: 6,
-            isActive: true
+            isActive: true,
+            premium: {
+                subtitle: "Closing the Loop on Returns, Cleanly and Efficiently",
+                description: "CYVhub provides a fully documented reverse logistics service for B2B clients across manufacturing, IT, healthcare, and distribution — collecting returns with item-level logging at point of pickup.\n\nEvery return is recorded with item details, condition notes, and collection confirmation — creating the audit trail needed for warranty, refurbishment, credit notes, or disposal processing.\n\nMulti-drop consolidated collection routes make it cost-effective to recover returns from multiple locations in a single run — reducing per-unit reverse logistics costs significantly.\n\nWhere possible, returns are integrated into existing outbound contract routes — maximising vehicle utilisation and eliminating empty return miles entirely.",
+                layoutTheme: 'center',
+                accentColor: "#4F46E5",
+                overview: "Without a structured reverse logistics process, returned goods accumulate unprocessed, warranty claims stall, and credit notes are delayed. Most carriers treat returns as secondary — the result is poor tracking, missed collections, and no audit trail.",
+                challenges: [
+                    { icon: 'Eye', title: 'Lost Assets', desc: 'Slow returns sit in limbo for months.' },
+                    { icon: 'Truck', title: 'Collection Friction', desc: 'Picking up from disparate sites.' }
+                ],
+                features: [
+                    { title: 'Tracking Portal', desc: 'Integrated customer return booking.', icon: 'Check', imageUrl: 'https://images.unsplash.com/photo-1580674285054-bed31e145f59' },
+                    { title: 'Verified Pickup', desc: 'Driver condition checks at door.', icon: 'Search', imageUrl: 'https://images.unsplash.com/photo-1586864387967-d02ef85d93e8' }
+                ],
+                useCases: [
+                    { title: 'Asset Recovery', desc: 'Offboarded employee laptops.', badge: 'SECURE' },
+                    { title: 'Warranty', desc: 'Faulty component retrieval.', badge: 'URGENT' }
+                ],
+                stats: [{ label: 'Recovery Speed', value: '+40%' }, { label: 'Admin Saved', value: '15h/wk' }],
+                typicalServices: ['Equipment recovery', 'Return consolidation'],
+                whyChooseUs: ['Chain-of-custody', 'Asset focus'],
+                caseStudyTitle: 'Reverse Success',
+                caseStudyQuote: 'Recover assets in half the time.',
+                caseStudyAuthor: 'Operations Manager',
+                ctaHeading: 'Streamline your returns',
+                ctaText: 'Turn costs into advantages.',
+                ctaButtonText: 'Contact Returns Team',
+                heroImageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b',
+                benefits: [
+                    "Scheduled and on-demand returns collection",
+                    "Item-level POC with condition notes",
+                    "Full audit trail for warranty processing",
+                    "Multi-drop consolidated collection routes",
+                    "Integration with outbound contract routes",
+                    "Reduced cost per return",
+                    "Supports IT, healthcare, and manufacturing"
+                ],
+                metaTitle: "Reverse Logistics & Returns | CYVhub",
+                metaDesc: "Structured B2B reverse logistics across the UK. Item-level tracking, audit trails, and consolidated multi-drop collection routes."
+            }
         },
         {
-            title: 'Automotive Parts',
-            slug: 'automotive-parts',
-            tagline: 'Specialized automotive and aftermarket parts distribution',
-            shortDescription: 'Expert logistics for automotive parts, components, and aftermarket products.',
-            fullDescription: 'The automotive aftermarket requires specialized logistics for parts distribution to garages, dealerships, and retailers. We understand the urgency when repair shops need components to complete vehicle repairs and return customers\' cars quickly.\n\nOur automotive-experienced drivers know how to handle fragile components—engines, transmissions, electronics—with appropriate packaging and anti-static protection. We maintain climate-controlled vehicles for temperature-sensitive components.\n\nWe support auto parts distributors managing high volumes across multiple locations, with same-day delivery available for major UK cities. Our route optimization ensures parts reach repair facilities efficiently, minimizing delays.\n\nWe handle hazardous materials certifications for items like batteries and fluids, managing compliance documentation automatically.\n\nCommon for auto parts distributors, dealership networks, independent repair shops, and automotive manufacturers.',
+            title: "Automotive Parts",
+            slug: "automotive-parts",
+            tagline: "The Right Part at the Right Bay, Right on Time",
+            shortDescription: "Fast, accurate delivery of automotive parts to dealerships, bodyshops, and garages across the UK — keeping workshop bays productive and technicians earning.",
+            fullDescription: "A vehicle in a workshop bay is a direct cost to both owner and repairer. Dealerships and garages depend on consistent, accurate parts supply to keep technicians productive. Delays mean customer complaints, extended courtesy car costs, and lost workshop revenue.",
             keyBenefits: [
-                'Automotive-trained drivers',
-                'Anti-static packaging',
-                'Climate-controlled vehicles',
-                'Same-day delivery available',
-                'Hazmat compliance handling',
-                'High-frequency delivery optimization',
-                'Fragile component care'
+                "Scheduled morning delivery runs",
+                "Same-day for urgent unplanned requirements",
+                "Multi-drop across dealership networks",
+                "Electronic POD with named recipient",
+                "Careful handling of precision components",
+                "Dedicated contract for high-volume distributors",
+                "Returns logistics for warranty parts"
             ],
             featureBlocks: [],
-            icon: 'Truck',
-            seoTitle: 'Automotive Parts Distribution | CYVhub',
-            seoDescription: 'Automotive parts delivery. Aftermarket distribution, dealer network support, repair shop logistics.',
+            icon: "car",
+            seoTitle: "Automotive Parts Logistics | CYVhub",
+            seoDescription: "Scheduled and same-day automotive parts delivery to UK dealerships and garages. Morning workshop runs, multi-drop routes, electronic POD.",
             displayOrder: 7,
-            isActive: true
+            isActive: true,
+            premium: {
+                subtitle: "The Right Part at the Right Bay, Right on Time",
+                description: "CYVhub delivers to franchised dealerships, independent garages, bodyshops, and fleet maintenance centres with scheduled morning runs timed to workshop windows — so technicians have what they need before the first job card.\n\nSame-day delivery handles unexpected part requirements mid-repair — collecting from your supplier within the hour and delivering to the workshop the same day, keeping the bay productive.\n\nMulti-drop routes service multiple accounts in a single optimised run, with route planning tools giving distributors full delivery sequence and ETA visibility.\n\nElectronic POD captures recipient name, timestamp, and signature at every delivery — providing the documentation needed for customer service, disputes, and warranty administration.",
+                layoutTheme: 'center',
+                accentColor: "#EF4444",
+                overview: "A vehicle in a workshop bay is a direct cost to both owner and repairer. Dealerships and garages depend on consistent, accurate parts supply to keep technicians productive. Delays mean customer complaints, extended courtesy car costs, and lost workshop revenue.",
+                challenges: [
+                    { icon: 'Shield', title: 'Fragile Panels', desc: 'Body panels need specialist handling.' },
+                    { icon: 'Wrench', title: 'Bay Blocking', desc: 'Every hour without parts costs revenue.' }
+                ],
+                features: [
+                    { title: 'Bay-Direct', desc: 'Delivery before the workshop opens.', icon: 'CheckCircle', imageUrl: 'https://images.unsplash.com/photo-1486262715619-6733060a97cb' },
+                    { title: 'Careful Handling', desc: 'Racks for glass and panels.', icon: 'Package', imageUrl: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e' }
+                ],
+                useCases: [
+                    { title: 'Dealership Trunking', desc: 'Branch-to-branch movement.', badge: 'NETWORK' },
+                    { title: 'Urgent VOR', desc: 'Same-day repair support.', badge: 'URGENT' }
+                ],
+                stats: [{ label: 'On-Time', value: '99.6%' }, { label: 'Damage-Free', value: '100%' }],
+                typicalServices: ['VOR parts delivery', 'Daily replenishment'],
+                whyChooseUs: ['Workshop-ready timing', 'Expert handling'],
+                caseStudyTitle: 'Auto Success',
+                caseStudyQuote: 'Improved our turnaround significantly.',
+                caseStudyAuthor: 'Parts Manager',
+                ctaHeading: 'Optimize your parts flow',
+                ctaText: 'Partner with automotive specialists.',
+                ctaButtonText: 'Get Automotive Quote',
+                heroImageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70',
+                benefits: [
+                    "Scheduled morning delivery runs",
+                    "Same-day for urgent unplanned requirements",
+                    "Multi-drop across dealership networks",
+                    "Electronic POD with named recipient",
+                    "Careful handling of precision components",
+                    "Dedicated contract for high-volume distributors",
+                    "Returns logistics for warranty parts"
+                ],
+                metaTitle: "Automotive Parts Logistics | CYVhub",
+                metaDesc: "Scheduled and same-day automotive parts delivery to UK dealerships and garages. Morning workshop runs, multi-drop routes, electronic POD."
+            }
         },
         {
-            title: 'Hospitality',
-            slug: 'hospitality',
-            tagline: 'Reliable supply chain for hotels, restaurants, and hospitality venues',
-            shortDescription: 'Specialist delivery for food, beverages, linens, and hospitality supplies.',
-            fullDescription: 'Hospitality businesses depend on reliable supply chains to serve guests consistently. We provide coordinated logistics for everything from fresh food and beverages to linens, amenities, and equipment.\n\nOur refrigerated vehicles maintain proper temperatures for food safety, with drivers trained in food handling and HACCP protocols. We understand kitchen timing and coordinate deliveries for meal preparation—early morning for breakfast, mid-day for lunch, evening for dinner services.\n\nFor hotels, we manage linen delivery and collection services, coordinating room service delivery schedules with housekeeping operations.\n\nWe handle complex multi-stop routes consolidating deliveries from multiple suppliers (food, beverages, linens, equipment) into single efficient visits, reducing supplier congestion and improving cost control.\n\nOur scheduling system integrates with hospitality PMS systems, automating delivery coordination and tracking.\n\nCommon for hotels, restaurants, catering companies, and hospitality groups managing multiple locations.',
+            title: "Hospitality",
+            slug: "hospitality",
+            tagline: "Behind Every Perfect Guest Experience is a Perfect Supply Chain",
+            shortDescription: "Reliable, time-critical delivery for hotels, restaurants, and event venues — so your front of house never suffers for what happens out back.",
+            fullDescription: "Hospitality runs on precision timing and uncompromising standards. A restaurant short of a critical ingredient, a hotel missing its linen before check-in, or a venue without equipment on event morning — these are reputational events, not operational inconveniences.",
             keyBenefits: [
-                'Refrigerated food delivery',
-                'HACCP-trained drivers',
-                'Meal-timing coordination',
-                'Linen delivery/collection',
-                'Multi-supplier consolidation',
-                'PMS system integration',
-                'Multiple venue scheduling'
+                "Same-day emergency delivery for urgent shortages",
+                "Scheduled runs timed to prep windows",
+                "Hour-specific event logistics",
+                "Live tracking for operations teams",
+                "Multi-site account management",
+                "Careful handling of fragile and perishable goods",
+                "Consolidated invoicing across properties"
             ],
             featureBlocks: [],
-            icon: 'Utensils',
-            seoTitle: 'Hospitality Supply Chain Logistics | CYVhub',
-            seoDescription: 'Food and beverage delivery for hotels and restaurants. Linen services, HACCP compliance, hospitality supply chain.',
+            icon: "utensils",
+            seoTitle: "Hospitality Logistics | CYVhub",
+            seoDescription: "Time-critical delivery for UK hotels, restaurants, and event venues. Scheduled supplier runs, event logistics, and multi-site account invoicing.",
             displayOrder: 8,
-            isActive: true
+            isActive: true,
+            premium: {
+                subtitle: "Behind Every Perfect Guest Experience is a Perfect Supply Chain",
+                description: "CYVhub provides same-day and scheduled delivery for hotels, restaurants, bars, event venues, and catering companies — planned around your operational windows, not ours.\n\nScheduled collections from food distributors, linen services, and specialist wholesalers are timed to arrive before your kitchen, housekeeping, and events teams need them.\n\nFor events, we provide hour-specific delivery of furniture, AV equipment, and catering supplies — with live tracking giving your events team real-time delivery visibility for efficient setup sequencing.\n\nAccount-based invoicing lets hospitality groups code deliveries by site or cost centre with monthly consolidated statements — giving finance teams visibility without administrative overhead.",
+                layoutTheme: 'center',
+                accentColor: "#7C3AED",
+                overview: "Hospitality runs on precision timing and uncompromising standards. A restaurant short of a critical ingredient, a hotel missing its linen before check-in, or a venue without equipment on event morning — these are reputational events, not operational inconveniences.",
+                challenges: [
+                    { icon: 'Lock', title: 'Access Windows', desc: 'Narrow off-peak delivery windows.' },
+                    { icon: 'Clock', title: 'Event Deadlines', desc: 'No second chances for live events.' }
+                ],
+                features: [
+                    { title: 'Discreet Ops', desc: 'Clean vehicles and branded drivers.', icon: 'Check', imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0' },
+                    { title: 'Event Precision', desc: 'Timed-to-the-hour deliveries.', icon: 'Zap', imageUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622' }
+                ],
+                useCases: [
+                    { title: 'Hotel Supply', desc: 'Multi-site replenishment.', badge: 'CONSISTENT' },
+                    { title: 'Event Setup', desc: 'AV and decor delivery.', badge: 'TIMED' }
+                ],
+                stats: [{ label: 'Venues Served', value: '80+' }, { label: 'Event Success', value: '100%' }],
+                typicalServices: ['Linen delivery', 'AV transport'],
+                whyChooseUs: ['Discretion-first', 'Event-grade precision'],
+                caseStudyTitle: 'Guest Success',
+                caseStudyQuote: 'Logistics should be invisible to guests.',
+                caseStudyAuthor: 'Events Operations Lead',
+                ctaHeading: 'Elevate your logistics',
+                ctaText: 'Partner with hospitality experts.',
+                ctaButtonText: 'Get Hospitality Quote',
+                heroImageUrl: 'https://images.unsplash.com/photo-1517457373958-b7bdd458ad20',
+                benefits: [
+                    "Same-day emergency delivery for urgent shortages",
+                    "Scheduled runs timed to prep windows",
+                    "Hour-specific event logistics",
+                    "Live tracking for operations teams",
+                    "Multi-site account management",
+                    "Careful handling of fragile and perishable goods",
+                    "Consolidated invoicing across properties"
+                ],
+                metaTitle: "Hospitality Logistics | CYVhub",
+                metaDesc: "Time-critical delivery for UK hotels, restaurants, and event venues. Scheduled supplier runs, event logistics, and multi-site account invoicing."
+            }
         }
     ];
 
-    for (const industry of industries) {
-        await (prisma as any).industry.upsert({
-            where: { slug: industry.slug },
-            update: industry,
-            create: industry
-        });
-        console.log(`Seeded Industry: ${industry.title}`);
+    for (const i of industriesData) {
+        const { premium, ...dbData } = i;
+        await prisma.industry.create({ data: dbData });
     }
+
+    // 3. Seed Global Configs
+    const servicesPage = {
+        title: "Services",
+        heroHeading: "Professional B2B Logistics Services Built for Speed and Control",
+        heroSubtext: "CYVhub supports businesses with practical solutions for urgent movement, scheduled operations, and dispatch management.",
+        introSection: "Every business has different delivery pressures. We provide a flexible range of B2B logistics services designed for both urgent and planned movement.",
+        cardIntroText: "Explore our services and discover how CYVhub helps businesses deliver with confidence.",
+        ctaHeading: "Need a logistics service tailored to your business?",
+        ctaText: "Speak to CYVhub about a delivery solution designed around your operational needs.",
+        ctaButton: "Get in Touch",
+        heroImageUrl: "https://images.unsplash.com/photo-1566846108151-512140c83a54"
+    };
+
+    const industriesPage = {
+        title: "Industries We Serve",
+        heroHeading: "B2B Logistics Solutions Built Around Your Industry",
+        heroSubtext: "Dependable, time-critical, and scheduled logistics solutions tailored to your sector.",
+        introSection: "Every industry has its own operational pressure. CYVhub is built to support a wide range of sectors with flexible logistics services.",
+        cardIntroHeading: "Sector Expertise",
+        cardIntroText: "Specialized solutions for the most demanding industry sectors in the UK.",
+        ctaHeading: "Tailored Logistics for Your Industry",
+        ctaText: "Optimize your specific supply chain requirements with our expertise.",
+        ctaButton: "Contact Specialists"
+    };
+
+    // Prepare detail maps for GlobalConfig
+    const serviceDetailsMap = servicesData.reduce((acc, s) => ({
+        ...acc,
+        [s.slug]: {
+            ...s.premium,
+            id: s.slug,
+            slug: s.slug,
+            title: s.title,
+            icon: s.icon,
+            publishStatus: true,
+            order: s.displayOrder
+        }
+    }), {});
+
+    const industryDetailsMap = industriesData.reduce((acc, i) => ({
+        ...acc,
+        [i.slug]: {
+            ...i.premium,
+            id: i.slug,
+            slug: i.slug,
+            title: i.title,
+            icon: i.icon,
+            publishStatus: true,
+            order: i.displayOrder
+        }
+    }), {});
+
+    // Create the master bundle
+    await prisma.globalConfig.create({
+        data: {
+            key: 'global_cms_bundle',
+            config: {
+                servicesPage,
+                industriesPage,
+                serviceDetails: serviceDetailsMap,
+                industryDetails: industryDetailsMap,
+                homepageData: {
+                    cms_industriesConfig: {
+                        title: "Industries We Serve",
+                        subtitle: "Specialised solutions for your sector.",
+                        showSlider: false,
+                        industries: industriesData.map(ind => ({
+                            id: ind.slug,
+                            slug: ind.slug,
+                            title: ind.title,
+                            desc: ind.shortDescription,
+                            imageUrl: ind.premium.heroImageUrl
+                        }))
+                    }
+                }
+            } as any,
+            updatedBy: 'admin'
+        }
+    });
+
+    // Individual keys for redundancy and granular fetch
+    await prisma.globalConfig.create({
+        data: { key: 'cms_serviceDetails', config: serviceDetailsMap as any, updatedBy: 'admin' }
+    });
+    await prisma.globalConfig.create({
+        data: { key: 'cms_industryDetails', config: industryDetailsMap as any, updatedBy: 'admin' }
+    });
+    await prisma.globalConfig.create({
+        data: { key: 'services_page', config: servicesPage as any, updatedBy: 'admin' }
+    });
+    await prisma.globalConfig.create({
+        data: { key: 'industries_page', config: industriesPage as any, updatedBy: 'admin' }
+    });
 
     console.log('Seeding finished.');
 }
 
 main()
-    .then(async () => {
-        await prisma.$disconnect()
+    .catch((e) => {
+        console.error(e);
+        process.exit(1);
     })
-    .catch(async (e) => {
-        console.error(e)
-        await prisma.$disconnect()
-        process.exit(1)
+    .finally(async () => {
+        await prisma.$disconnect();
     });
