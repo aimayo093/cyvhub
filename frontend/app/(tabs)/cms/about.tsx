@@ -174,6 +174,22 @@ export default function AboutCMS() {
             </View>
 
             <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+                {/* OFFICE ADDRESS */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Office Address</Text>
+                    <View style={styles.card}>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>Displayed Address</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={config.officeAddress}
+                                onChangeText={t => updateConfig({ officeAddress: t })}
+                                placeholder="e.g. 123 Logistics Way, London, UK"
+                            />
+                        </View>
+                    </View>
+                </View>
+
                 {/* HERO SECTION */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Hero Section</Text>
@@ -420,6 +436,92 @@ export default function AboutCMS() {
                                     style={[styles.input, { height: 60 }]}
                                     value={ms.desc}
                                     onChangeText={t => updateMilestone(index, { desc: t })}
+                                    multiline
+                                />
+                            </View>
+                        </View>
+                    ))}
+                </View>
+
+                {/* TEAM HIGHLIGHTS */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                        <Text style={styles.sectionTitle}>Team Highlights</Text>
+                        <TouchableOpacity 
+                            style={styles.addBtn} 
+                            onPress={() => {
+                                const newMember = { id: Date.now().toString(), name: 'New Member', role: 'Role', bio: 'Bio...', imageUrl: '' };
+                                updateConfig({ teamHighlights: [...(config.teamHighlights || []), newMember] });
+                            }}
+                        >
+                            <Plus size={16} color="#FFF" />
+                            <Text style={styles.addBtnText}>Add Member</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {(config.teamHighlights || []).map((member, index) => (
+                        <View key={member.id} style={styles.card}>
+                            <View style={styles.cardHeader}>
+                                <Text style={styles.cardIndex}>Member #{index + 1}</Text>
+                                <TouchableOpacity 
+                                    onPress={() => updateConfig({ 
+                                        teamHighlights: config.teamHighlights?.filter(m => m.id !== member.id) 
+                                    })}
+                                >
+                                    <Trash2 size={18} color={Colors.danger} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.row}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.inputLabel}>Name</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={member.name}
+                                        onChangeText={t => {
+                                            const newTeam = [...(config.teamHighlights || [])];
+                                            newTeam[index].name = t;
+                                            updateConfig({ teamHighlights: newTeam });
+                                        }}
+                                    />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.inputLabel}>Role</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={member.role}
+                                        onChangeText={t => {
+                                            const newTeam = [...(config.teamHighlights || [])];
+                                            newTeam[index].role = t;
+                                            updateConfig({ teamHighlights: newTeam });
+                                        }}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={[styles.inputGroup, { marginTop: 12 }]}>
+                                <Text style={styles.inputLabel}>Image URL</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={member.imageUrl}
+                                    onChangeText={t => {
+                                        const newTeam = [...(config.teamHighlights || [])];
+                                        newTeam[index].imageUrl = t;
+                                        updateConfig({ teamHighlights: newTeam });
+                                    }}
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Bio</Text>
+                                <TextInput
+                                    style={[styles.input, { height: 60 }]}
+                                    value={member.bio}
+                                    onChangeText={t => {
+                                        const newTeam = [...(config.teamHighlights || [])];
+                                        newTeam[index].bio = t;
+                                        updateConfig({ teamHighlights: newTeam });
+                                    }}
                                     multiline
                                 />
                             </View>

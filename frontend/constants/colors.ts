@@ -1,14 +1,14 @@
 export default {
-  primary: '#0D9488', // Teal/Green Brand Primary
-  primaryDark: '#0F766E',
-  primaryLight: '#14B8A6',
+  primary: '#0066FF', // Logo Blue
+  primaryDark: '#0052CC',
+  primaryLight: '#3385FF',
   navy: '#0F172A',
   navyLight: '#1E293B',
   navyMedium: '#334155',
 
-  customerPrimary: '#0D9488',
-  customerPrimaryDark: '#0F766E',
-  customerPrimaryLight: '#14B8A6',
+  customerPrimary: '#0066FF',
+  customerPrimaryDark: '#0052CC',
+  customerPrimaryLight: '#3385FF',
   customerAccent: '#F59E0B',
 
   adminPrimary: '#DC2626',
@@ -41,7 +41,7 @@ export default {
   textMuted: '#94A3B8',
   textInverse: '#FFFFFF',
 
-  success: '#10B981',
+  success: '#0066FF',
   successLight: '#D1FAE5',
   warning: '#F59E0B',
   warningLight: '#FEF3C7',
@@ -66,7 +66,7 @@ export default {
   statusEnRoute: '#F59E0B',
   statusArrived: '#06B6D4',
   statusPickedUp: '#8B5CF6',
-  statusDelivered: '#10B981',
+  statusDelivered: '#0066FF',
   statusFailed: '#EF4444',
   statusCancelled: '#6B7280',
 
@@ -75,6 +75,6 @@ export default {
   deliveryAssigned: '#8B5CF6',
   deliveryPickedUp: '#06B6D4',
   deliveryInTransit: '#2563EB',
-  deliveryDelivered: '#10B981',
+  deliveryDelivered: '#0066FF',
   deliveryCancelled: '#6B7280',
 };

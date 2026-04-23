@@ -338,6 +338,8 @@ export type AboutPageConfig = {
     ctaDesc: string;
     ctaBtnText: string;
     ctaBtnUrl: string;
+    officeAddress?: string; // One editable address for About Us
+    teamHighlights?: { id: string; name: string; role: string; bio: string; imageUrl: string }[];
 };
 
 export type FAQConfig = {
@@ -688,6 +690,11 @@ export const initialAboutPage: AboutPageConfig = {
     ctaDesc: 'Discover why thousands of businesses choose CYVhub for their logistics.',
     ctaBtnText: 'Get Started',
     ctaBtnUrl: '/guest-quote',
+    officeAddress: '123 Logistics Way, London, UK',
+    teamHighlights: [
+        { id: '1', name: 'James Wilson', role: 'CEO & Founder', bio: 'Logistics veteran with 20+ years of experience.', imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e' },
+        { id: '2', name: 'Sarah Chen', role: 'CTO', bio: 'Leading our technology-first approach to logistics.', imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80' }
+    ]
 };
 
 export const initialContactPage: ContactPageConfig = {
@@ -1011,7 +1018,7 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
         ctaButtonText: 'Get a Manufacturing Quote',
         metaTitle: 'Manufacturing & Wholesale Logistics | CYVhub',
         metaDesc: 'Dependable B2B delivery for manufacturers and wholesalers — scheduled runs, pallet movements, and contract logistics.',
-        accentColor: '#0D9488',
+        accentColor: '#0066FF',
         challenges: [
             { icon: 'PauseCircle', title: 'Line Stoppage Risk', desc: 'A single missing component can halt an entire multi-million pound production line.' },
             { icon: 'Truck', title: 'Bulk Load Complexity', desc: 'Moving raw materials requires specialized freight handling and tail-lift access.' },
@@ -1675,7 +1682,7 @@ export const initialCareersPage: CareersPageConfig = {
     introContent: 'We leverage deep tech and AI to optimize routes and pricing in real-time. Work on challenging problems that have physical real-world impact.',
     perksTitle: 'Our Benefits',
     perks: [
-        { id: '1', title: 'Innovation First', desc: 'Work with the latest tech stack and AI models.', icon: 'Zap', color: '#0D9488' },
+        { id: '1', title: 'Innovation First', desc: 'Work with the latest tech stack and AI models.', icon: 'Zap', color: '#0066FF' },
         { id: '2', title: 'Work from Anywhere', desc: 'Flexible, remote-first working arrangements.', icon: 'Globe', color: '#16A34A' },
         { id: '3', title: 'Health & Wellbeing', desc: 'Comprehensive private healthcare for you and yours.', icon: 'Heart', color: '#9333EA' },
     ],

@@ -441,7 +441,7 @@ export default function IndustriesCMS() {
                                         <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: detail.accentColor || '#000' }} />
                                     </View>
                                     <View style={styles.colorPresets}>
-                                        {['#DC2626', '#EA580C', '#2563EB', '#0D9488', '#1D4ED8', '#16A34A', '#CA8A04', '#7C3AED'].map(c => (
+                                        {['#DC2626', '#EA580C', '#2563EB', '#0066FF', '#1D4ED8', '#16A34A', '#CA8A04', '#7C3AED'].map(c => (
                                             <TouchableOpacity key={c} style={[styles.colorPreset, { backgroundColor: c }]} onPress={() => updateField(activeId, 'accentColor', c)} />
                                         ))}
                                     </View>

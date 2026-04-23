@@ -56,14 +56,14 @@ export default function AdminTrackingScreen() {
 
     const filters: { key: StatusFilter; label: string; count: number; color: string; icon: typeof Truck }[] = [
         { key: 'all', label: 'All', count: totalDrivers, color: Colors.adminPrimary, icon: Users },
-        { key: 'ON_JOB', label: 'On Job', count: onJobCount, color: '#10B981', icon: Briefcase },
+        { key: 'ON_JOB', label: 'On Job', count: onJobCount, color: '#0066FF', icon: Briefcase },
         { key: 'AVAILABLE', label: 'Available', count: availableCount, color: '#3B82F6', icon: Wifi },
         { key: 'BREAK', label: 'Break', count: breakCount, color: '#F59E0B', icon: Coffee },
         { key: 'OFFLINE', label: 'Offline', count: offlineCount, color: '#94A3B8', icon: WifiOff },
     ];
 
     const statusColors: Record<string, string> = {
-        ON_JOB: '#10B981',
+        ON_JOB: '#0066FF',
         AVAILABLE: '#3B82F6',
         BREAK: '#F59E0B',
         OFFLINE: '#94A3B8',
@@ -79,7 +79,7 @@ export default function AdminTrackingScreen() {
                         <Text style={styles.headerTitle}>Live Tracking</Text>
                     </View>
                     <View style={styles.headerBadge}>
-                        <Radio size={12} color="#10B981" />
+                        <Radio size={12} color="#0066FF" />
                         <Text style={styles.headerBadgeText}>{onJobCount} active</Text>
                     </View>
                 </View>
@@ -125,7 +125,7 @@ export default function AdminTrackingScreen() {
                         <Text style={styles.statCardLabel}>Utilization</Text>
                     </View>
                     <View style={styles.statCard}>
-                        <Text style={[styles.statPercent, { color: '#10B981' }]}>{onJobCount}</Text>
+                        <Text style={[styles.statPercent, { color: '#0066FF' }]}>{onJobCount}</Text>
                         <Text style={styles.statCardLabel}>Active Jobs</Text>
                     </View>
                     <View style={styles.statCard}>

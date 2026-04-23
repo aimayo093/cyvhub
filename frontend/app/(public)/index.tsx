@@ -461,7 +461,7 @@ export default function PublicHome() {
             </View>
 
             {/* INDUSTRIES SECTION */}
-            <View style={[styles.section, { backgroundColor: Colors.navy }]}>
+            <View style={[styles.section, { backgroundColor: '#0066FF' }]}>
                 <View style={styles.contentMax}>
                     <View style={[styles.sectionHeader, { alignItems: 'flex-start' }]}>
                         <Text style={styles.sectionTagPrimary}>SECTOR EXPERTISE</Text>
@@ -542,7 +542,7 @@ export default function PublicHome() {
                         {whyUs.cards?.map((card: any) => (
                             <View key={card.id} style={[styles.whyCard, { width: SCREEN_WIDTH >= 1024 ? '23.5%' : isMobile ? '100%' : '48%' }]}>
                                 <View style={styles.whyIconBox}>
-                                    <DynamicIcon name={card.icon} size={32} color={Colors.primary} />
+                                    <DynamicIcon name={card.icon} size={32} color="#0066FF" />
                                 </View>
                                 <Text style={styles.whyTitle}>{card.title}</Text>
                                 <Text style={styles.whyText}>{card.desc}</Text>
@@ -558,7 +558,7 @@ export default function PublicHome() {
                     source={{ uri: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=2075&auto=format&fit=crop' }} 
                     style={StyleSheet.absoluteFillObject}
                 />
-                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(13, 148, 136, 0.9)' }]} />
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 102, 255, 0.9)' }]} />
                 <View style={[styles.contentMax, styles.ctaContent]}>
                     <Text style={styles.ctaHeadline}>Ready to upgrade your logistics?</Text>
                     <Text style={styles.ctaBody}>Join over 1,200 businesses relying on CYVhub for their most critical shipments.</Text>
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     widgetTabTextActive: {
-        color: Colors.primary,
+        color: '#0066FF',
     },
     widgetBody: {
         padding: 32,
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
     fieldLabel: {
         fontSize: 14,
         fontWeight: '700',
-        color: Colors.navy,
+        color: '#1e293b',
         marginBottom: 8,
     },
     vehicleSelect: {
@@ -734,8 +734,8 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     vOptionActive: {
-        borderColor: Colors.primary,
-        backgroundColor: Colors.primary + '10',
+        borderColor: '#0066FF',
+        backgroundColor: '#0066FF' + '10',
     },
     vOptionText: {
         fontSize: 14,
@@ -743,11 +743,11 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     vOptionTextActive: {
-        color: Colors.primary,
+        color: '#0066FF',
         fontWeight: '800',
     },
     quoteBtn: {
-        backgroundColor: Colors.primary,
+        backgroundColor: '#0066FF',
         height: 60,
         borderRadius: 16,
         flexDirection: 'row',

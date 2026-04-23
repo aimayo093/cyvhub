@@ -44,7 +44,7 @@ const generateMapHTML = (
 ) => {
     const markerIcons: Record<string, { emoji: string; color: string }> = {
         driver: { emoji: '🚛', color: '#2563EB' },
-        pickup: { emoji: '📦', color: '#10B981' },
+        pickup: { emoji: '📦', color: '#0066FF' },
         dropoff: { emoji: '📍', color: '#EF4444' },
         carrier: { emoji: '🚚', color: '#EA580C' },
     };
@@ -186,7 +186,7 @@ export default function MapView({
                         coordinate={{ latitude: m.latitude, longitude: m.longitude }}
                         title={m.title}
                         rotation={m.heading}
-                        pinColor={m.type === 'pickup' ? '#10B981' : m.type === 'dropoff' ? '#EF4444' : '#2563EB'}
+                        pinColor={m.type === 'pickup' ? '#0066FF' : m.type === 'dropoff' ? '#EF4444' : '#2563EB'}
                         onPress={() => onMarkerPress?.(m.id)}
                     />
                 ))}

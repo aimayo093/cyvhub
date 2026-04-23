@@ -40,16 +40,17 @@ export default function AboutUsPage() {
                 <meta property="og:type" content="website" />
             </Head>
             {/* HERO SECTION */}
-            <View style={[styles.heroSection, { paddingVertical: SCREEN_WIDTH >= 1024 ? 140 : 100 }]}>
+            <View style={[styles.heroSection, { paddingVertical: SCREEN_WIDTH >= 1024 ? 160 : 100 }]}>
                 <Image
                     source={{ uri: config.heroImageUrl }}
                     style={StyleSheet.absoluteFillObject}
                     resizeMode="cover"
                 />
-                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.75)' }]} />
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]} />
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.primary, opacity: 0.2 }]} />
                 <View style={styles.heroContent}>
-                    <Text style={[styles.heroTitle, { fontSize: SCREEN_WIDTH >= 1024 ? 72 : 48 }]}>{config.heroTitle}</Text>
-                    <Text style={[styles.heroSubtitle, { fontSize: SCREEN_WIDTH >= 1024 ? 24 : 18 }]}>{config.heroSubtitle}</Text>
+                    <Text style={[styles.heroTitle, { fontSize: SCREEN_WIDTH >= 1024 ? 80 : 48 }]}>{config.heroTitle}</Text>
+                    <Text style={[styles.heroSubtitle, { fontSize: SCREEN_WIDTH >= 1024 ? 26 : 18 }]}>{config.heroSubtitle}</Text>
                 </View>
             </View>
 
@@ -60,7 +61,7 @@ export default function AboutUsPage() {
                         {config.stats.map((stat, index) => (
                             <View key={index} style={styles.statItem}>
                                 <View style={styles.statIconBox}>
-                                    <DynamicIcon name={stat.icon} size={28} color={Colors.primary} />
+                                    <DynamicIcon name={stat.icon} size={32} color={Colors.primary} />
                                 </View>
                                 <Text style={styles.statValue}>{stat.value}</Text>
                                 <Text style={styles.statLabel}>{stat.label}</Text>
@@ -73,37 +74,38 @@ export default function AboutUsPage() {
             {/* STORY SECTION */}
             <View style={styles.section}>
                 <View style={styles.contentMax}>
-                    <View style={[styles.storyGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
+                    <View style={[styles.storyGrid, { flexDirection: SCREEN_WIDTH >= 1024 ? 'row' : 'column', gap: 60 }]}>
                         <View style={styles.storyText}>
                             <Text style={styles.sectionTag}>{config.storyTag}</Text>
-                            <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>{config.storyTitle}</Text>
+                            <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 56 : 36 }]}>{config.storyTitle}</Text>
                             <Text style={styles.sectionDesc}>{config.storyContent}</Text>
                         </View>
-                        <View style={styles.storyVisual}>
+                        <View style={[styles.storyVisual, { height: SCREEN_WIDTH >= 1024 ? 600 : 400 }]}>
                             <Image
                                 source={{ uri: 'https://images.unsplash.com/photo-1586528116311-ad8669966155' }}
                                 style={styles.storyImage}
                                 resizeMode="cover"
                             />
+                            <View style={styles.imageOverlay} />
                         </View>
                     </View>
                 </View>
             </View>
 
             {/* MISSION & VISION */}
-            <View style={[styles.section, { backgroundColor: Colors.navy }]}>
+            <View style={[styles.section, { backgroundColor: '#0F172A' }]}>
                 <View style={styles.contentMax}>
-                    <View style={[styles.dualGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
+                    <View style={[styles.dualGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column', gap: 30 }]}>
                         <View style={styles.missionCardInverse}>
                             <View style={styles.iconBoxInverse}>
-                                <Target size={32} color={Colors.primary} />
+                                <Target size={40} color="#FFF" />
                             </View>
                             <Text style={styles.missionTitleInverse}>{config.missionTitle}</Text>
                             <Text style={styles.missionContentInverse}>{config.missionContent}</Text>
                         </View>
                         <View style={styles.missionCardInverse}>
                             <View style={styles.iconBoxInverse}>
-                                <Rocket size={32} color={Colors.primary} />
+                                <Rocket size={40} color="#FFF" />
                             </View>
                             <Text style={styles.missionTitleInverse}>{config.visionTitle}</Text>
                             <Text style={styles.missionContentInverse}>{config.visionContent}</Text>
@@ -112,17 +114,42 @@ export default function AboutUsPage() {
                 </View>
             </View>
 
+            {/* TEAM HIGHLIGHTS */}
+            {config.teamHighlights && config.teamHighlights.length > 0 && (
+                <View style={styles.section}>
+                    <View style={styles.contentMax}>
+                        <Text style={styles.sectionTagCenter}>OUR LEADERSHIP</Text>
+                        <Text style={[styles.sectionTitleCenter, { fontSize: SCREEN_WIDTH >= 768 ? 56 : 36 }]}>Meet the Visionaries</Text>
+                        <View style={styles.teamGrid}>
+                            {config.teamHighlights.map((member) => (
+                                <View key={member.id} style={[styles.teamCard, { width: SCREEN_WIDTH >= 1024 ? '48%' : '100%' }]}>
+                                    <View style={styles.teamImageContainer}>
+                                        <Image source={{ uri: member.imageUrl || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e' }} style={styles.teamImage} />
+                                    </View>
+                                    <View style={styles.teamInfo}>
+                                        <Text style={styles.teamName}>{member.name}</Text>
+                                        <Text style={styles.teamRole}>{member.role}</Text>
+                                        <Text style={styles.teamBio}>{member.bio}</Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                </View>
+            )}
+
             {/* VALUES SECTION */}
-            <View style={styles.section}>
+            <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
                 <View style={styles.contentMax}>
-                    <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 60, fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>
+                    <Text style={styles.sectionTagCenter}>CORE VALUES</Text>
+                    <Text style={[styles.sectionTitleCenter, { marginBottom: 80, fontSize: SCREEN_WIDTH >= 768 ? 56 : 36 }]}>
                         {config.valuesTitle}
                     </Text>
                     <View style={styles.valuesGrid}>
                         {config.values.map((value) => (
                             <View key={value.id} style={[styles.valueCard, { width: SCREEN_WIDTH >= 1024 ? '31%' : SCREEN_WIDTH >= 768 ? '47%' : '100%' }]}>
                                 <View style={[styles.valueIcon, { backgroundColor: Colors.primary + '15' }]}>
-                                    <DynamicIcon name={value.icon} size={28} color={Colors.primary} />
+                                    <DynamicIcon name={value.icon} size={32} color={Colors.primary} />
                                 </View>
                                 <Text style={styles.valueTitle}>{value.title}</Text>
                                 <Text style={styles.valueDesc}>{value.desc}</Text>
@@ -132,13 +159,45 @@ export default function AboutUsPage() {
                 </View>
             </View>
 
+            {/* OFFICE ADDRESS */}
+            {config.officeAddress && (
+                <View style={styles.section}>
+                    <View style={styles.contentMax}>
+                        <View style={[styles.addressBox, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
+                            <View style={styles.addressInfo}>
+                                <Text style={styles.sectionTag}>VISIT US</Text>
+                                <Text style={styles.addressTitle}>Our Headquarters</Text>
+                                <View style={styles.addressRow}>
+                                    <MapPin size={24} color={Colors.primary} />
+                                    <Text style={styles.addressText}>{config.officeAddress}</Text>
+                                </View>
+                                <TouchableOpacity 
+                                    style={styles.directionsBtn}
+                                    onPress={() => {
+                                        if (Platform.OS === 'web') {
+                                            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(config.officeAddress || '')}`, '_blank');
+                                        }
+                                    }}
+                                >
+                                    <Text style={styles.directionsBtnText}>Get Directions</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.addressVisual}>
+                                <Image source={{ uri: 'https://images.unsplash.com/photo-1497366216548-37526070297c' }} style={styles.addressImage} />
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            )}
+
             {/* MILESTONES */}
             <View style={[styles.section, { backgroundColor: '#F8FAFC' }]}>
                 <View style={styles.contentMax}>
-                    <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 60, fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>
+                    <Text style={styles.sectionTagCenter}>THE JOURNEY</Text>
+                    <Text style={[styles.sectionTitleCenter, { marginBottom: 80, fontSize: SCREEN_WIDTH >= 768 ? 56 : 36 }]}>
                         {config.milestonesTitle}
                     </Text>
-                    <View style={[styles.milestonesTimeline, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
+                    <View style={[styles.milestonesTimeline, { flexDirection: SCREEN_WIDTH >= 1024 ? 'row' : 'column' }]}>
                         {config.milestones.map((milestone, index) => (
                             <View key={index} style={styles.milestoneItem}>
                                 <View style={styles.milestoneYearBox}>
@@ -148,7 +207,7 @@ export default function AboutUsPage() {
                                     <Text style={styles.milestoneTitle}>{milestone.title}</Text>
                                     <Text style={styles.milestoneDesc}>{milestone.desc}</Text>
                                 </View>
-                                {index < config.milestones.length - 1 && SCREEN_WIDTH >= 768 && (
+                                {index < config.milestones.length - 1 && SCREEN_WIDTH >= 1024 && (
                                     <View style={styles.milestoneLine} />
                                 )}
                             </View>
@@ -160,10 +219,10 @@ export default function AboutUsPage() {
             {/* SUSTAINABILITY */}
             <View style={styles.section}>
                 <View style={styles.contentMax}>
-                    <View style={[styles.splitGrid, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
+                    <View style={[styles.splitGrid, { flexDirection: SCREEN_WIDTH >= 1024 ? 'row' : 'column', gap: 60 }]}>
                         <View style={styles.splitText}>
                             <Text style={styles.sectionTag}>{config.sustainabilityTag}</Text>
-                            <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 48 : 36 }]}>{config.sustainabilityTitle}</Text>
+                            <Text style={[styles.sectionTitle, { fontSize: SCREEN_WIDTH >= 768 ? 56 : 36 }]}>{config.sustainabilityTitle}</Text>
                             <Text style={styles.sectionDesc}>{config.sustainabilityDesc}</Text>
                         </View>
                         <View style={styles.splitText}>
@@ -171,7 +230,7 @@ export default function AboutUsPage() {
                                 {config.sustainabilityItems.map((item) => (
                                     <View key={item.id} style={styles.susItem}>
                                         <View style={styles.susIcon}>
-                                            <DynamicIcon name={item.icon} size={24} color={Colors.primary} />
+                                            <DynamicIcon name={item.icon} size={28} color={Colors.primary} />
                                         </View>
                                         <View style={styles.susContent}>
                                             <Text style={styles.susTitle}>{item.title}</Text>
@@ -188,9 +247,9 @@ export default function AboutUsPage() {
             {/* CTA */}
             <View style={styles.ctaSection}>
                 <View style={styles.contentMax}>
-                    <View style={[styles.ctaCard, { padding: SCREEN_WIDTH >= 768 ? 80 : 40, flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
+                    <View style={[styles.ctaCard, { padding: SCREEN_WIDTH >= 768 ? 80 : 40, flexDirection: SCREEN_WIDTH >= 1024 ? 'row' : 'column' }]}>
                         <View style={styles.ctaText}>
-                            <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 44 : 32 }]}>{config.ctaTitle}</Text>
+                            <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 56 : 32 }]}>{config.ctaTitle}</Text>
                             <Text style={styles.ctaDesc}>{config.ctaDesc}</Text>
                         </View>
                         <Link 
@@ -203,9 +262,9 @@ export default function AboutUsPage() {
                                 }
                             }}
                         >
-                            <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.8}>
+                            <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.9}>
                                 <Text style={styles.ctaBtnText}>{config.ctaBtnText}</Text>
-                                <Rocket size={20} color="#FFF" />
+                                <Rocket size={24} color="#FFF" style={{ marginLeft: 12 }} />
                             </TouchableOpacity>
                         </Link>
                     </View>
@@ -216,172 +275,6 @@ export default function AboutUsPage() {
 }
 
 const styles = StyleSheet.create({
-    statsBar: {
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 60,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-    },
-    statsInner: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        flexWrap: 'wrap',
-    },
-    statItem: {
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        margin: 20,
-    },
-    statIconBox: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: Colors.primary + '10',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    statValue: {
-        fontSize: 36,
-        fontWeight: '900',
-        color: Colors.navy,
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: Colors.textSecondary,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    storyGrid: {
-        alignItems: 'center',
-    },
-    storyText: {
-        flex: 1,
-        marginRight: Platform.OS === 'web' ? 80 : 0,
-    },
-    storyVisual: {
-        flex: 1,
-        width: '100%',
-        height: 400,
-        borderRadius: 40,
-        overflow: 'hidden',
-    },
-    storyImage: {
-        width: '100%',
-        height: '100%',
-    },
-    dualGrid: {
-    },
-    missionCardInverse: {
-        flex: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        padding: 50,
-        borderRadius: 32,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        margin: 20,
-    },
-    iconBoxInverse: {
-        width: 64,
-        height: 64,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-    },
-    missionTitleInverse: {
-        fontSize: 32,
-        fontWeight: '900',
-        color: '#FFFFFF',
-        marginBottom: 16,
-        letterSpacing: -0.5,
-    },
-    missionContentInverse: {
-        fontSize: 19,
-        color: '#94A3B8',
-        lineHeight: 30,
-    },
-    milestonesTimeline: {
-        justifyContent: 'space-between',
-    },
-    milestoneItem: {
-        flex: 1,
-        alignItems: 'center',
-        position: 'relative',
-        margin: 16,
-    },
-    milestoneYearBox: {
-        width: 80,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: Colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-        zIndex: 2,
-    },
-    milestoneYear: {
-        color: '#FFF',
-        fontSize: 18,
-        fontWeight: '900',
-    },
-    milestoneContent: {
-        alignItems: 'center',
-    },
-    milestoneTitle: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: Colors.navy,
-        marginBottom: 12,
-        textAlign: 'center',
-    },
-    milestoneDesc: {
-        fontSize: 16,
-        color: Colors.textSecondary,
-        textAlign: 'center',
-        lineHeight: 24,
-    },
-    milestoneLine: {
-        position: 'absolute',
-        top: 20,
-        left: '60%',
-        width: '80%',
-        height: 2,
-        backgroundColor: '#E2E8F0',
-        zIndex: 1,
-    },
-    sustainabilityGrid: {
-    },
-    susItem: {
-        flexDirection: 'row',
-        marginBottom: 32,
-    },
-    susIcon: {
-        width: 52,
-        height: 52,
-        borderRadius: 16,
-        backgroundColor: Colors.primary + '10',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 20,
-    },
-    susContent: {
-        flex: 1,
-    },
-    susTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: Colors.navy,
-        marginBottom: 8,
-    },
-    susDesc: {
-        fontSize: 16,
-        color: Colors.textSecondary,
-        lineHeight: 24,
-    },
     container: {
         backgroundColor: '#FFFFFF',
     },
@@ -417,8 +310,46 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         maxWidth: 700,
     },
+    statsBar: {
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 80,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+    },
+    statsInner: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        flexWrap: 'wrap',
+    },
+    statItem: {
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        margin: 20,
+    },
+    statIconBox: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: Colors.primary + '10',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    statValue: {
+        fontSize: 48,
+        fontWeight: '900',
+        color: Colors.navy,
+        marginBottom: 8,
+    },
+    statLabel: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: Colors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 2,
+    },
     section: {
-        paddingVertical: 120,
+        paddingVertical: 140,
         paddingHorizontal: 24,
     },
     sectionTag: {
@@ -426,106 +357,343 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '800',
         textTransform: 'uppercase',
-        letterSpacing: 2,
-        marginBottom: 16,
+        letterSpacing: 3,
+        marginBottom: 20,
+    },
+    sectionTagCenter: {
+        color: Colors.primary,
+        fontSize: 14,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 3,
+        marginBottom: 20,
+        textAlign: 'center',
     },
     sectionTitle: {
+        fontWeight: '900',
+        color: Colors.navy,
+        marginBottom: 32,
+        letterSpacing: -2,
+        lineHeight: Platform.OS === 'web' ? 64 : 44,
+    },
+    sectionTitleCenter: {
+        fontWeight: '900',
+        color: Colors.navy,
+        marginBottom: 32,
+        letterSpacing: -2,
+        textAlign: 'center',
+        lineHeight: Platform.OS === 'web' ? 64 : 44,
+    },
+    sectionDesc: {
+        fontSize: 20,
+        color: Colors.textSecondary,
+        lineHeight: 36,
+        marginBottom: 40,
+    },
+    storyGrid: {
+        alignItems: 'center',
+    },
+    storyText: {
+        flex: 1,
+    },
+    storyVisual: {
+        flex: 1.2,
+        width: '100%',
+        borderRadius: 40,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    storyImage: {
+        width: '100%',
+        height: '100%',
+    },
+    imageOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: Colors.primary,
+        opacity: 0.1,
+    },
+    dualGrid: {
+    },
+    missionCardInverse: {
+        flex: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        padding: 60,
+        borderRadius: 40,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    iconBoxInverse: {
+        width: 80,
+        height: 80,
+        borderRadius: 24,
+        backgroundColor: Colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 32,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+    },
+    missionTitleInverse: {
+        fontSize: 36,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        marginBottom: 20,
+        letterSpacing: -1,
+    },
+    missionContentInverse: {
+        fontSize: 20,
+        color: '#94A3B8',
+        lineHeight: 34,
+    },
+    teamGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 30,
+        marginTop: 40,
+    },
+    teamCard: {
+        flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 32,
+        padding: 32,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        alignItems: 'center',
+        gap: 24,
+    },
+    teamImageContainer: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        overflow: 'hidden',
+        borderWidth: 4,
+        borderColor: Colors.primary + '20',
+    },
+    teamImage: {
+        width: '100%',
+        height: '100%',
+    },
+    teamInfo: {
+        flex: 1,
+    },
+    teamName: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: Colors.navy,
+        marginBottom: 4,
+    },
+    teamRole: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.primary,
+        marginBottom: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    teamBio: {
+        fontSize: 16,
+        color: Colors.textSecondary,
+        lineHeight: 24,
+    },
+    valuesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: 30,
+    },
+    valueCard: {
+        backgroundColor: '#FFFFFF',
+        padding: 60,
+        borderRadius: 40,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.05,
+        shadowRadius: 40,
+        elevation: 10,
+    },
+    valueIcon: {
+        width: 80,
+        height: 80,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 32,
+    },
+    valueTitle: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: Colors.navy,
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    valueDesc: {
+        fontSize: 18,
+        color: Colors.textSecondary,
+        lineHeight: 30,
+        textAlign: 'center',
+    },
+    addressBox: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 40,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 30 },
+        shadowOpacity: 0.1,
+        shadowRadius: 50,
+        elevation: 20,
+    },
+    addressInfo: {
+        flex: 1,
+        padding: 60,
+        justifyContent: 'center',
+    },
+    addressTitle: {
+        fontSize: 36,
         fontWeight: '900',
         color: Colors.navy,
         marginBottom: 24,
         letterSpacing: -1,
     },
-    sectionDesc: {
-        fontSize: 19,
+    addressRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        marginBottom: 40,
+    },
+    addressText: {
+        fontSize: 20,
         color: Colors.textSecondary,
-        lineHeight: 32,
+        flex: 1,
+        lineHeight: 30,
+    },
+    directionsBtn: {
+        backgroundColor: Colors.primary,
+        paddingHorizontal: 32,
+        paddingVertical: 18,
+        borderRadius: 16,
+        alignSelf: 'flex-start',
+    },
+    directionsBtnText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    addressVisual: {
+        flex: 1.2,
+        height: 500,
+    },
+    addressImage: {
+        width: '100%',
+        height: '100%',
+    },
+    milestonesTimeline: {
+        justifyContent: 'space-between',
+        gap: 40,
+    },
+    milestoneItem: {
+        flex: 1,
+        alignItems: 'center',
+        position: 'relative',
+    },
+    milestoneYearBox: {
+        width: 100,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: Colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
         marginBottom: 32,
+        zIndex: 2,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+    },
+    milestoneYear: {
+        color: '#FFF',
+        fontSize: 20,
+        fontWeight: '900',
+    },
+    milestoneContent: {
+        alignItems: 'center',
+    },
+    milestoneTitle: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: Colors.navy,
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    milestoneDesc: {
+        fontSize: 17,
+        color: Colors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 28,
+    },
+    milestoneLine: {
+        position: 'absolute',
+        top: 25,
+        left: '70%',
+        width: '60%',
+        height: 2,
+        backgroundColor: '#E2E8F0',
+        zIndex: 1,
     },
     splitGrid: {
     },
     splitText: {
         flex: 1,
     },
-    missionCard: {
-        backgroundColor: '#F1F5F9',
-        padding: 48,
-        borderRadius: 40,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+    sustainabilityGrid: {
+        gap: 40,
     },
-    iconBox: {
+    susItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    susIcon: {
         width: 64,
         height: 64,
         borderRadius: 20,
-        alignItems: 'center',
+        backgroundColor: Colors.primary + '10',
         justifyContent: 'center',
-        marginBottom: 24,
+        alignItems: 'center',
+        marginRight: 24,
     },
-    missionTitle: {
-        fontSize: 28,
+    susContent: {
+        flex: 1,
+    },
+    susTitle: {
+        fontSize: 24,
         fontWeight: '900',
-        color: Colors.text,
-        marginBottom: 16,
-        letterSpacing: -0.5,
+        color: Colors.navy,
+        marginBottom: 12,
     },
-    missionContent: {
+    susDesc: {
         fontSize: 18,
         color: Colors.textSecondary,
-        lineHeight: 28,
-    },
-    valuesGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-    },
-    valueCard: {
-        minWidth: 300,
-        backgroundColor: '#FFFFFF',
-        padding: 48,
-        borderRadius: 32,
-        alignItems: 'center',
-        textAlign: 'center',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.05,
-        shadowRadius: 20,
-        elevation: 5,
-        margin: 16,
-    },
-    valueIcon: {
-        width: 72,
-        height: 72,
-        borderRadius: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-    },
-    valueTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: Colors.text,
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    valueDesc: {
-        fontSize: 17,
-        color: Colors.textSecondary,
-        lineHeight: 26,
-        textAlign: 'center',
+        lineHeight: 30,
     },
     ctaSection: {
-        paddingVertical: 60,
+        paddingVertical: 100,
         paddingHorizontal: 24,
     },
     ctaCard: {
-        backgroundColor: Colors.navy,
-        borderRadius: 40,
+        backgroundColor: '#0F172A',
+        borderRadius: 50,
         alignItems: 'center',
         justifyContent: 'space-between',
         overflow: 'hidden',
         position: 'relative',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     ctaText: {
         flex: 1,
@@ -533,32 +701,32 @@ const styles = StyleSheet.create({
     ctaTitle: {
         fontWeight: '900',
         color: '#FFF',
-        marginBottom: 16,
-        letterSpacing: -1,
-        marginRight: Platform.OS === 'web' ? 40 : 0,
+        marginBottom: 24,
+        letterSpacing: -2,
     },
     ctaDesc: {
-        fontSize: 20,
-        color: 'rgba(255,255,255,0.7)',
-        lineHeight: 30,
-        maxWidth: 600,
+        fontSize: 24,
+        color: '#94A3B8',
+        lineHeight: 38,
+        maxWidth: 700,
+        marginBottom: Platform.OS === 'web' ? 0 : 40,
     },
     ctaBtn: {
         backgroundColor: Colors.primary,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 40,
-        paddingVertical: 20,
-        borderRadius: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 20,
-        elevation: 10,
+        paddingHorizontal: 48,
+        paddingVertical: 24,
+        borderRadius: 20,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 15 },
+        shadowOpacity: 0.4,
+        shadowRadius: 30,
+        elevation: 15,
     },
     ctaBtnText: {
-        fontSize: 20,
-        fontWeight: '800',
+        fontSize: 24,
+        fontWeight: '900',
         color: '#FFF',
     }
 });

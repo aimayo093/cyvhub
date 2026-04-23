@@ -227,7 +227,7 @@ export default function CustomerAnalyticsScreen() {
                   return (
                     <View key={item.month} style={styles.barWrap}>
                       <View style={styles.barOuter}>
-                        <View style={[styles.bar, { height: `${heightPct}%`, backgroundColor: '#10B981' }]} />
+                        <View style={[styles.bar, { height: `${heightPct}%`, backgroundColor: '#0066FF' }]} />
                       </View>
                       <Text style={styles.barLabel}>{item.month}</Text>
                       <Text style={styles.barValue}>{item.kgCO2}</Text>
@@ -238,8 +238,8 @@ export default function CustomerAnalyticsScreen() {
             </View>
 
             <View style={styles.emissionsSummary}>
-              <View style={[styles.emissionsCard, { borderLeftColor: '#10B981' }]}>
-                <Leaf size={18} color="#10B981" />
+              <View style={[styles.emissionsCard, { borderLeftColor: '#0066FF' }]}>
+                <Leaf size={18} color="#0066FF" />
                 <View>
                   <Text style={styles.emissionsValue}>{data.emissionsMonthly.reduce((s: number, d: any) => s + d.kgCO2, 0).toLocaleString()} kg</Text>
                   <Text style={styles.emissionsLabel}>Total CO₂ (6 months)</Text>
