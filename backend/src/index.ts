@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+
 import rateLimit from 'express-rate-limit';
 
 import authRoutes from './routes/auth.routes';
@@ -78,14 +78,7 @@ app.set('trust proxy', 1);
 
 // Singleton PrismaClient — datasources override forces pgbouncer-compatible mode
 // (disables prepared statements which don't work with PgBouncer's transaction pooling)
-export const prisma = new PrismaClient({
-    datasources: {
-        db: {
-            url: process.env.DATABASE_URL,
-        },
-    },
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error'] : ['error'],
-});
+export { prisma } from './lib/prisma';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORS
