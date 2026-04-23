@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, Dimensions, TouchableOpacity, Image, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Shield, Leaf, Users, Award, MapPin, Truck, ShieldCheck, Zap, Eye, Target, Rocket, Map, FileText, BriefcaseMedical, Clock, Package } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useCMS } from '@/context/CMSContext';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 
 const IconMap: any = {
@@ -19,6 +20,7 @@ const DynamicIcon = ({ name, size = 24, color = Colors.primary }: any) => {
 export default function AboutUsPage() {
     const { aboutPage: config, isLoaded } = useCMS();
     const { width: SCREEN_WIDTH } = useWindowDimensions();
+    const router = useRouter();
 
     if (!isLoaded) {
         return (
@@ -252,21 +254,10 @@ export default function AboutUsPage() {
                             <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 56 : 32 }]}>{config.ctaTitle}</Text>
                             <Text style={styles.ctaDesc}>{config.ctaDesc}</Text>
                         </View>
-                        <Link 
-                            href={config.ctaBtnUrl as any} 
-                            asChild
-                            onClick={(e) => {
-                                if (Platform.OS === 'web') {
-                                    e.preventDefault();
-                                    window.location.href = config.ctaBtnUrl;
-                                }
-                            }}
-                        >
-                            <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.9}>
-                                <Text style={styles.ctaBtnText}>{config.ctaBtnText}</Text>
-                                <Rocket size={24} color="#FFF" style={{ marginLeft: 12 }} />
-                            </TouchableOpacity>
-                        </Link>
+                        <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.9} onPress={() => hardNavigate(config.ctaBtnUrl, router)}>
+                            <Text style={styles.ctaBtnText}>{config.ctaBtnText}</Text>
+                            <Rocket size={24} color="#FFF" style={{ marginLeft: 12 }} />
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View>

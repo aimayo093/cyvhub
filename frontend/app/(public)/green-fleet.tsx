@@ -2,9 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, Image, TouchableOpacity } from 'react-native';
 import { Leaf, BatteryCharging, Wind, ArrowRight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 export default function GreenFleetPage() {
+    const router = useRouter();
+
     return (
         <ScrollView style={styles.container}>
             {/* HERO SECTION */}
@@ -51,21 +54,10 @@ export default function GreenFleetPage() {
                                 </View>
                             </View>
 
-                            <Link 
-                                href="/about" 
-                                asChild
-                                onClick={(e) => {
-                                    if (Platform.OS === 'web') {
-                                        e.preventDefault();
-                                        window.location.href = '/about';
-                                    }
-                                }}
-                            >
-                                <TouchableOpacity style={styles.ctaBtn}>
-                                    <Text style={styles.ctaBtnText}>Read our Sustainability Report</Text>
-                                    <ArrowRight size={20} color="#FFFFFF" />
-                                </TouchableOpacity>
-                            </Link>
+                            <TouchableOpacity style={styles.ctaBtn} onPress={() => hardNavigate('/about', router)}>
+                                <Text style={styles.ctaBtnText}>Read our Sustainability Report</Text>
+                                <ArrowRight size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
 
                         </View>
 

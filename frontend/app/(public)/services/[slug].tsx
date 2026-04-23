@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, useRouter, Link } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCMS } from '@/context/CMSContext';
 import Colors from '@/constants/colors';
 import { 
@@ -26,6 +26,7 @@ import {
     Settings
 } from 'lucide-react-native';
 import Head from 'expo-router/head';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 const IconMap: any = {
     Clock, Target, Zap, Shield, Package, Users, FileText, Rocket, CheckCircle2, BarChart3, Truck, Plane, Globe, Calendar, Map, Briefcase, ArrowLeftRight, ShieldCheck, Settings
@@ -59,13 +60,7 @@ export default function ServiceDetailPage() {
                 <Text style={styles.errorSubtitle}>We couldn't find the service you're looking for.</Text>
                 <TouchableOpacity 
                     style={styles.homeBtn} 
-                    onPress={() => {
-                        if (Platform.OS === 'web') {
-                            window.location.href = '/';
-                        } else {
-                            router.push('/');
-                        }
-                    }}
+                    onPress={() => hardNavigate('/', router)}
                 >
                     <Text style={styles.homeBtnText}>Return Home</Text>
                 </TouchableOpacity>
@@ -99,13 +94,7 @@ export default function ServiceDetailPage() {
                     <View style={styles.heroActions}>
                         <TouchableOpacity 
                             style={styles.primaryBtn} 
-                            onPress={() => {
-                                if (Platform.OS === 'web') {
-                                    window.location.href = '/contact';
-                                } else {
-                                    router.push('/contact');
-                                }
-                            }}
+                            onPress={() => hardNavigate('/contact', router)}
                         >
                             <Text style={styles.primaryBtnText}>Get an Instant Quote</Text>
                             <ArrowRight size={20} color="#FFF" />
@@ -132,13 +121,7 @@ export default function ServiceDetailPage() {
                                 <Text style={styles.ctaBoxText}>Our logistics experts are ready to handle your business-critical jobs 24/7/365.</Text>
                                 <TouchableOpacity 
                                     style={styles.ctaBoxBtn} 
-                                    onPress={() => {
-                                        if (Platform.OS === 'web') {
-                                            window.location.href = '/contact';
-                                        } else {
-                                            router.push('/contact');
-                                        }
-                                    }}
+                                    onPress={() => hardNavigate('/contact', router)}
                                 >
                                     <Text style={styles.ctaBoxBtnText}>Open an Account</Text>
                                 </TouchableOpacity>
@@ -218,13 +201,7 @@ export default function ServiceDetailPage() {
                         </View>
                         <TouchableOpacity 
                             style={styles.whiteBtn} 
-                            onPress={() => {
-                                if (Platform.OS === 'web') {
-                                    window.location.href = config.ctaButtonUrl || '/contact';
-                                } else {
-                                    router.push(config.ctaButtonUrl as any);
-                                }
-                            }}
+                            onPress={() => hardNavigate(config.ctaButtonUrl || '/contact', router)}
                         >
                             <Text style={styles.whiteBtnText}>{config.ctaButtonText}</Text>
                         </TouchableOpacity>

@@ -20,6 +20,7 @@ import {
     RelatedIndustries,
     IndustryFooterCTA,
 } from '@/components/industries/IndustryComponents';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 function IndustryDetailPage() {
     const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -46,13 +47,7 @@ function IndustryDetailPage() {
                 <Text style={s.errSub}>We couldn't find the industry you're looking for.</Text>
                 <TouchableOpacity
                     style={[s.pill, { backgroundColor: Colors.primary }]}
-                    onPress={() => {
-                        if (Platform.OS === 'web') {
-                            window.location.href = '/industries';
-                        } else {
-                            router.push('/industries');
-                        }
-                    }}
+                    onPress={() => hardNavigate('/industries', router)}
                 >
                     <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>← Back to Industries</Text>
                 </TouchableOpacity>
@@ -100,13 +95,7 @@ function IndustryDetailPage() {
                 title={config.title}
                 subtitle={config.subtitle}
                 imageUrl={config.heroImageUrl}
-                onGetStarted={() => {
-                    if (Platform.OS === 'web') {
-                        window.location.href = '/contact';
-                    } else {
-                        router.push('/contact');
-                    }
-                }}
+                onGetStarted={() => hardNavigate('/contact', router)}
                 onLearnMore={() => {/* scroll handled natively */}}
             />
 
@@ -162,13 +151,7 @@ function IndustryDetailPage() {
                     accentColor={accent}
                     layoutTheme={config.layoutTheme}
                     industries={relatedList}
-                    onPress={(s) => {
-                        if (Platform.OS === 'web') {
-                            window.location.href = `/industries/${s}`;
-                        } else {
-                            router.push(`/industries/${s}` as any);
-                        }
-                    }}
+                    onPress={(s) => hardNavigate(`/industries/${s}`, router)}
                 />
             )}
 
@@ -177,20 +160,8 @@ function IndustryDetailPage() {
                 accentColor={accent}
                 title={config.ctaHeading}
                 subtext={config.ctaText}
-                onGetQuote={() => {
-                    if (Platform.OS === 'web') {
-                        window.location.href = '/guest-quote';
-                    } else {
-                        router.push('/guest-quote');
-                    }
-                }}
-                onTalkToUs={() => {
-                    if (Platform.OS === 'web') {
-                        window.location.href = '/contact';
-                    } else {
-                        router.push('/contact');
-                    }
-                }}
+                onGetQuote={() => hardNavigate('/guest-quote', router)}
+                onTalkToUs={() => hardNavigate('/contact', router)}
             />
         </ScrollView>
     );

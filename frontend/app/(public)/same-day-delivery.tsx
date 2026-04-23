@@ -2,10 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, Image, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Clock, Navigation, CheckCircle, ArrowRight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 export default function SameDayDeliveryPage() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
+    const router = useRouter();
+
     return (
         <ScrollView style={styles.container}>
             {/* HERO SECTION */}
@@ -52,21 +55,10 @@ export default function SameDayDeliveryPage() {
                                 </View>
                             </View>
 
-                            <Link 
-                                href="/login" 
-                                asChild
-                                onClick={(e) => {
-                                    if (Platform.OS === 'web') {
-                                        e.preventDefault();
-                                        window.location.href = '/login';
-                                    }
-                                }}
-                            >
-                                <TouchableOpacity style={styles.ctaBtn}>
-                                    <Text style={styles.ctaBtnText}>Get an Instant Quote</Text>
-                                    <ArrowRight size={20} color="#FFFFFF" />
-                                </TouchableOpacity>
-                            </Link>
+                            <TouchableOpacity style={styles.ctaBtn} onPress={() => hardNavigate('/login', router)}>
+                                <Text style={styles.ctaBtnText}>Get an Instant Quote</Text>
+                                <ArrowRight size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
 
                         </View>
 

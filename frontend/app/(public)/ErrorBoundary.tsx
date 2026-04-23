@@ -3,6 +3,7 @@ import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 function Fallback({ error }: { error: Error }) {
   const router = useRouter();
@@ -10,7 +11,7 @@ function Fallback({ error }: { error: Error }) {
     <View style={styles.container}>
       <Text style={styles.title}>Something went wrong.</Text>
       <Text style={styles.message}>{error.message}</Text>
-      <TouchableOpacity style={styles.button} onPress={() => router.replace('/')}>
+      <TouchableOpacity style={styles.button} onPress={() => hardNavigate('/', router, { replace: true })}>
         <Text style={styles.buttonText}>Return Home</Text>
       </TouchableOpacity>
     </View>

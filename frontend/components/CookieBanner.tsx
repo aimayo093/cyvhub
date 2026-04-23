@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Animated } from 'react-native';
-import { Link } from 'expo-router';
 import Colors from '@/constants/colors';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 const CONSENT_KEY = 'cyv_cookie_consent';
 
@@ -60,7 +60,7 @@ export default function CookieBanner() {
                     <Text style={styles.title}>🍪 We use cookies</Text>
                     <Text style={styles.body}>
                         CYVhub uses essential cookies to keep the platform running. We may also use analytics cookies to improve your experience.{' '}
-                        <Link href="/(public)/privacy" style={styles.link}>Privacy Policy</Link>
+                        <Text style={styles.link} onPress={() => hardNavigate('/privacy')}>Privacy Policy</Text>
                     </Text>
                 </View>
                 <View style={styles.actions}>

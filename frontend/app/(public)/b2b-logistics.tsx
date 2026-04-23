@@ -2,9 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, Image, TouchableOpacity } from 'react-native';
 import { Server, Combine, Users, ArrowRight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 export default function B2BLogisticsPage() {
+    const router = useRouter();
+
     return (
         <ScrollView style={styles.container}>
             {/* HERO SECTION */}
@@ -51,21 +54,10 @@ export default function B2BLogisticsPage() {
                                 </View>
                             </View>
 
-                            <Link 
-                                href="/contact" 
-                                asChild
-                                onClick={(e) => {
-                                    if (Platform.OS === 'web') {
-                                        e.preventDefault();
-                                        window.location.href = '/contact';
-                                    }
-                                }}
-                            >
-                                <TouchableOpacity style={styles.ctaBtn}>
-                                    <Text style={styles.ctaBtnText}>Consult an Expert</Text>
-                                    <ArrowRight size={20} color="#FFFFFF" />
-                                </TouchableOpacity>
-                            </Link>
+                            <TouchableOpacity style={styles.ctaBtn} onPress={() => hardNavigate('/contact', router)}>
+                                <Text style={styles.ctaBtnText}>Consult an Expert</Text>
+                                <ArrowRight size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.imageCol}>

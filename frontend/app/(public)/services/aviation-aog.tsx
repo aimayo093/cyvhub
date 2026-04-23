@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, Dimensions, useWindowDimensions } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { 
     Plane, ShieldCheck, Clock, Zap, ArrowRight, 
     CheckCircle, AlertTriangle, MapPin, Phone
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 // Removed static Dimensions get
 
@@ -42,13 +43,7 @@ export default function AviationAOGPage() {
                         <View style={[styles.heroActionRow, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                             <TouchableOpacity 
                                 style={styles.primaryBtn}
-                                onPress={() => {
-                                    if (Platform.OS === 'web') {
-                                        window.location.href = '/guest-quote?vehicle=Large%20Van&ready=true';
-                                    } else {
-                                        router.push('/guest-quote?vehicle=Large%20Van&ready=true' as any);
-                                    }
-                                }}
+                                onPress={() => hardNavigate('/guest-quote?vehicle=Large%20Van&ready=true', router)}
                             >
                                 <Text style={styles.primaryBtnText}>Book Emergency Courier</Text>
                                 <ArrowRight size={18} color="#FFF" />
@@ -152,25 +147,13 @@ export default function AviationAOGPage() {
                         <View style={[styles.ctaActions, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                             <TouchableOpacity 
                                 style={styles.ctaPrimaryBtn}
-                                onPress={() => {
-                                    if (Platform.OS === 'web') {
-                                        window.location.href = '/guest-quote';
-                                    } else {
-                                        router.push('/guest-quote' as any);
-                                    }
-                                }}
+                                onPress={() => hardNavigate('/guest-quote', router)}
                             >
                                 <Text style={styles.ctaPrimaryBtnText}>Get Emergency Quote</Text>
                             </TouchableOpacity>
                             <TouchableOpacity 
                                 style={styles.ctaSecondaryBtn}
-                                onPress={() => {
-                                    if (Platform.OS === 'web') {
-                                        window.location.href = '/contact';
-                                    } else {
-                                        router.push('/contact' as any);
-                                    }
-                                }}
+                                onPress={() => hardNavigate('/contact', router)}
                             >
                                 <Phone size={18} color="#FFF" style={{ marginRight: 8 }} />
                                 <Text style={styles.ctaSecondaryBtnText}>24/7 AOG Desk</Text>

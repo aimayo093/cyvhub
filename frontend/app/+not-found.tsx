@@ -1,10 +1,13 @@
-import { Link, Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Home, AlertTriangle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 export default function NotFoundScreen() {
+  const router = useRouter();
+
   return (
     <>
       <Stack.Screen options={{ title: 'Oops!', headerShown: false }} />
@@ -21,12 +24,10 @@ export default function NotFoundScreen() {
             The page you're looking for doesn't exist or has been moved.
           </Text>
 
-          <Link href="/" asChild>
-            <TouchableOpacity style={styles.button}>
-              <Home size={20} color="#FFF" />
-              <Text style={styles.buttonText}>Go Back Home</Text>
-            </TouchableOpacity>
-          </Link>
+          <TouchableOpacity style={styles.button} onPress={() => hardNavigate('/', router, { replace: true })}>
+            <Home size={20} color="#FFF" />
+            <Text style={styles.buttonText}>Go Back Home</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </>

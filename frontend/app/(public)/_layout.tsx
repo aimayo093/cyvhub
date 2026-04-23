@@ -1,25 +1,28 @@
-import { Slot, Link, useRouter } from 'expo-router';
+import { Slot, usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, useWindowDimensions, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'react-native';
 import { 
-    Truck, Navigation, Facebook, Twitter, Linkedin, Instagram, Menu, X, User, 
+    Truck, Facebook, Twitter, Linkedin, Menu, X, User,
     BriefcaseMedical, Monitor, Factory, Plane, Recycle, Settings, Utensils, ChevronRight, ChevronDown,
     Clock, Target, Zap, Shield, Package, Users, FileText, Rocket, BarChart3, Calendar, Map, Briefcase, ArrowLeftRight, ShieldCheck
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useCMS } from '@/context/CMSContext';
 import CookieBanner from '@/components/CookieBanner';
+import { hardNavigate, openExternalUrl, resetWebScrollPosition } from '@/utils/hardNavigate';
 
 export default function PublicLayout() {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
     const router = useRouter();
+    const pathname = usePathname();
     const { header, footer, industryDetails, serviceDetails, menuConfig, isLoaded } = useCMS();
     const insets = useSafeAreaInsets();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [hoveredMenuId, setHoveredMenuId] = useState<string | null>(null);
     const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const mainScrollRef = useRef<ScrollView>(null);
 
     const handleMouseEnter = (id: string) => {
         if (closeTimeoutRef.current) {
@@ -40,6 +43,11 @@ export default function PublicLayout() {
             if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
         };
     }, []);
+
+    useEffect(() => {
+        resetWebScrollPosition();
+        mainScrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
+    }, [pathname]);
  
     const IconMap: any = {
         BriefcaseMedical, Monitor, Factory, Plane, Recycle, Settings, Utensils, Truck,
@@ -81,6 +89,12 @@ export default function PublicLayout() {
     };
 
     const isWeb = Platform.OS === 'web';
+
+    const navigateTo = (href?: string) => {
+        setIsMenuOpen(false);
+        setHoveredMenuId(null);
+        hardNavigate(href || '/', router);
+    };
 
     // Dynamically inject published industries and services into the menu
     const baseMenuItems = [
@@ -137,22 +151,11 @@ export default function PublicLayout() {
             {/* ANNOUNCEMENT BAR */}
             {header.enableAnnouncement && (
                 <View style={[styles.announcementBar, { paddingTop: insets.top || 8, overflow: 'hidden', backgroundColor: header.announcementBgColor || Colors.primary }]}>
-                    <Link 
-                        href={(header.announcementLink || '/') as any} 
-                        asChild
-                        onClick={(e) => {
-                            if (isWeb) {
-                                e.preventDefault();
-                                window.location.href = header.announcementLink || '/';
-                            }
-                        }}
-                    >
-                        <TouchableOpacity style={styles.announcementInner}>
-                            <Animated.Text numberOfLines={1} style={[styles.announcementText, { transform: [{ translateX: slideAnim }] }]}>
-                                {header.announcementText}
-                            </Animated.Text>
-                        </TouchableOpacity>
-                    </Link>
+                    <TouchableOpacity style={styles.announcementInner} onPress={() => navigateTo(header.announcementLink || '/')}>
+                        <Animated.Text numberOfLines={1} style={[styles.announcementText, { transform: [{ translateX: slideAnim }] }]}>
+                            {header.announcementText}
+                        </Animated.Text>
+                    </TouchableOpacity>
                 </View>
             )}
 
@@ -171,13 +174,7 @@ export default function PublicLayout() {
                 <View style={styles.headerContent}>
                     <TouchableOpacity 
                         style={styles.logoContainer} 
-                        onPress={() => {
-                            if (isWeb) {
-                                window.location.href = '/';
-                            } else {
-                                router.push('/');
-                            }
-                        }}
+                        onPress={() => navigateTo('/')}
                         activeOpacity={0.7}
                     >
                         <Image
@@ -197,15 +194,10 @@ export default function PublicLayout() {
                                     onMouseLeave: handleMouseLeave
                                 } : {})}
                             >
-                                <Link 
-                                    href={item.url as any} 
-                                    style={styles.navItemLink as any}
-                                    onClick={(e) => {
-                                        if (isWeb) {
-                                            e.preventDefault();
-                                            window.location.href = item.url;
-                                        }
-                                    }}
+                                <TouchableOpacity
+                                    style={styles.navItemLink}
+                                    activeOpacity={0.7}
+                                    onPress={() => navigateTo(item.url)}
                                 >
                                     <View style={styles.navLinkInner}>
                                         <Text style={[styles.navText, hoveredMenuId === item.id && { color: Colors.primary }]}>{item.label}</Text>
@@ -217,7 +209,7 @@ export default function PublicLayout() {
                                             />
                                         )}
                                     </View>
-                                </Link>
+                                </TouchableOpacity>
 
                                 {item.items && hoveredMenuId === item.id && (
                                     <View
@@ -235,41 +227,31 @@ export default function PublicLayout() {
                                                 {item.items.map((subItem: any) => {
                                                     const IconComponent = getIconComponent(subItem.label, subItem.icon);
                                                     return (
-                                                        <Link 
-                                                            key={subItem.id} 
-                                                            href={subItem.url as any} 
-                                                            asChild
-                                                            onPress={() => setHoveredMenuId(null)}
-                                                            onClick={(e) => {
-                                                                if (isWeb) {
-                                                                    e.preventDefault();
-                                                                    window.location.href = subItem.url;
-                                                                }
-                                                            }}
+                                                        <TouchableOpacity
+                                                            key={subItem.id}
+                                                            style={styles.megaMenuItem}
+                                                            activeOpacity={0.85}
+                                                            onPress={() => navigateTo(subItem.url)}
                                                         >
-                                                            <TouchableOpacity 
-                                                                style={styles.megaMenuItem}
-                                                            >
-                                                                {(item.id === 'industries' || item.id === 'services') && (
-                                                                    <View style={styles.industryIconContainer}>
-                                                                        {IconComponent && <IconComponent size={20} color={Colors.primary} />}
-                                                                    </View>
-                                                                )}
-                                                                <View style={styles.megaMenuTextContainer}>
-                                                                    <View style={styles.megaMenuTitleRow}>
-                                                                        <Text style={styles.megaMenuTitle} numberOfLines={1}>
-                                                                            {subItem.label}
-                                                                        </Text>
-                                                                        {(item.id === 'industries' || item.id === 'services') && <ChevronRight size={14} color={Colors.textSecondary} />}
-                                                                    </View>
-                                                                    {subItem.description && (
-                                                                        <Text style={styles.megaMenuDesc} numberOfLines={2}>
-                                                                            {subItem.description}
-                                                                        </Text>
-                                                                    )}
+                                                            {(item.id === 'industries' || item.id === 'services') && (
+                                                                <View style={styles.industryIconContainer}>
+                                                                    {IconComponent && <IconComponent size={20} color={Colors.primary} />}
                                                                 </View>
-                                                            </TouchableOpacity>
-                                                        </Link>
+                                                            )}
+                                                            <View style={styles.megaMenuTextContainer}>
+                                                                <View style={styles.megaMenuTitleRow}>
+                                                                    <Text style={styles.megaMenuTitle} numberOfLines={1}>
+                                                                        {subItem.label}
+                                                                    </Text>
+                                                                    {(item.id === 'industries' || item.id === 'services') && <ChevronRight size={14} color={Colors.textSecondary} />}
+                                                                </View>
+                                                                {subItem.description && (
+                                                                    <Text style={styles.megaMenuDesc} numberOfLines={2}>
+                                                                        {subItem.description}
+                                                                    </Text>
+                                                                )}
+                                                            </View>
+                                                        </TouchableOpacity>
                                                     );
                                                 })}
                                             </View>
@@ -284,13 +266,7 @@ export default function PublicLayout() {
                         <TouchableOpacity 
                             style={[styles.loginBtn, SCREEN_WIDTH < 768 ? { display: 'none' } : null]} 
                             activeOpacity={0.8}
-                            onPress={() => {
-                                if (isWeb) {
-                                    window.location.href = header.loginBtnUrl || '/login';
-                                } else {
-                                    router.push(header.loginBtnUrl as any);
-                                }
-                            }}
+                            onPress={() => navigateTo(header.loginBtnUrl || '/login')}
                         >
                             <User size={18} color="#FFF" style={{ marginRight: 8 }} />
                             <Text style={styles.loginBtnText}>{header.loginBtnText}</Text>
@@ -311,36 +287,24 @@ export default function PublicLayout() {
                     <ScrollView contentContainerStyle={styles.mobileMenuScroll}>
                         {headerItems.map((item: any) => (
                             <View key={item.id} style={styles.mobileNavItem}>
-                                <Link 
-                                    href={item.url as any} 
-                                    style={styles.mobileMenuItemLink as any} 
-                                    onPress={() => !item.items && setIsMenuOpen(false)}
-                                    onClick={(e) => {
-                                        if (isWeb) {
-                                            e.preventDefault();
-                                            window.location.href = item.url;
-                                        }
-                                    }}
+                                <TouchableOpacity
+                                    style={styles.mobileMenuItemLink}
+                                    activeOpacity={0.8}
+                                    onPress={() => navigateTo(item.url)}
                                 >
                                     <Text style={styles.mobileMenuItemText}>{item.label}</Text>
-                                </Link>
+                                </TouchableOpacity>
                                 {item.items && (
                                     <View style={styles.mobileSubMenu}>
                                         {item.items.map((sub: any) => (
-                                            <Link 
-                                                key={sub.id} 
-                                                href={sub.url as any} 
-                                                style={styles.mobileSubLink as any} 
-                                                onPress={() => setIsMenuOpen(false)}
-                                                onClick={(e) => {
-                                                    if (isWeb) {
-                                                        e.preventDefault();
-                                                        window.location.href = sub.url;
-                                                    }
-                                                }}
+                                            <TouchableOpacity
+                                                key={sub.id}
+                                                style={styles.mobileSubLink}
+                                                activeOpacity={0.8}
+                                                onPress={() => navigateTo(sub.url)}
                                             >
                                                 <Text style={styles.mobileSubText}>{sub.label}</Text>
-                                            </Link>
+                                            </TouchableOpacity>
                                         ))}
                                     </View>
                                 )}
@@ -348,14 +312,7 @@ export default function PublicLayout() {
                         ))}
                         <TouchableOpacity 
                             style={styles.mobileLoginBtn}
-                            onPress={() => { 
-                                setIsMenuOpen(false); 
-                                if (isWeb) {
-                                    window.location.href = header.loginBtnUrl || '/login';
-                                } else {
-                                    router.push(header.loginBtnUrl as any);
-                                }
-                            }}
+                            onPress={() => navigateTo(header.loginBtnUrl || '/login')}
                         >
                             <Text style={styles.mobileLoginText}>{header.loginBtnText}</Text>
                         </TouchableOpacity>
@@ -364,7 +321,7 @@ export default function PublicLayout() {
             )}
 
             {/* PAGE CONTENT */}
-            <ScrollView style={styles.main} contentContainerStyle={styles.mainContent}>
+            <ScrollView key={pathname} ref={mainScrollRef} style={styles.main} contentContainerStyle={styles.mainContent}>
                 <Slot />
 
                 {/* FOOTER */}
@@ -380,58 +337,46 @@ export default function PublicLayout() {
                                 {footer.companyBio}
                             </Text>
                             <View style={styles.socialRow}>
-                                {footer.facebookUrl && <Link href={footer.facebookUrl as any} style={styles.socialBtn as any} target="_blank"><Facebook size={20} color={Colors.textInverse} /></Link>}
-                                {footer.twitterUrl && <Link href={footer.twitterUrl as any} style={styles.socialBtn as any} target="_blank"><Twitter size={20} color={Colors.textInverse} /></Link>}
-                                {footer.linkedinUrl && <Link href={footer.linkedinUrl as any} style={styles.socialBtn as any} target="_blank"><Linkedin size={20} color={Colors.textInverse} /></Link>}
+                                {footer.facebookUrl && (
+                                    <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={() => openExternalUrl(footer.facebookUrl)}>
+                                        <Facebook size={20} color={Colors.textInverse} />
+                                    </TouchableOpacity>
+                                )}
+                                {footer.twitterUrl && (
+                                    <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={() => openExternalUrl(footer.twitterUrl)}>
+                                        <Twitter size={20} color={Colors.textInverse} />
+                                    </TouchableOpacity>
+                                )}
+                                {footer.linkedinUrl && (
+                                    <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={() => openExternalUrl(footer.linkedinUrl)}>
+                                        <Linkedin size={20} color={Colors.textInverse} />
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </View>
 
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Quick Links</Text>
                             {footerItems.map((item: any) => (
-                                <Link 
-                                    key={item.id} 
-                                    href={item.url as any} 
-                                    style={styles.footerLink as any}
-                                    onClick={(e) => {
-                                        if (isWeb) {
-                                            e.preventDefault();
-                                            window.location.href = item.url;
-                                        }
-                                    }}
-                                >{item.label}</Link>
+                                <TouchableOpacity key={item.id} style={styles.footerLinkButton} activeOpacity={0.8} onPress={() => navigateTo(item.url)}>
+                                    <Text style={styles.footerLink}>{item.label}</Text>
+                                </TouchableOpacity>
                             ))}
                         </View>
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Company</Text>
                             {footer.companyLinks?.map((link) => (
-                                <Link 
-                                    key={link.id} 
-                                    href={link.url as any} 
-                                    style={styles.footerLink as any}
-                                    onClick={(e) => {
-                                        if (isWeb) {
-                                            e.preventDefault();
-                                            window.location.href = link.url;
-                                        }
-                                    }}
-                                >{link.label}</Link>
+                                <TouchableOpacity key={link.id} style={styles.footerLinkButton} activeOpacity={0.8} onPress={() => navigateTo(link.url)}>
+                                    <Text style={styles.footerLink}>{link.label}</Text>
+                                </TouchableOpacity>
                             ))}
                         </View>
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Legal</Text>
                             {footer.legalLinks?.map((link) => (
-                                <Link 
-                                    key={link.id} 
-                                    href={link.url as any} 
-                                    style={styles.footerLink as any}
-                                    onClick={(e) => {
-                                        if (isWeb) {
-                                            e.preventDefault();
-                                            window.location.href = link.url;
-                                        }
-                                    }}
-                                >{link.label}</Link>
+                                <TouchableOpacity key={link.id} style={styles.footerLinkButton} activeOpacity={0.8} onPress={() => navigateTo(link.url)}>
+                                    <Text style={styles.footerLink}>{link.label}</Text>
+                                </TouchableOpacity>
                             ))}
                         </View>
                     </View>
@@ -629,29 +574,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
     },
-    industryIconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        backgroundColor: '#F0FDFA',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 2,
-    },
-    megaMenuTextContainer: {
-        flex: 1,
-    },
-    megaMenuTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    megaMenuDesc: {
-        fontSize: 13,
-        color: Colors.textSecondary,
-        marginTop: 2,
-        lineHeight: 18,
-    },
     arrowIcon: {
         opacity: 0,
         transform: [{ translateX: -4 }],
@@ -806,6 +728,10 @@ const styles = StyleSheet.create({
         color: '#94A3B8',
         fontSize: 15,
         textDecorationLine: 'none',
+    },
+    footerLinkButton: {
+        alignSelf: 'flex-start',
+        marginBottom: 14,
     },
     footerBottom: {
         maxWidth: 1200,

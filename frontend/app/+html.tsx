@@ -38,12 +38,30 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         
         <ScrollViewStyleReset />
+        <script dangerouslySetInnerHTML={{ __html: scrollResetScript }} />
         <style dangerouslySetInnerHTML={{ __html: rootStyles }} />
       </head>
       <body>{children}</body>
     </html>
   );
 }
+
+const scrollResetScript = `
+  (() => {
+    const resetScroll = () => {
+      try {
+        if ('scrollRestoration' in window.history) {
+          window.history.scrollRestoration = 'manual';
+        }
+        window.scrollTo(0, 0);
+      } catch {}
+    };
+
+    resetScroll();
+    window.addEventListener('load', resetScroll, { once: true });
+    window.addEventListener('pageshow', resetScroll);
+  })();
+`;
 
 const rootStyles = `
   *, *::before, *::after {

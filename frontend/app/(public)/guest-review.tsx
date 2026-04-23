@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, useRouter, Link } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, ArrowLeft } from 'lucide-react-native';
 import { Alert, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -8,6 +8,7 @@ import { apiClient, setToken } from '@/services/api';
 import Colors from '@/constants/colors';
 import { useQuoteStore } from '@/hooks/useQuoteStore';
 import { usePayments } from '@/providers/PaymentProvider';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
     return (
@@ -139,20 +140,9 @@ export default function GuestReviewPage() {
                     {'\n\n'}
                     We have sent a tracking link and receipt to {params.email}.
                 </Text>
-                <Link 
-                    href="/" 
-                    asChild
-                    onClick={(e) => {
-                        if (Platform.OS === 'web') {
-                            e.preventDefault();
-                            window.location.href = '/';
-                        }
-                    }}
-                >
-                    <TouchableOpacity style={styles.successBtn} activeOpacity={0.8}>
-                        <Text style={styles.successBtnText}>Return to Home</Text>
-                    </TouchableOpacity>
-                </Link>
+                <TouchableOpacity style={styles.successBtn} activeOpacity={0.8} onPress={() => hardNavigate('/', router)}>
+                    <Text style={styles.successBtnText}>Return to Home</Text>
+                </TouchableOpacity>
             </View>
         );
     }

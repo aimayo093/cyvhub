@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, Image, Platform } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useCMS } from '@/context/CMSContext';
 import Colors from '@/constants/colors';
 import { 
@@ -22,6 +22,7 @@ import {
 import Head from 'expo-router/head';
 import { LinearGradient } from 'expo-linear-gradient';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { hardNavigate } from '@/utils/hardNavigate';
 
 const IconMap: any = {
     'medical-healthcare': BriefcaseMedical,
@@ -39,6 +40,7 @@ const IconMap: any = {
 function IndustriesIndexPage() {
     const { industriesPage, industryDetails, isLoaded } = useCMS();
     const { width } = useWindowDimensions();
+    const router = useRouter();
     const isMobile = width < 480;
     const isSmallTablet = width >= 480 && width < 768;
     const isTablet = width >= 768 && width < 1280;
@@ -95,21 +97,10 @@ function IndustriesIndexPage() {
             <View style={styles.breadcrumbWrapper}>
                 <View style={styles.contentMax}>
                     <View style={styles.breadcrumbBar}>
-                        <Link 
-                            href="/" 
-                            asChild
-                            onClick={(e) => {
-                                if (Platform.OS === 'web') {
-                                    e.preventDefault();
-                                    window.location.href = '/';
-                                }
-                            }}
-                        >
-                            <TouchableOpacity style={styles.breadcrumbLink}>
-                                <Home size={14} color={Colors.textSecondary} />
-                                <Text style={styles.breadcrumbText}>Home</Text>
-                            </TouchableOpacity>
-                        </Link>
+                        <TouchableOpacity style={styles.breadcrumbLink} onPress={() => hardNavigate('/', router)}>
+                            <Home size={14} color={Colors.textSecondary} />
+                            <Text style={styles.breadcrumbText}>Home</Text>
+                        </TouchableOpacity>
                         <ChevronRight size={12} color="#CBD5E1" style={{ marginHorizontal: 8 }} />
                         <Text style={[styles.breadcrumbText, { color: Colors.primary, fontWeight: '700' }]}>Industries We Serve</Text>
                     </View>
@@ -139,54 +130,44 @@ function IndustriesIndexPage() {
                         {visibleIndustries.map((ind) => {
                             const IconComponent = IconMap[ind.slug || ind.id] || Truck;
                             return (
-                                <Link 
-                                    key={ind.id} 
-                                    href={`/industries/${ind.slug || ind.id}` as any} 
-                                    asChild
-                                    onClick={(e) => {
-                                        if (Platform.OS === 'web') {
-                                            e.preventDefault();
-                                            window.location.href = `/industries/${ind.slug || ind.id}`;
-                                        }
-                                    }}
+                                <TouchableOpacity
+                                    key={ind.id}
+                                    style={StyleSheet.flatten([
+                                        styles.card,
+                                        { width: isMobile ? '100%' : isSmallTablet ? '48%' : isTablet ? '31.5%' : '23%' }
+                                    ])}
+                                    activeOpacity={0.9}
+                                    onPress={() => hardNavigate(`/industries/${ind.slug || ind.id}`, router)}
                                 >
-                                    <TouchableOpacity 
-                                        style={StyleSheet.flatten([
-                                            styles.card, 
-                                            { width: isMobile ? '100%' : isSmallTablet ? '48%' : isTablet ? '31.5%' : '23%' }
-                                        ])}
-                                        activeOpacity={0.9}
-                                    >
-                                        <View style={styles.cardImageContainer}>
-                                            <Image
-                                                source={{ uri: ind.heroImageUrl || 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaad5b?q=80&w=1974' }}
-                                                style={styles.cardImage}
-                                                resizeMode="cover"
-                                            />
-                                            <LinearGradient
-                                                colors={['transparent', 'rgba(15, 23, 42, 0.9)']}
-                                                style={styles.cardGradient}
-                                            />
-                                            <View style={styles.cardIconFloating}>
-                                                <IconComponent size={24} color="#FFF" />
-                                            </View>
+                                    <View style={styles.cardImageContainer}>
+                                        <Image
+                                            source={{ uri: ind.heroImageUrl || 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaad5b?q=80&w=1974' }}
+                                            style={styles.cardImage}
+                                            resizeMode="cover"
+                                        />
+                                        <LinearGradient
+                                            colors={['transparent', 'rgba(15, 23, 42, 0.9)']}
+                                            style={styles.cardGradient}
+                                        />
+                                        <View style={styles.cardIconFloating}>
+                                            <IconComponent size={24} color="#FFF" />
                                         </View>
+                                    </View>
+
+                                    <View style={styles.cardContent}>
+                                        <Text style={styles.cardTitle}>{ind.title}</Text>
+                                        <Text style={styles.cardDesc} numberOfLines={3}>
+                                            {ind.subtitle || ind.description}
+                                        </Text>
                                         
-                                        <View style={styles.cardContent}>
-                                            <Text style={styles.cardTitle}>{ind.title}</Text>
-                                            <Text style={styles.cardDesc} numberOfLines={3}>
-                                                {ind.subtitle || ind.description}
-                                            </Text>
-                                            
-                                            <View style={styles.cardFooter}>
-                                                <Text style={styles.exploreText}>Explore Sector</Text>
-                                                <View style={styles.arrowCircle}>
-                                                    <ArrowRight size={14} color="#FFF" />
-                                                </View>
+                                        <View style={styles.cardFooter}>
+                                            <Text style={styles.exploreText}>Explore Sector</Text>
+                                            <View style={styles.arrowCircle}>
+                                                <ArrowRight size={14} color="#FFF" />
                                             </View>
                                         </View>
-                                    </TouchableOpacity>
-                                </Link>
+                                    </View>
+                                </TouchableOpacity>
                             );
                         })}
                     </View>
@@ -230,13 +211,7 @@ function IndustriesIndexPage() {
                             <Text style={styles.ctaDesc}>{config?.ctaText || 'Get in touch for specialized shipping advice.'}</Text>
                             <TouchableOpacity 
                                 style={styles.primaryBtn} 
-                                onPress={() => {
-                                    if (Platform.OS === 'web') {
-                                        window.location.href = '/contact';
-                                    } else {
-                                        router.push('/contact');
-                                    }
-                                }}
+                                onPress={() => hardNavigate('/contact', router)}
                                 activeOpacity={0.8}
                             >
                                 <Text style={styles.primaryBtnText}>{config?.ctaButton || 'Contact Us'}</Text>
