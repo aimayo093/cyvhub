@@ -590,7 +590,7 @@ async function main() {
                 subtitle: "Aircraft on Ground Won't Wait — Neither Do We",
                 description: "CYVhub operates a dedicated AOG response service providing same-day collection and delivery of aviation components, tooling, and documentation across the UK — responding within the hour with constant communication throughout.\n\nSecurity-cleared drivers with airside access experience handle documentation requirements including traceability records and chain-of-custody logs to meet airworthiness regulatory requirements.\n\nLive GPS tracking gives your AOG desk real-time consignment visibility. Our 24/7 operations team manages urgent requests, re-routes, and escalations immediately.\n\nSLA-based agreements with MRO operators, airlines, and ground handlers define response tiers, escalation paths, and reporting standards — a logistics partner you can rely on without exception.",
                 layoutTheme: 'center',
-                accentColor: "#10B981",
+                accentColor: "#0066FF",
                 overview: "An AOG event is among the most financially damaging situations in aviation. Every minute a commercial or private aircraft sits grounded translates directly into lost revenue, passenger disruption, and slot penalties. Components must be delivered with absolute urgency, correct documentation, and an unbroken chain of custody.",
                 challenges: [
                     { icon: 'Zap', title: 'Urgency', desc: 'Immediate dispatch day or night.' },
@@ -845,6 +845,112 @@ async function main() {
         ctaButton: "Contact Specialists"
     };
 
+    const aboutPage = {
+        heroTitle: "Redefining Logistics through Intelligent Dispatch",
+        heroSubtitle: "CYVhub is the next-generation logistics platform that bridges the gap between carriers, drivers, and businesses through real-time automation.",
+        heroImageUrl: "https://images.unsplash.com/photo-1580674285054-bed31e145f59",
+        
+        stats: [
+            { label: "Deliveries", value: "2M+" },
+            { label: "Active Drivers", value: "15k" },
+            { label: "UK Coverage", value: "99%" },
+            { label: "SLA Adherence", value: "99.8%" }
+        ],
+
+        storyTag: "OUR STORY",
+        storyTitle: "From Local Couriers to a Global Logistics Network",
+        storyDesc: "Founded on the principle that logistics should be transparent and effortless, CYVhub has evolved into a leading technology-driven delivery partner.",
+        storyImageUrl: "https://images.unsplash.com/photo-1519003722824-194d4455a60c",
+
+        missionTitle: "Empowering the Movement of Goods",
+        missionDesc: "To provide businesses with the most efficient, transparent, and reliable dispatch network in the UK.",
+        visionTitle: "The Future of Smart Logistics",
+        visionDesc: "A world where every delivery is optimized, every driver is empowered, and every business has complete control over their supply chain.",
+
+        teamTag: "LEADERSHIP",
+        teamTitle: "The Minds Behind CYVhub",
+        teamDesc: "Our leadership team brings together decades of experience in logistics, technology, and operational excellence.",
+        teamHighlights: [
+            {
+                name: "James Wilson",
+                role: "Chief Executive Officer",
+                bio: "20+ years in global logistics and supply chain optimization.",
+                imageUrl: "https://images.unsplash.com/photo-1560250097-0b93528c311a"
+            },
+            {
+                name: "Sarah Chen",
+                role: "Chief Technology Officer",
+                bio: "Expert in AI-driven dispatch algorithms and scalable cloud architecture.",
+                imageUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2"
+            }
+        ],
+
+        valuesTitle: "Core Values That Drive Us",
+        values: [
+            { title: "Reliability", desc: "We deliver on our promises, every single time.", icon: "Shield" },
+            { title: "Innovation", desc: "Constant improvement through technology.", icon: "Zap" },
+            { title: "Transparency", desc: "Real-time visibility for everyone in the chain.", icon: "Eye" }
+        ],
+
+        officeAddress: "Unit 14, Gateway Logistics Park, London, E16 1AB",
+
+        milestonesTitle: "Our Journey So Far",
+        milestones: [
+            { year: "2020", title: "Inception", desc: "CYVhub was founded in London." },
+            { year: "2022", title: "Expansion", desc: "Reached 10,000 active drivers nationwide." },
+            { year: "2024", title: "Innovation", desc: "Launched AI-driven route optimization." }
+        ],
+
+        sustainabilityTitle: "Commitment to Sustainability",
+        sustainabilityItems: [
+            { title: "Route Optimization", desc: "Reducing mileage by 30% through smart algorithms.", icon: "Leaf" },
+            { title: "EV Network", desc: "Prioritizing electric vehicles for urban deliveries.", icon: "Zap" }
+        ],
+
+        ctaTitle: "Join the Logistics Revolution",
+        ctaDesc: "Experience a smarter, faster way to manage your business deliveries.",
+        ctaButtonText: "Partner with Us",
+        ctaButtonUrl: "/contact"
+    };
+
+    const contactPage = {
+        heroTitle: "We're Here to Help Your Business Move",
+        heroSubtitle: "Get in touch with our logistics experts to discuss how CYVhub can optimize your supply chain and delivery operations.",
+        heroImageUrl: "https://images.unsplash.com/photo-1516387784530-4c6f48ec7f2c",
+
+        contactTag: "GET IN TOUCH",
+        contactSideTitle: "Let's Start a Conversation",
+        contactMethods: [
+            { id: '1', icon: 'Phone', label: 'Call Us', value: '0800 123 4567', subtext: 'Mon-Fri, 8am-6pm' },
+            { id: '2', icon: 'Mail', label: 'Email Us', value: 'hello@cyvhub.com', subtext: '24/7 Support Desk' }
+        ],
+
+        officeAddress: "Unit 14, Gateway Logistics Park, London, E16 1AB",
+        officeEmail: "hq@cyvhub.com",
+        officePhone: "+44 20 1234 5678",
+
+        departmentsTitle: "Our Specialized Departments",
+        departments: [
+            { id: '1', name: 'General Inquiries', desc: 'For general questions about our services.', email: 'hello@cyvhub.com', phone: '0800 123 4567', icon: 'Info' },
+            { id: '2', name: 'Sales & Partnerships', desc: 'Discuss business accounts and integration.', email: 'partners@cyvhub.com', phone: '0800 123 4568', icon: 'Briefcase' }
+        ],
+
+        formTitle: "Send an Inquiry",
+        formDesc: "Fill out the form below and a logistics specialist will contact you within 2 hours.",
+
+        hubsTitle: "Our Strategic Distribution Hubs",
+        hubs: [
+            { id: '1', city: 'London', address: 'Gateway Park, E16', coverage: 'South East UK' },
+            { id: '2', city: 'Manchester', address: 'Logistics North, M29', coverage: 'Northern England' }
+        ],
+
+        faqsTitle: "Frequently Asked Questions",
+        faqs: [
+            { id: '1', question: 'How fast can you dispatch a driver?', answer: 'For same-day requests, we typically dispatch within 15 minutes of booking.' },
+            { id: '2', question: 'Do you offer international shipping?', answer: 'Currently, we focus on nationwide UK logistics and specialized European routes.' }
+        ]
+    };
+
     // Prepare detail maps for GlobalConfig
     const serviceDetailsMap = servicesData.reduce((acc, s) => ({
         ...acc,
@@ -879,6 +985,8 @@ async function main() {
             config: {
                 servicesPage,
                 industriesPage,
+                aboutPage,
+                contactPage,
                 serviceDetails: serviceDetailsMap,
                 industryDetails: industryDetailsMap,
                 homepageData: {
@@ -912,6 +1020,12 @@ async function main() {
     });
     await prisma.globalConfig.create({
         data: { key: 'industries_page', config: industriesPage as any, updatedBy: 'admin' }
+    });
+    await prisma.globalConfig.create({
+        data: { key: 'about_page', config: aboutPage as any, updatedBy: 'admin' }
+    });
+    await prisma.globalConfig.create({
+        data: { key: 'contact_page', config: contactPage as any, updatedBy: 'admin' }
     });
 
     console.log('Seeding finished.');
