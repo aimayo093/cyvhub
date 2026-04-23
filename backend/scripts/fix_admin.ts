@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function fixAdmin() {
     const email = 'admin@cyvhub.com';
-    const rawPassword = 'lyangbe@123';
+    const rawPassword = 'Iyangbe@123';
     
     try {
         const passwordHash = await bcrypt.hash(rawPassword, 10);
