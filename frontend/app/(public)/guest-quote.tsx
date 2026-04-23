@@ -151,7 +151,11 @@ export default function GuestQuotePage() {
             estimatedPrice: price,
             selectedServiceType: tier
         });
-        router.push('/(public)/guest-checkout' as any);
+        if (Platform.OS === 'web') {
+            window.location.href = '/guest-checkout';
+        } else {
+            router.push('/(public)/guest-checkout' as any);
+        }
     };
 
     if (isLoading) {
@@ -173,7 +177,13 @@ export default function GuestQuotePage() {
                 </Text>
                 <TouchableOpacity 
                     style={[styles.bookBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]} 
-                    onPress={() => router.push('/')}
+                    onPress={() => {
+                        if (Platform.OS === 'web') {
+                            window.location.href = '/';
+                        } else {
+                            router.push('/');
+                        }
+                    }}
                 >
                     <Text style={[styles.bookBtnText, { color: '#FFF' }]}>Start New Quote</Text>
                 </TouchableOpacity>
@@ -275,7 +285,17 @@ export default function GuestQuotePage() {
                 )}
 
                 <View style={styles.bottomActions}>
-                    <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.8} onPress={() => router.push('/')}>
+                    <TouchableOpacity 
+                        style={styles.secondaryBtn} 
+                        activeOpacity={0.8} 
+                        onPress={() => {
+                            if (Platform.OS === 'web') {
+                                window.location.href = '/';
+                            } else {
+                                router.push('/');
+                            }
+                        }}
+                    >
                         <Text style={styles.secondaryBtnText}>Get another quote</Text>
                     </TouchableOpacity>
                 </View>

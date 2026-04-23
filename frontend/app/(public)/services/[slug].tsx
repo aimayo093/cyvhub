@@ -57,7 +57,16 @@ export default function ServiceDetailPage() {
             <View style={styles.errorContainer}>
                 <Text style={styles.errorTitle}>Service Not Found</Text>
                 <Text style={styles.errorSubtitle}>We couldn't find the service you're looking for.</Text>
-                <TouchableOpacity style={styles.homeBtn} onPress={() => router.push('/')}>
+                <TouchableOpacity 
+                    style={styles.homeBtn} 
+                    onPress={() => {
+                        if (Platform.OS === 'web') {
+                            window.location.href = '/';
+                        } else {
+                            router.push('/');
+                        }
+                    }}
+                >
                     <Text style={styles.homeBtnText}>Return Home</Text>
                 </TouchableOpacity>
             </View>
@@ -88,7 +97,16 @@ export default function ServiceDetailPage() {
                     </Text>
                     <Text style={styles.heroSubtitle}>{config.heroSubtext}</Text>
                     <View style={styles.heroActions}>
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push('/contact')}>
+                        <TouchableOpacity 
+                            style={styles.primaryBtn} 
+                            onPress={() => {
+                                if (Platform.OS === 'web') {
+                                    window.location.href = '/contact';
+                                } else {
+                                    router.push('/contact');
+                                }
+                            }}
+                        >
                             <Text style={styles.primaryBtnText}>Get an Instant Quote</Text>
                             <ArrowRight size={20} color="#FFF" />
                         </TouchableOpacity>
@@ -112,7 +130,16 @@ export default function ServiceDetailPage() {
                             <View style={styles.ctaBox}>
                                 <Text style={styles.ctaBoxTitle}>Ready to Move?</Text>
                                 <Text style={styles.ctaBoxText}>Our logistics experts are ready to handle your business-critical jobs 24/7/365.</Text>
-                                <TouchableOpacity style={styles.ctaBoxBtn} onPress={() => router.push('/contact')}>
+                                <TouchableOpacity 
+                                    style={styles.ctaBoxBtn} 
+                                    onPress={() => {
+                                        if (Platform.OS === 'web') {
+                                            window.location.href = '/contact';
+                                        } else {
+                                            router.push('/contact');
+                                        }
+                                    }}
+                                >
                                     <Text style={styles.ctaBoxBtnText}>Open an Account</Text>
                                 </TouchableOpacity>
                             </View>
@@ -191,7 +218,13 @@ export default function ServiceDetailPage() {
                         </View>
                         <TouchableOpacity 
                             style={styles.whiteBtn} 
-                            onPress={() => router.push(config.ctaButtonUrl as any)}
+                            onPress={() => {
+                                if (Platform.OS === 'web') {
+                                    window.location.href = config.ctaButtonUrl || '/contact';
+                                } else {
+                                    router.push(config.ctaButtonUrl as any);
+                                }
+                            }}
                         >
                             <Text style={styles.whiteBtnText}>{config.ctaButtonText}</Text>
                         </TouchableOpacity>

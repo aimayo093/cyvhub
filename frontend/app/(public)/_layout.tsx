@@ -137,7 +137,16 @@ export default function PublicLayout() {
             {/* ANNOUNCEMENT BAR */}
             {header.enableAnnouncement && (
                 <View style={[styles.announcementBar, { paddingTop: insets.top || 8, overflow: 'hidden', backgroundColor: header.announcementBgColor || Colors.primary }]}>
-                    <Link href={(header.announcementLink || '/') as any} asChild>
+                    <Link 
+                        href={(header.announcementLink || '/') as any} 
+                        asChild
+                        onClick={(e) => {
+                            if (isWeb) {
+                                e.preventDefault();
+                                window.location.href = header.announcementLink || '/';
+                            }
+                        }}
+                    >
                         <TouchableOpacity style={styles.announcementInner}>
                             <Animated.Text numberOfLines={1} style={[styles.announcementText, { transform: [{ translateX: slideAnim }] }]}>
                                 {header.announcementText}
@@ -162,7 +171,13 @@ export default function PublicLayout() {
                 <View style={styles.headerContent}>
                     <TouchableOpacity 
                         style={styles.logoContainer} 
-                        onPress={() => router.push('/')}
+                        onPress={() => {
+                            if (isWeb) {
+                                window.location.href = '/';
+                            } else {
+                                router.push('/');
+                            }
+                        }}
                         activeOpacity={0.7}
                     >
                         <Image
@@ -182,7 +197,16 @@ export default function PublicLayout() {
                                     onMouseLeave: handleMouseLeave
                                 } : {})}
                             >
-                                <Link href={item.url as any} style={styles.navItemLink as any}>
+                                <Link 
+                                    href={item.url as any} 
+                                    style={styles.navItemLink as any}
+                                    onClick={(e) => {
+                                        if (isWeb) {
+                                            e.preventDefault();
+                                            window.location.href = item.url;
+                                        }
+                                    }}
+                                >
                                     <View style={styles.navLinkInner}>
                                         <Text style={[styles.navText, hoveredMenuId === item.id && { color: Colors.primary }]}>{item.label}</Text>
                                         {item.items && (
@@ -216,6 +240,12 @@ export default function PublicLayout() {
                                                             href={subItem.url as any} 
                                                             asChild
                                                             onPress={() => setHoveredMenuId(null)}
+                                                            onClick={(e) => {
+                                                                if (isWeb) {
+                                                                    e.preventDefault();
+                                                                    window.location.href = subItem.url;
+                                                                }
+                                                            }}
                                                         >
                                                             <TouchableOpacity 
                                                                 style={styles.megaMenuItem}
@@ -254,7 +284,13 @@ export default function PublicLayout() {
                         <TouchableOpacity 
                             style={[styles.loginBtn, SCREEN_WIDTH < 768 ? { display: 'none' } : null]} 
                             activeOpacity={0.8}
-                            onPress={() => router.push(header.loginBtnUrl as any)}
+                            onPress={() => {
+                                if (isWeb) {
+                                    window.location.href = header.loginBtnUrl || '/login';
+                                } else {
+                                    router.push(header.loginBtnUrl as any);
+                                }
+                            }}
                         >
                             <User size={18} color="#FFF" style={{ marginRight: 8 }} />
                             <Text style={styles.loginBtnText}>{header.loginBtnText}</Text>
@@ -275,13 +311,34 @@ export default function PublicLayout() {
                     <ScrollView contentContainerStyle={styles.mobileMenuScroll}>
                         {headerItems.map((item: any) => (
                             <View key={item.id} style={styles.mobileNavItem}>
-                                <Link href={item.url as any} style={styles.mobileMenuItemLink as any} onPress={() => !item.items && setIsMenuOpen(false)}>
+                                <Link 
+                                    href={item.url as any} 
+                                    style={styles.mobileMenuItemLink as any} 
+                                    onPress={() => !item.items && setIsMenuOpen(false)}
+                                    onClick={(e) => {
+                                        if (isWeb) {
+                                            e.preventDefault();
+                                            window.location.href = item.url;
+                                        }
+                                    }}
+                                >
                                     <Text style={styles.mobileMenuItemText}>{item.label}</Text>
                                 </Link>
                                 {item.items && (
                                     <View style={styles.mobileSubMenu}>
                                         {item.items.map((sub: any) => (
-                                            <Link key={sub.id} href={sub.url as any} style={styles.mobileSubLink as any} onPress={() => setIsMenuOpen(false)}>
+                                            <Link 
+                                                key={sub.id} 
+                                                href={sub.url as any} 
+                                                style={styles.mobileSubLink as any} 
+                                                onPress={() => setIsMenuOpen(false)}
+                                                onClick={(e) => {
+                                                    if (isWeb) {
+                                                        e.preventDefault();
+                                                        window.location.href = sub.url;
+                                                    }
+                                                }}
+                                            >
                                                 <Text style={styles.mobileSubText}>{sub.label}</Text>
                                             </Link>
                                         ))}
@@ -291,7 +348,14 @@ export default function PublicLayout() {
                         ))}
                         <TouchableOpacity 
                             style={styles.mobileLoginBtn}
-                            onPress={() => { setIsMenuOpen(false); router.push(header.loginBtnUrl as any); }}
+                            onPress={() => { 
+                                setIsMenuOpen(false); 
+                                if (isWeb) {
+                                    window.location.href = header.loginBtnUrl || '/login';
+                                } else {
+                                    router.push(header.loginBtnUrl as any);
+                                }
+                            }}
                         >
                             <Text style={styles.mobileLoginText}>{header.loginBtnText}</Text>
                         </TouchableOpacity>
@@ -316,28 +380,58 @@ export default function PublicLayout() {
                                 {footer.companyBio}
                             </Text>
                             <View style={styles.socialRow}>
-                                {footer.facebookUrl && <Link href={footer.facebookUrl as any} style={styles.socialBtn as any}><Facebook size={20} color={Colors.textInverse} /></Link>}
-                                {footer.twitterUrl && <Link href={footer.twitterUrl as any} style={styles.socialBtn as any}><Twitter size={20} color={Colors.textInverse} /></Link>}
-                                {footer.linkedinUrl && <Link href={footer.linkedinUrl as any} style={styles.socialBtn as any}><Linkedin size={20} color={Colors.textInverse} /></Link>}
+                                {footer.facebookUrl && <Link href={footer.facebookUrl as any} style={styles.socialBtn as any} target="_blank"><Facebook size={20} color={Colors.textInverse} /></Link>}
+                                {footer.twitterUrl && <Link href={footer.twitterUrl as any} style={styles.socialBtn as any} target="_blank"><Twitter size={20} color={Colors.textInverse} /></Link>}
+                                {footer.linkedinUrl && <Link href={footer.linkedinUrl as any} style={styles.socialBtn as any} target="_blank"><Linkedin size={20} color={Colors.textInverse} /></Link>}
                             </View>
                         </View>
 
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Quick Links</Text>
                             {footerItems.map((item: any) => (
-                                <Link key={item.id} href={item.url as any} style={styles.footerLink as any}>{item.label}</Link>
+                                <Link 
+                                    key={item.id} 
+                                    href={item.url as any} 
+                                    style={styles.footerLink as any}
+                                    onClick={(e) => {
+                                        if (isWeb) {
+                                            e.preventDefault();
+                                            window.location.href = item.url;
+                                        }
+                                    }}
+                                >{item.label}</Link>
                             ))}
                         </View>
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Company</Text>
                             {footer.companyLinks?.map((link) => (
-                                <Link key={link.id} href={link.url as any} style={styles.footerLink as any}>{link.label}</Link>
+                                <Link 
+                                    key={link.id} 
+                                    href={link.url as any} 
+                                    style={styles.footerLink as any}
+                                    onClick={(e) => {
+                                        if (isWeb) {
+                                            e.preventDefault();
+                                            window.location.href = link.url;
+                                        }
+                                    }}
+                                >{link.label}</Link>
                             ))}
                         </View>
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Legal</Text>
                             {footer.legalLinks?.map((link) => (
-                                <Link key={link.id} href={link.url as any} style={styles.footerLink as any}>{link.label}</Link>
+                                <Link 
+                                    key={link.id} 
+                                    href={link.url as any} 
+                                    style={styles.footerLink as any}
+                                    onClick={(e) => {
+                                        if (isWeb) {
+                                            e.preventDefault();
+                                            window.location.href = link.url;
+                                        }
+                                    }}
+                                >{link.label}</Link>
                             ))}
                         </View>
                     </View>

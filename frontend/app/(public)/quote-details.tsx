@@ -159,7 +159,11 @@ export default function QuoteDetailsPage() {
 
             if (data.success && data.canAutoPrice && data.estimatedPrice) {
                 setStep3({ estimatedPrice: data.estimatedPrice });
-                router.push('/(public)/guest-quote' as any);
+                if (Platform.OS === 'web') {
+                    window.location.href = '/guest-quote';
+                } else {
+                    router.push('/(public)/guest-quote' as any);
+                }
             } else {
                 setCalcError("We couldn't calculate an automatic price. Submit your quote and our team will be in touch with a tailored price within 1 hour.");
                 setStep3({ estimatedPrice: null });
@@ -344,7 +348,13 @@ export default function QuoteDetailsPage() {
                         {calcError && (
                             <TouchableOpacity 
                                 style={[styles.continueBtn, { backgroundColor: '#64748b', marginTop: 12 }]}
-                                onPress={() => router.push('/(public)/guest-quote' as any)}
+                                onPress={() => {
+                                    if (Platform.OS === 'web') {
+                                        window.location.href = '/guest-quote';
+                                    } else {
+                                        router.push('/(public)/guest-quote' as any);
+                                    }
+                                }}
                             >
                                 <Text style={styles.continueBtnText}>Proceed to Manual Quote</Text>
                             </TouchableOpacity>

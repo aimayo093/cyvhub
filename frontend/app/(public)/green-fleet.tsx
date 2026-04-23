@@ -51,7 +51,16 @@ export default function GreenFleetPage() {
                                 </View>
                             </View>
 
-                            <Link href="/about" asChild>
+                            <Link 
+                                href="/about" 
+                                asChild
+                                onClick={(e) => {
+                                    if (Platform.OS === 'web') {
+                                        e.preventDefault();
+                                        window.location.href = '/about';
+                                    }
+                                }}
+                            >
                                 <TouchableOpacity style={styles.ctaBtn}>
                                     <Text style={styles.ctaBtnText}>Read our Sustainability Report</Text>
                                     <ArrowRight size={20} color="#FFFFFF" />

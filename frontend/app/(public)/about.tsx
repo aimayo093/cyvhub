@@ -193,7 +193,16 @@ export default function AboutUsPage() {
                             <Text style={[styles.ctaTitle, { fontSize: SCREEN_WIDTH >= 768 ? 44 : 32 }]}>{config.ctaTitle}</Text>
                             <Text style={styles.ctaDesc}>{config.ctaDesc}</Text>
                         </View>
-                        <Link href={config.ctaBtnUrl as any} asChild>
+                        <Link 
+                            href={config.ctaBtnUrl as any} 
+                            asChild
+                            onClick={(e) => {
+                                if (Platform.OS === 'web') {
+                                    e.preventDefault();
+                                    window.location.href = config.ctaBtnUrl;
+                                }
+                            }}
+                        >
                             <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.8}>
                                 <Text style={styles.ctaBtnText}>{config.ctaBtnText}</Text>
                                 <Rocket size={20} color="#FFF" />

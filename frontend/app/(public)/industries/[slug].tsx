@@ -46,7 +46,13 @@ function IndustryDetailPage() {
                 <Text style={s.errSub}>We couldn't find the industry you're looking for.</Text>
                 <TouchableOpacity
                     style={[s.pill, { backgroundColor: Colors.primary }]}
-                    onPress={() => router.push('/industries')}
+                    onPress={() => {
+                        if (Platform.OS === 'web') {
+                            window.location.href = '/industries';
+                        } else {
+                            router.push('/industries');
+                        }
+                    }}
                 >
                     <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>← Back to Industries</Text>
                 </TouchableOpacity>
@@ -94,7 +100,13 @@ function IndustryDetailPage() {
                 title={config.title}
                 subtitle={config.subtitle}
                 imageUrl={config.heroImageUrl}
-                onGetStarted={() => router.push('/contact')}
+                onGetStarted={() => {
+                    if (Platform.OS === 'web') {
+                        window.location.href = '/contact';
+                    } else {
+                        router.push('/contact');
+                    }
+                }}
                 onLearnMore={() => {/* scroll handled natively */}}
             />
 
@@ -150,7 +162,13 @@ function IndustryDetailPage() {
                     accentColor={accent}
                     layoutTheme={config.layoutTheme}
                     industries={relatedList}
-                    onPress={(s) => router.push(`/industries/${s}` as any)}
+                    onPress={(s) => {
+                        if (Platform.OS === 'web') {
+                            window.location.href = `/industries/${s}`;
+                        } else {
+                            router.push(`/industries/${s}` as any);
+                        }
+                    }}
                 />
             )}
 
@@ -159,8 +177,20 @@ function IndustryDetailPage() {
                 accentColor={accent}
                 title={config.ctaHeading}
                 subtext={config.ctaText}
-                onGetQuote={() => router.push('/guest-quote')}
-                onTalkToUs={() => router.push('/contact')}
+                onGetQuote={() => {
+                    if (Platform.OS === 'web') {
+                        window.location.href = '/guest-quote';
+                    } else {
+                        router.push('/guest-quote');
+                    }
+                }}
+                onTalkToUs={() => {
+                    if (Platform.OS === 'web') {
+                        window.location.href = '/contact';
+                    } else {
+                        router.push('/contact');
+                    }
+                }}
             />
         </ScrollView>
     );

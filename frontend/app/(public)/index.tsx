@@ -180,7 +180,11 @@ export default function PublicHome() {
             });
             setDistance(distMiles);
 
-            router.push('/quote-details' as any);
+            if (Platform.OS === 'web') {
+                window.location.href = '/quote-details';
+            } else {
+                router.push('/quote-details' as any);
+            }
         } catch (e) {
             console.error('Failed to calculate distance or save quote params', e);
             alert('Unable to calculate distance. Please try again.');
@@ -394,7 +398,13 @@ export default function PublicHome() {
                                 <TouchableOpacity
                                     key={service.id}
                                     style={[styles.serviceCard, { width: cardWidth, marginRight: spaceBetween }]}
-                                    onPress={() => router.push(`/services/${service.slug}` as any)}
+                                    onPress={() => {
+                                        if (Platform.OS === 'web') {
+                                            window.location.href = `/services/${service.slug}`;
+                                        } else {
+                                            router.push(`/services/${service.slug}` as any);
+                                        }
+                                    }}
                                 >
                                     <Image source={{ uri: service.heroImageUrl || service.imageUrl }} style={styles.serviceImg} />
                                     <View style={styles.serviceOverlay} />
@@ -434,7 +444,16 @@ export default function PublicHome() {
                         </View>
                     )}
 
-                    <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/services')}>
+                    <TouchableOpacity 
+                        style={styles.viewAllBtn} 
+                        onPress={() => {
+                            if (Platform.OS === 'web') {
+                                window.location.href = '/services';
+                            } else {
+                                router.push('/services');
+                            }
+                        }}
+                    >
                         <Text style={styles.viewAllBtnText}>Explore All Services</Text>
                         <ArrowRight size={18} color={Colors.primary} />
                     </TouchableOpacity>
@@ -467,7 +486,13 @@ export default function PublicHome() {
                                 <TouchableOpacity
                                     key={ind.id}
                                     style={[styles.industryCard, { width: cardWidth, marginRight: spaceBetween }, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
-                                    onPress={() => router.push(`/industries/${ind.slug || ind.id}` as any)}
+                                    onPress={() => {
+                                        if (Platform.OS === 'web') {
+                                            window.location.href = `/industries/${ind.slug || ind.id}`;
+                                        } else {
+                                            router.push(`/industries/${ind.slug || ind.id}` as any);
+                                        }
+                                    }}
                                 >
                                     <Image source={{ uri: ind.heroImageUrl || ind.imageUrl }} style={styles.industryImg} />
                                     <View style={styles.industryOverlayDark} />
@@ -538,10 +563,28 @@ export default function PublicHome() {
                     <Text style={styles.ctaHeadline}>Ready to upgrade your logistics?</Text>
                     <Text style={styles.ctaBody}>Join over 1,200 businesses relying on CYVhub for their most critical shipments.</Text>
                     <View style={styles.ctaBtns}>
-                        <TouchableOpacity style={styles.ctaPrimary} onPress={() => router.push('/contact')}>
+                        <TouchableOpacity 
+                            style={styles.ctaPrimary} 
+                            onPress={() => {
+                                if (Platform.OS === 'web') {
+                                    window.location.href = '/contact';
+                                } else {
+                                    router.push('/contact');
+                                }
+                            }}
+                        >
                             <Text style={styles.ctaPrimaryText}>Open a Business Account</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.ctaSecondary} onPress={() => router.push('/services')}>
+                        <TouchableOpacity 
+                            style={styles.ctaSecondary} 
+                            onPress={() => {
+                                if (Platform.OS === 'web') {
+                                    window.location.href = '/services';
+                                } else {
+                                    router.push('/services');
+                                }
+                            }}
+                        >
                             <Text style={styles.ctaSecondaryText}>View Our Fleet</Text>
                         </TouchableOpacity>
                     </View>

@@ -52,7 +52,16 @@ export default function SameDayDeliveryPage() {
                                 </View>
                             </View>
 
-                            <Link href="/login" asChild>
+                            <Link 
+                                href="/login" 
+                                asChild
+                                onClick={(e) => {
+                                    if (Platform.OS === 'web') {
+                                        e.preventDefault();
+                                        window.location.href = '/login';
+                                    }
+                                }}
+                            >
                                 <TouchableOpacity style={styles.ctaBtn}>
                                     <Text style={styles.ctaBtnText}>Get an Instant Quote</Text>
                                     <ArrowRight size={20} color="#FFFFFF" />

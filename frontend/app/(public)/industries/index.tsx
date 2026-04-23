@@ -95,7 +95,16 @@ function IndustriesIndexPage() {
             <View style={styles.breadcrumbWrapper}>
                 <View style={styles.contentMax}>
                     <View style={styles.breadcrumbBar}>
-                        <Link href="/" asChild>
+                        <Link 
+                            href="/" 
+                            asChild
+                            onClick={(e) => {
+                                if (Platform.OS === 'web') {
+                                    e.preventDefault();
+                                    window.location.href = '/';
+                                }
+                            }}
+                        >
                             <TouchableOpacity style={styles.breadcrumbLink}>
                                 <Home size={14} color={Colors.textSecondary} />
                                 <Text style={styles.breadcrumbText}>Home</Text>
@@ -130,7 +139,17 @@ function IndustriesIndexPage() {
                         {visibleIndustries.map((ind) => {
                             const IconComponent = IconMap[ind.slug || ind.id] || Truck;
                             return (
-                                <Link key={ind.id} href={`/industries/${ind.slug || ind.id}` as any} asChild>
+                                <Link 
+                                    key={ind.id} 
+                                    href={`/industries/${ind.slug || ind.id}` as any} 
+                                    asChild
+                                    onClick={(e) => {
+                                        if (Platform.OS === 'web') {
+                                            e.preventDefault();
+                                            window.location.href = `/industries/${ind.slug || ind.id}`;
+                                        }
+                                    }}
+                                >
                                     <TouchableOpacity 
                                         style={StyleSheet.flatten([
                                             styles.card, 
@@ -211,7 +230,13 @@ function IndustriesIndexPage() {
                             <Text style={styles.ctaDesc}>{config?.ctaText || 'Get in touch for specialized shipping advice.'}</Text>
                             <TouchableOpacity 
                                 style={styles.primaryBtn} 
-                                onPress={() => router.push('/contact')}
+                                onPress={() => {
+                                    if (Platform.OS === 'web') {
+                                        window.location.href = '/contact';
+                                    } else {
+                                        router.push('/contact');
+                                    }
+                                }}
                                 activeOpacity={0.8}
                             >
                                 <Text style={styles.primaryBtnText}>{config?.ctaButton || 'Contact Us'}</Text>

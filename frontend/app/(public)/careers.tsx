@@ -96,7 +96,13 @@ export default function CareersPage() {
                                     </View>
                                     <TouchableOpacity 
                                         style={styles.applyBtn}
-                                        onPress={() => router.push(`/contact?ref=job_${job.id}` as any)}
+                                        onPress={() => {
+                                            if (Platform.OS === 'web') {
+                                                window.location.href = `/contact?ref=job_${job.id}`;
+                                            } else {
+                                                router.push(`/contact?ref=job_${job.id}` as any);
+                                            }
+                                        }}
                                     >
                                         <Text style={styles.applyBtnText}>View Role</Text>
                                         <ArrowRight size={16} color={Colors.primary} />
@@ -119,7 +125,13 @@ export default function CareersPage() {
                     <Text style={styles.ctaSubtitle}>{config.ctaSubtitle}</Text>
                     <TouchableOpacity 
                         style={styles.ctaBtn}
-                        onPress={() => router.push('/contact' as any)}
+                        onPress={() => {
+                            if (Platform.OS === 'web') {
+                                window.location.href = '/contact';
+                            } else {
+                                router.push('/contact' as any);
+                            }
+                        }}
                     >
                         <Text style={styles.ctaBtnText}>{config.ctaButtonText}</Text>
                     </TouchableOpacity>

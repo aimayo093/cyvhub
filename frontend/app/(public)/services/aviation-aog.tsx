@@ -42,7 +42,13 @@ export default function AviationAOGPage() {
                         <View style={[styles.heroActionRow, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                             <TouchableOpacity 
                                 style={styles.primaryBtn}
-                                onPress={() => router.push('/guest-quote?vehicle=Large%20Van&ready=true' as any)}
+                                onPress={() => {
+                                    if (Platform.OS === 'web') {
+                                        window.location.href = '/guest-quote?vehicle=Large%20Van&ready=true';
+                                    } else {
+                                        router.push('/guest-quote?vehicle=Large%20Van&ready=true' as any);
+                                    }
+                                }}
                             >
                                 <Text style={styles.primaryBtnText}>Book Emergency Courier</Text>
                                 <ArrowRight size={18} color="#FFF" />
@@ -146,13 +152,25 @@ export default function AviationAOGPage() {
                         <View style={[styles.ctaActions, { flexDirection: SCREEN_WIDTH >= 768 ? 'row' : 'column' }]}>
                             <TouchableOpacity 
                                 style={styles.ctaPrimaryBtn}
-                                onPress={() => router.push('/guest-quote' as any)}
+                                onPress={() => {
+                                    if (Platform.OS === 'web') {
+                                        window.location.href = '/guest-quote';
+                                    } else {
+                                        router.push('/guest-quote' as any);
+                                    }
+                                }}
                             >
                                 <Text style={styles.ctaPrimaryBtnText}>Get Emergency Quote</Text>
                             </TouchableOpacity>
                             <TouchableOpacity 
                                 style={styles.ctaSecondaryBtn}
-                                onPress={() => router.push('/contact' as any)}
+                                onPress={() => {
+                                    if (Platform.OS === 'web') {
+                                        window.location.href = '/contact';
+                                    } else {
+                                        router.push('/contact' as any);
+                                    }
+                                }}
                             >
                                 <Phone size={18} color="#FFF" style={{ marginRight: 8 }} />
                                 <Text style={styles.ctaSecondaryBtnText}>24/7 AOG Desk</Text>

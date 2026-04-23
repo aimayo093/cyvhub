@@ -61,7 +61,11 @@ export default function CheckoutScreen() {
         const destination = customer ? '/(tabs)/history' : `/track-delivery?jobId=${jobId}`;
         console.log(`[Checkout] Successful payment. Redirecting to ${destination}`);
         setTimeout(() => {
-          router.replace(destination as any);
+          if (Platform.OS === 'web') {
+            window.location.href = destination;
+          } else {
+            router.replace(destination as any);
+          }
         }, 3000);
       }
     } else if (paymentStatus === 'canceled' || paymentStatus === 'cancel') {
@@ -78,7 +82,11 @@ export default function CheckoutScreen() {
         setIsSuccess(true);
         const destination = customer ? '/(tabs)/history' : `/track-delivery?jobId=${id}`;
         setTimeout(() => {
-          router.replace(destination as any);
+          if (Platform.OS === 'web') {
+            window.location.href = destination;
+          } else {
+            router.replace(destination as any);
+          }
         }, 3000);
       }
     } catch (error: any) {

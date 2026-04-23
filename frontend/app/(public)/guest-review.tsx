@@ -94,18 +94,31 @@ export default function GuestReviewPage() {
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             // Delivery created successfully. Redirect to branded checkout.
-            router.push({
-                pathname: '/checkout' as any,
-                params: {
+            if (Platform.OS === 'web') {
+                const paramsData = new URLSearchParams({
                     jobId: delivery.id,
                     jobNumber: delivery.jobNumber || delivery.trackingNumber,
                     amount: delivery.calculatedPrice?.toString() || price.toString(),
-                    pickup: delivery.pickupCity !== 'Unknown' ? delivery.pickupCity : (delivery.pickupPostcode || params.collection),
-                    dropoff: delivery.dropoffCity !== 'Unknown' ? delivery.dropoffCity : (delivery.dropoffPostcode || params.delivery),
-                    vehicleType: delivery.vehicleType || params.vehicleType,
-                    serviceType: delivery.jobType || params.serviceType,
-                }
-            });
+                    pickup: delivery.pickupCity !== 'Unknown' ? delivery.pickupCity : (delivery.pickupPostcode || params.collection as string),
+                    dropoff: delivery.dropoffCity !== 'Unknown' ? delivery.dropoffCity : (delivery.dropoffPostcode || params.delivery as string),
+                    vehicleType: delivery.vehicleType || params.vehicleType as string,
+                    serviceType: delivery.jobType || params.serviceType as string,
+                });
+                window.location.href = `/checkout?${paramsData.toString()}`;
+            } else {
+                router.push({
+                    pathname: '/checkout' as any,
+                    params: {
+                        jobId: delivery.id,
+                        jobNumber: delivery.jobNumber || delivery.trackingNumber,
+                        amount: delivery.calculatedPrice?.toString() || price.toString(),
+                        pickup: delivery.pickupCity !== 'Unknown' ? delivery.pickupCity : (delivery.pickupPostcode || params.collection),
+                        dropoff: delivery.dropoffCity !== 'Unknown' ? delivery.dropoffCity : (delivery.dropoffPostcode || params.delivery),
+                        vehicleType: delivery.vehicleType || params.vehicleType,
+                        serviceType: delivery.jobType || params.serviceType,
+                    }
+                });
+            }
         } catch (error: any) {
             console.error('Booking failed:', error);
             const msg = error?.message || 'We could not create your booking. Please try again.';
@@ -126,7 +139,16 @@ export default function GuestReviewPage() {
                     {'\n\n'}
                     We have sent a tracking link and receipt to {params.email}.
                 </Text>
-                <Link href="/" asChild>
+                <Link 
+                    href="/" 
+                    asChild
+                    onClick={(e) => {
+                        if (Platform.OS === 'web') {
+                            e.preventDefault();
+                            window.location.href = '/';
+                        }
+                    }}
+                >
                     <TouchableOpacity style={styles.successBtn} activeOpacity={0.8}>
                         <Text style={styles.successBtnText}>Return to Home</Text>
                     </TouchableOpacity>

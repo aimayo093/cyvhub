@@ -43,16 +43,27 @@ export default function GuestCheckoutPage() {
             return;
         }
 
-        router.push({
-            pathname: '/guest-review',
-            params: {
+        if (Platform.OS === 'web') {
+            const params = new URLSearchParams({
                 email,
                 firstName,
                 lastName,
                 collectionAddress,
                 deliveryAddress
-            }
-        });
+            });
+            window.location.href = `/guest-review?${params.toString()}`;
+        } else {
+            router.push({
+                pathname: '/guest-review',
+                params: {
+                    email,
+                    firstName,
+                    lastName,
+                    collectionAddress,
+                    deliveryAddress
+                }
+            });
+        }
     };
 
     return (

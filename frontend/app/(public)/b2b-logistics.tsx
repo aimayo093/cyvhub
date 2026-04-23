@@ -51,7 +51,16 @@ export default function B2BLogisticsPage() {
                                 </View>
                             </View>
 
-                            <Link href="/contact" asChild>
+                            <Link 
+                                href="/contact" 
+                                asChild
+                                onClick={(e) => {
+                                    if (Platform.OS === 'web') {
+                                        e.preventDefault();
+                                        window.location.href = '/contact';
+                                    }
+                                }}
+                            >
                                 <TouchableOpacity style={styles.ctaBtn}>
                                     <Text style={styles.ctaBtnText}>Consult an Expert</Text>
                                     <ArrowRight size={20} color="#FFFFFF" />

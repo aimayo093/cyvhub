@@ -110,7 +110,13 @@ export default function ServicesHubPage() {
                             <TouchableOpacity 
                                 key={service.id} 
                                 style={[styles.serviceCard, { width: SCREEN_WIDTH >= 1024 ? '31%' : isMobile ? '100%' : '47%' }]}
-                                onPress={() => router.push(`/services/${service.slug}` as any)}
+                                onPress={() => {
+                                    if (Platform.OS === 'web') {
+                                        window.location.href = `/services/${service.slug}`;
+                                    } else {
+                                        router.push(`/services/${service.slug}` as any);
+                                    }
+                                }}
                                 activeOpacity={0.9}
                             >
                                 <View style={styles.cardImageContainer}>
@@ -139,7 +145,16 @@ export default function ServicesHubPage() {
                     <View style={[styles.ctaCard, { padding: isMobile ? 40 : 80 }]}>
                         <Text style={styles.ctaTitle}>{servicesPage.ctaHeading}</Text>
                         <Text style={styles.ctaDesc}>{servicesPage.ctaText}</Text>
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => router.push('/contact')}>
+                        <TouchableOpacity 
+                            style={styles.primaryBtn} 
+                            onPress={() => {
+                                if (Platform.OS === 'web') {
+                                    window.location.href = '/contact';
+                                } else {
+                                    router.push('/contact');
+                                }
+                            }}
+                        >
                             <Text style={styles.primaryBtnText}>{servicesPage.ctaButton}</Text>
                         </TouchableOpacity>
                     </View>
