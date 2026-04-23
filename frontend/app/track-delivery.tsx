@@ -197,7 +197,7 @@ export default function TrackDeliveryScreen() {
                 <View style={styles.detailsCard}>
                     <Text style={styles.detailsTitle}>Delivery Details</Text>
                     <View style={styles.detailRow}>
-                        <View style={[styles.detailDot, { backgroundColor: '#0066FF' }]} />
+                        <View style={[styles.detailDot, { backgroundColor: '#11a7fa' }]} />
                         <View>
                             <Text style={styles.detailLabel}>Pickup</Text>
                             <Text style={styles.detailValue}>15 Kingsway, Swansea SA1 5JQ</Text>

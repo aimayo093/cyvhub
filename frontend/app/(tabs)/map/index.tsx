@@ -129,7 +129,7 @@ export default function MapScreen() {
                     </View>
                     {isDriver && (
                         <TouchableOpacity
-                            style={[styles.onlineToggle, { backgroundColor: isOnline ? '#0066FF' : '#EF4444' }]}
+                            style={[styles.onlineToggle, { backgroundColor: isOnline ? '#11a7fa' : '#EF4444' }]}
                             onPress={toggleOnline}
                         >
                             {isOnline ? <Wifi size={14} color="#fff" /> : <WifiOff size={14} color="#fff" />}
@@ -159,7 +159,7 @@ export default function MapScreen() {
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
-                            <Radio size={16} color="#0066FF" />
+                            <Radio size={16} color="#11a7fa" />
                             <Text style={styles.statValue}>
                                 {driverLocations.filter(d => d.status === 'ON_JOB').length}
                             </Text>
@@ -206,7 +206,7 @@ export default function MapScreen() {
 
                                 <View style={styles.jobRoute}>
                                     <View style={styles.routePoint}>
-                                        <View style={[styles.routeDot, { backgroundColor: '#0066FF' }]} />
+                                        <View style={[styles.routeDot, { backgroundColor: '#11a7fa' }]} />
                                         <View>
                                             <Text style={styles.routeLabel}>Pickup</Text>
                                             <Text style={styles.routeAddress}>15 Kingsway, Swansea SA1 5JQ</Text>
@@ -259,7 +259,7 @@ export default function MapScreen() {
                             >
                                 <View style={[styles.statusDot, {
                                     backgroundColor:
-                                        d.status === 'ON_JOB' ? '#0066FF'
+                                        d.status === 'ON_JOB' ? '#11a7fa'
                                             : d.status === 'AVAILABLE' ? '#3B82F6'
                                                 : d.status === 'BREAK' ? '#F59E0B'
                                                     : '#94A3B8',
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     jobPrice: {
         fontSize: 15,
         fontWeight: '800',
-        color: '#0066FF',
+        color: '#11a7fa',
     },
     actionButton: {
         flexDirection: 'row',

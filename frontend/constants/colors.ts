@@ -1,14 +1,14 @@
 export default {
-  primary: '#0066FF', // Logo Blue
-  primaryDark: '#0052CC',
-  primaryLight: '#3385FF',
+  primary: '#11a7fa', // New Brand Blue
+  primaryDark: '#0ea5e9',
+  primaryLight: '#38bdf8',
   navy: '#0F172A',
   navyLight: '#1E293B',
   navyMedium: '#334155',
 
-  customerPrimary: '#0066FF',
-  customerPrimaryDark: '#0052CC',
-  customerPrimaryLight: '#3385FF',
+  customerPrimary: '#11a7fa',
+  customerPrimaryDark: '#0ea5e9',
+  customerPrimaryLight: '#38bdf8',
   customerAccent: '#F59E0B',
 
   adminPrimary: '#DC2626',
@@ -41,7 +41,7 @@ export default {
   textMuted: '#94A3B8',
   textInverse: '#FFFFFF',
 
-  success: '#0066FF',
+  success: '#11a7fa',
   successLight: '#D1FAE5',
   warning: '#F59E0B',
   warningLight: '#FEF3C7',
@@ -66,7 +66,7 @@ export default {
   statusEnRoute: '#F59E0B',
   statusArrived: '#06B6D4',
   statusPickedUp: '#8B5CF6',
-  statusDelivered: '#0066FF',
+  statusDelivered: '#11a7fa',
   statusFailed: '#EF4444',
   statusCancelled: '#6B7280',
 
@@ -75,6 +75,6 @@ export default {
   deliveryAssigned: '#8B5CF6',
   deliveryPickedUp: '#06B6D4',
   deliveryInTransit: '#2563EB',
-  deliveryDelivered: '#0066FF',
+  deliveryDelivered: '#11a7fa',
   deliveryCancelled: '#6B7280',
 };

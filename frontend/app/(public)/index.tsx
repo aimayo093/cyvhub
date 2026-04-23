@@ -461,7 +461,7 @@ export default function PublicHome() {
             </View>
 
             {/* INDUSTRIES SECTION */}
-            <View style={[styles.section, { backgroundColor: '#0066FF' }]}>
+            <View style={[styles.section, { backgroundColor: '#11a7fa' }]}>
                 <View style={styles.contentMax}>
                     <View style={[styles.sectionHeader, { alignItems: 'flex-start' }]}>
                         <Text style={styles.sectionTagPrimary}>SECTOR EXPERTISE</Text>
@@ -542,7 +542,7 @@ export default function PublicHome() {
                         {whyUs.cards?.map((card: any) => (
                             <View key={card.id} style={[styles.whyCard, { width: SCREEN_WIDTH >= 1024 ? '23.5%' : isMobile ? '100%' : '48%' }]}>
                                 <View style={styles.whyIconBox}>
-                                    <DynamicIcon name={card.icon} size={32} color="#0066FF" />
+                                    <DynamicIcon name={card.icon} size={32} color="#11a7fa" />
                                 </View>
                                 <Text style={styles.whyTitle}>{card.title}</Text>
                                 <Text style={styles.whyText}>{card.desc}</Text>
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     widgetTabTextActive: {
-        color: '#0066FF',
+        color: '#11a7fa',
     },
     widgetBody: {
         padding: 32,
@@ -734,8 +734,8 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     vOptionActive: {
-        borderColor: '#0066FF',
-        backgroundColor: '#0066FF' + '10',
+        borderColor: '#11a7fa',
+        backgroundColor: '#11a7fa' + '10',
     },
     vOptionText: {
         fontSize: 14,
@@ -743,11 +743,11 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     vOptionTextActive: {
-        color: '#0066FF',
+        color: '#11a7fa',
         fontWeight: '800',
     },
     quoteBtn: {
-        backgroundColor: '#0066FF',
+        backgroundColor: '#11a7fa',
         height: 60,
         borderRadius: 16,
         flexDirection: 'row',

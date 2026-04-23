@@ -590,7 +590,7 @@ async function main() {
                 subtitle: "Aircraft on Ground Won't Wait — Neither Do We",
                 description: "CYVhub operates a dedicated AOG response service providing same-day collection and delivery of aviation components, tooling, and documentation across the UK — responding within the hour with constant communication throughout.\n\nSecurity-cleared drivers with airside access experience handle documentation requirements including traceability records and chain-of-custody logs to meet airworthiness regulatory requirements.\n\nLive GPS tracking gives your AOG desk real-time consignment visibility. Our 24/7 operations team manages urgent requests, re-routes, and escalations immediately.\n\nSLA-based agreements with MRO operators, airlines, and ground handlers define response tiers, escalation paths, and reporting standards — a logistics partner you can rely on without exception.",
                 layoutTheme: 'center',
-                accentColor: "#0066FF",
+                accentColor: "#11a7fa",
                 overview: "An AOG event is among the most financially damaging situations in aviation. Every minute a commercial or private aircraft sits grounded translates directly into lost revenue, passenger disruption, and slot penalties. Components must be delivered with absolute urgency, correct documentation, and an unbroken chain of custody.",
                 challenges: [
                     { icon: 'Zap', title: 'Urgency', desc: 'Immediate dispatch day or night.' },

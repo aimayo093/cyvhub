@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
         color: '#1a237e',
     },
     payBtn: {
-        backgroundColor: '#0066FF', // Success Green
+        backgroundColor: '#11a7fa', // Success Green
         paddingVertical: 16,
         borderRadius: 8,
         alignItems: 'center',

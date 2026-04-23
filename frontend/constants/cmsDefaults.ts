@@ -1018,7 +1018,7 @@ export const initialIndustryDetails: Record<string, IndustryDetail> = {
         ctaButtonText: 'Get a Manufacturing Quote',
         metaTitle: 'Manufacturing & Wholesale Logistics | CYVhub',
         metaDesc: 'Dependable B2B delivery for manufacturers and wholesalers — scheduled runs, pallet movements, and contract logistics.',
-        accentColor: '#0066FF',
+        accentColor: '#11a7fa',
         challenges: [
             { icon: 'PauseCircle', title: 'Line Stoppage Risk', desc: 'A single missing component can halt an entire multi-million pound production line.' },
             { icon: 'Truck', title: 'Bulk Load Complexity', desc: 'Moving raw materials requires specialized freight handling and tail-lift access.' },
@@ -1682,7 +1682,7 @@ export const initialCareersPage: CareersPageConfig = {
     introContent: 'We leverage deep tech and AI to optimize routes and pricing in real-time. Work on challenging problems that have physical real-world impact.',
     perksTitle: 'Our Benefits',
     perks: [
-        { id: '1', title: 'Innovation First', desc: 'Work with the latest tech stack and AI models.', icon: 'Zap', color: '#0066FF' },
+        { id: '1', title: 'Innovation First', desc: 'Work with the latest tech stack and AI models.', icon: 'Zap', color: '#11a7fa' },
         { id: '2', title: 'Work from Anywhere', desc: 'Flexible, remote-first working arrangements.', icon: 'Globe', color: '#16A34A' },
         { id: '3', title: 'Health & Wellbeing', desc: 'Comprehensive private healthcare for you and yours.', icon: 'Heart', color: '#9333EA' },
     ],

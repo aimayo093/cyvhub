@@ -49,7 +49,7 @@ const VehicleCard = ({ title, dimensions, weight, priceEx, priceInc, originalPer
             <View style={styles.priceContainer}>
                 {isBulk && (
                     <View style={styles.bulkBadgeContainer}>
-                        <Tag size={14} color="#0066FF" style={{ marginRight: 6 }} />
+                        <Tag size={14} color="#11a7fa" style={{ marginRight: 6 }} />
                         <Text style={styles.bulkBadgeText}>Bulk Saving: £{discountApplied.toFixed(2)}</Text>
                     </View>
                 )}
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
     bulkBadgeText: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#0066FF', // emerald-500
+        color: '#11a7fa', // emerald-500
     },
     priceTaxLabel: {
         fontSize: 14,

@@ -1575,8 +1575,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 8,
-        backgroundColor: '#0066FF', // Emerald/Success color
-        shadowColor: '#0066FF',
+        backgroundColor: '#11a7fa', // Emerald/Success color
+        shadowColor: '#11a7fa',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
