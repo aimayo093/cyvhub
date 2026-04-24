@@ -229,7 +229,7 @@ export default function PublicHome() {
             </Head>
 
             {/* HERO & WIDGET SECTION */}
-            <View style={[styles.heroBg, { height: isMobile ? 850 : 700 }]}>
+            <View style={[styles.heroBg, isMobile ? styles.heroBgMobile : styles.heroBgDesktop]}>
                 <Image 
                     source={{ uri: hero.bgImages?.[0] || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop' }} 
                     style={StyleSheet.absoluteFillObject}
@@ -237,11 +237,11 @@ export default function PublicHome() {
                 />
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.7)' }]} />
                 
-                <View style={[styles.contentMax, styles.heroWrapper, { flexDirection: isMobile ? 'column' : 'row' }]}>
-                    <View style={styles.heroTextContent}>
+                <View style={[styles.contentMax, styles.heroWrapper, isMobile && styles.heroWrapperMobile, { flexDirection: isMobile ? 'column' : 'row' }]}>
+                    <View style={[styles.heroTextContent, isMobile && styles.heroTextContentMobile]}>
                         <View style={styles.heroBadge}>
                             <Zap size={14} color="#FFF" />
-                            <Text style={styles.heroBadgeText}>UK'S SMARTEST B2B NETWORK</Text>
+                            <Text style={styles.heroBadgeText}>{"UK'S SMARTEST B2B NETWORK"}</Text>
                         </View>
                         <Text style={[styles.heroTitle, { fontSize: isMobile ? 40 : 64, lineHeight: isMobile ? 48 : 74 }]}>
                             {hero.headline}
@@ -254,17 +254,17 @@ export default function PublicHome() {
                         </View>
                     </View>
 
-                    <View style={styles.quoteWidget}>
-                        <View style={styles.widgetTabs}>
+                    <View style={[styles.quoteWidget, isMobile && styles.quoteWidgetMobile]}>
+                        <View style={[styles.widgetTabs, isMobile && styles.widgetTabsMobile]}>
                             <TouchableOpacity 
-                                style={[styles.widgetTab, activeHeroTab === 'quote' && styles.widgetTabActive]}
+                                style={[styles.widgetTab, isMobile && styles.widgetTabMobile, activeHeroTab === 'quote' && styles.widgetTabActive]}
                                 onPress={() => setActiveHeroTab('quote')}
                             >
                                 <Calculator size={18} color={activeHeroTab === 'quote' ? Colors.primary : '#64748B'} />
                                 <Text style={[styles.widgetTabText, activeHeroTab === 'quote' && styles.widgetTabTextActive]}>Quick Quote</Text>
                             </TouchableOpacity>
                             <TouchableOpacity 
-                                style={[styles.widgetTab, activeHeroTab === 'track' && styles.widgetTabActive]}
+                                style={[styles.widgetTab, isMobile && styles.widgetTabMobile, activeHeroTab === 'track' && styles.widgetTabActive]}
                                 onPress={() => setActiveHeroTab('track')}
                             >
                                 <Search size={18} color={activeHeroTab === 'track' ? Colors.primary : '#64748B'} />
@@ -272,7 +272,7 @@ export default function PublicHome() {
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.widgetBody}>
+                        <View style={[styles.widgetBody, isMobile && styles.widgetBodyMobile]}>
                             {activeHeroTab === 'quote' ? (
                                 <>
                                     <PostcodeAutocomplete 
@@ -281,10 +281,10 @@ export default function PublicHome() {
                                         onAddressSelect={setCollection} 
                                         initialValue={collection} 
                                     />
-                                    <View style={styles.phoneInputRow}>
+                                    <View style={[styles.phoneInputRow, isMobile && styles.phoneInputRowMobile]}>
                                         <Text style={styles.fieldLabelSmall}>Sender Contact Number</Text>
                                         <TextInput
-                                            style={[styles.smallInput, phoneErrors.sender && styles.inputError]}
+                                            style={[styles.smallInput, isMobile && styles.smallInputMobile, phoneErrors.sender && styles.inputError]}
                                             placeholder="e.g. 07700 900123"
                                             value={sPhone}
                                             onChangeText={(v) => { setSPhone(v); setPhoneErrors(prev => ({ ...prev, sender: '' })); }}
@@ -294,27 +294,27 @@ export default function PublicHome() {
                                         {phoneErrors.sender ? <Text style={styles.errorTextSmall}>{phoneErrors.sender}</Text> : null}
                                     </View>
 
-                                    <View style={{ height: 16 }} />
+                                    <View style={{ height: isMobile ? 8 : 16 }} />
                                     <PostcodeAutocomplete 
                                         label="Delivery" 
                                         placeholder="Postcode or address"
                                         onAddressSelect={setDelivery} 
                                         initialValue={delivery} 
                                     />
-                                    <View style={styles.phoneInputRow}>
+                                    <View style={[styles.phoneInputRow, isMobile && styles.phoneInputRowMobile]}>
                                         <Text style={styles.fieldLabelSmall}>Receiver Contact Number</Text>
                                         <TextInput
-                                            style={[styles.smallInput, phoneErrors.receiver && styles.inputError]}
+                                            style={[styles.smallInput, isMobile && styles.smallInputMobile, phoneErrors.receiver && styles.inputError]}
                                             placeholder="e.g. 07700 900456"
                                             value={rPhone}
                                             onChangeText={(v) => { setRPhone(v); setPhoneErrors(prev => ({ ...prev, receiver: '' })); }}
-                                            keyboardType="tel"
+                                            keyboardType="phone-pad"
                                             onBlur={() => !validatePhone(rPhone) && setPhoneErrors(prev => ({ ...prev, receiver: 'Please enter a valid UK phone number' }))}
                                         />
                                         {phoneErrors.receiver ? <Text style={styles.errorTextSmall}>{phoneErrors.receiver}</Text> : null}
                                     </View>
                                     
-                                    <View style={styles.vehicleSelect}>
+                                    <View style={[styles.vehicleSelect, isMobile && styles.vehicleSelectMobile]}>
                                         <Text style={styles.fieldLabel}>Vehicle Required</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehicleScroll}>
                                             {['Small Van', 'Medium Van', 'Large Van', 'HGV'].map(v => (
@@ -330,13 +330,13 @@ export default function PublicHome() {
                                     </View>
 
                                     <TouchableOpacity 
-                                        style={[styles.quoteBtn, (isCalculating || !sPhone || !rPhone) && { opacity: 0.7 }]} 
+                                        style={[styles.quoteBtn, isMobile && styles.quoteBtnMobile, (isCalculating || !sPhone || !rPhone) && { opacity: 0.7 }]} 
                                         onPress={handleContinue}
                                         disabled={isCalculating || !sPhone || !rPhone}
                                     >
                                         {isCalculating ? <ActivityIndicator color="#FFF" /> : (
                                             <>
-                                                <Text style={styles.quoteBtnText}>Calculate Instant Quote</Text>
+                                                <Text style={[styles.quoteBtnText, isMobile && styles.quoteBtnTextMobile]}>Calculate Instant Quote</Text>
                                                 <ArrowRight size={20} color="#FFF" />
                                             </>
                                         )}
@@ -615,13 +615,29 @@ const styles = StyleSheet.create({
         position: 'relative',
         justifyContent: 'center',
     },
+    heroBgDesktop: {
+        height: 700,
+    },
+    heroBgMobile: {
+        minHeight: 0,
+        paddingTop: 0,
+        paddingBottom: 72,
+    },
     heroWrapper: {
         zIndex: 1,
         justifyContent: 'space-between',
         alignItems: 'center',
     },
+    heroWrapperMobile: {
+        alignItems: 'stretch',
+        paddingHorizontal: 16,
+    },
     heroTextContent: {
         flex: 1,
+    },
+    heroTextContentMobile: {
+        flex: 0,
+        marginBottom: 24,
     },
     heroBadge: {
         flexDirection: 'row',
@@ -676,10 +692,18 @@ const styles = StyleSheet.create({
         shadowRadius: 50,
         elevation: 10,
     },
+    quoteWidgetMobile: {
+        alignSelf: 'center',
+        maxWidth: 640,
+        borderRadius: 28,
+    },
     widgetTabs: {
         flexDirection: 'row',
         backgroundColor: '#F8FAFC',
         padding: 6,
+    },
+    widgetTabsMobile: {
+        padding: 5,
     },
     widgetTab: {
         flex: 1,
@@ -688,6 +712,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 14,
         borderRadius: 26,
+    },
+    widgetTabMobile: {
+        paddingVertical: 12,
     },
     widgetTabIcon: {
         marginRight: 8,
@@ -711,6 +738,11 @@ const styles = StyleSheet.create({
     widgetBody: {
         padding: 32,
     },
+    widgetBodyMobile: {
+        paddingHorizontal: 20,
+        paddingTop: 24,
+        paddingBottom: 28,
+    },
     fieldLabel: {
         fontSize: 14,
         fontWeight: '700',
@@ -720,6 +752,10 @@ const styles = StyleSheet.create({
     vehicleSelect: {
         marginTop: 24,
         marginBottom: 32,
+    },
+    vehicleSelectMobile: {
+        marginTop: 18,
+        marginBottom: 22,
     },
     vehicleScroll: {
         paddingRight: 20,
@@ -754,6 +790,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    quoteBtnMobile: {
+        height: 54,
+        borderRadius: 14,
+    },
     quoteBtnIcon: {
         marginLeft: 12,
     },
@@ -762,9 +802,16 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
     },
+    quoteBtnTextMobile: {
+        fontSize: 16,
+    },
     phoneInputRow: {
         marginTop: 10,
         marginBottom: 5,
+    },
+    phoneInputRowMobile: {
+        marginTop: 6,
+        marginBottom: 2,
     },
     smallInput: {
         height: 45,
@@ -776,6 +823,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#1e293b',
         marginTop: 5,
+    },
+    smallInputMobile: {
+        height: 43,
+        marginTop: 4,
     },
     fieldLabelSmall: {
         fontSize: 12,
