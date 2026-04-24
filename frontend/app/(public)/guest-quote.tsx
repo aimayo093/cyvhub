@@ -149,7 +149,8 @@ export default function GuestQuotePage() {
     const handleBook = (tier: string, vehicleName: string, price: number) => {
         setStep3({
             estimatedPrice: price,
-            selectedServiceType: tier
+            selectedServiceType: tier,
+            selectedVehicleType: vehicleName.replace(/_/g, ' ')
         });
         if (Platform.OS === 'web') {
             window.location.href = '/guest-checkout';

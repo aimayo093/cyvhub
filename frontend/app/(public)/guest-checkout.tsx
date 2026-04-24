@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, TextInput } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import Colors from '@/constants/colors';
+import { useRouter } from 'expo-router';
 import { useQuoteStore } from '@/hooks/useQuoteStore';
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
@@ -24,9 +23,9 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
 
 export default function GuestCheckoutPage() {
     const { 
-        fromAddress, fromPostcode, senderPhone, 
-        toAddress, toPostcode, receiverPhone,
-        estimatedPrice, selectedServiceType 
+        fromAddress,
+        toAddress,
+        estimatedPrice, selectedServiceType, selectedVehicleType
     } = useQuoteStore();
     const router = useRouter();
 
@@ -49,7 +48,9 @@ export default function GuestCheckoutPage() {
                 firstName,
                 lastName,
                 collectionAddress,
-                deliveryAddress
+                deliveryAddress,
+                vehicleType: selectedVehicleType || 'Medium Van',
+                serviceType: selectedServiceType || 'SAME DAY'
             });
             window.location.href = `/guest-review?${params.toString()}`;
         } else {
@@ -60,7 +61,9 @@ export default function GuestCheckoutPage() {
                     firstName,
                     lastName,
                     collectionAddress,
-                    deliveryAddress
+                    deliveryAddress,
+                    vehicleType: selectedVehicleType || 'Medium Van',
+                    serviceType: selectedServiceType || 'SAME DAY'
                 }
             });
         }
@@ -145,7 +148,7 @@ export default function GuestCheckoutPage() {
                 <View style={styles.summaryRibbon}>
                     <View>
                         <Text style={styles.ribbonLight}>Selected Service</Text>
-                        <Text style={styles.ribbonDark}>{selectedServiceType === 'MANUAL' ? 'Manual Quote Request' : `${selectedServiceType} - Standard Vehicle`}</Text>
+                        <Text style={styles.ribbonDark}>{selectedServiceType === 'MANUAL' ? 'Manual Quote Request' : `${selectedServiceType || 'SAME DAY'} - ${selectedVehicleType || 'Medium Van'}`}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                         <Text style={styles.ribbonDark}>

@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle, ArrowLeft } from 'lucide-react-native';
+import { CheckCircle } from 'lucide-react-native';
 import { Alert, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { apiClient, setToken } from '@/services/api';
+import { apiClient } from '@/services/api';
 import Colors from '@/constants/colors';
 import { useQuoteStore } from '@/hooks/useQuoteStore';
-import { usePayments } from '@/providers/PaymentProvider';
 import { hardNavigate } from '@/utils/hardNavigate';
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
@@ -33,7 +32,7 @@ export default function GuestReviewPage() {
         fromAddress, fromPostcode, senderPhone, 
         toAddress, toPostcode, receiverPhone,
         parcels: storedParcels, totalDistanceMiles,
-        estimatedPrice, selectedServiceType 
+        estimatedPrice, selectedServiceType, selectedVehicleType
     } = useQuoteStore();
     const params = useLocalSearchParams();
     const router = useRouter();
@@ -46,8 +45,6 @@ export default function GuestReviewPage() {
     const vatAmount = price * 0.2;
     const totalIncVat = price + vatAmount;
 
-    const { initiateStripeCheckout } = usePayments();
-
     const handleConfirmAndPay = async () => {
         if (isSubmitting) return; // Prevent double-click
         setIsSubmitting(true);
@@ -55,8 +52,6 @@ export default function GuestReviewPage() {
 
         try {
             // Step 1: Create the delivery booking
-            const parcels = params.parcels ? JSON.parse(params.parcels as string) : [];
-            
             const response = await apiClient('/deliveries', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -71,7 +66,8 @@ export default function GuestReviewPage() {
                     dropoffAddressLine1: params.deliveryAddress || toAddress,
                     dropoffCity: params.deliveryCity || 'Unknown',
                     dropoffPostcode: toPostcode,
-                    vehicleType: 'Standard Vehicle', // Could be from store if we had it
+                    vehicleType: (params.vehicleType as string) || selectedVehicleType || 'Medium Van',
+                    jobType: (params.serviceType as string) || selectedServiceType || 'SAME DAY',
                     parcels: storedParcels.map((p: any) => ({
                         lengthCm: p.lengthCm,
                         widthCm: p.widthCm,
@@ -94,6 +90,11 @@ export default function GuestReviewPage() {
             setBookingRef(delivery.jobNumber || delivery.trackingNumber);
 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            if (price <= 0) {
+                setIsSuccess(true);
+                return;
+            }
+
             // Delivery created successfully. Redirect to branded checkout.
             if (Platform.OS === 'web') {
                 const paramsData = new URLSearchParams({
@@ -214,11 +215,11 @@ export default function GuestReviewPage() {
 
                             <View style={styles.dataRow}>
                                 <Text style={styles.dataLabel}>Service:</Text>
-                                <Text style={styles.dataValue}>{params.serviceType}</Text>
+                                <Text style={styles.dataValue}>{params.serviceType || selectedServiceType || 'SAME DAY'}</Text>
                             </View>
                             <View style={styles.dataRow}>
                                 <Text style={styles.dataLabel}>Vehicle:</Text>
-                                <Text style={styles.dataValue}>{params.vehicleType}</Text>
+                                <Text style={styles.dataValue}>{params.vehicleType || selectedVehicleType || 'Medium Van'}</Text>
                             </View>
 
                             <View style={styles.divider} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, useWindowDimensions, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCMS } from '@/context/CMSContext';
@@ -53,7 +53,7 @@ export default function ServicesHubPage() {
         .filter(([, s]) => s && typeof s === 'object' && s.publishStatus)
         .map(([slug, s]) => {
             if (typeof s !== 'object') return null;
-            return { slug, ...s };
+            return { ...s, slug: s.slug || slug };
         })
         .filter((s): s is any => s !== null)
         .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -317,40 +317,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: Colors.primary,
         marginRight: 8,
-    },
-    ctaSection: {
-        paddingVertical: 100,
-        backgroundColor: '#FFFFFF',
-    },
-    ctaCard: {
-        backgroundColor: Colors.navy,
-        borderRadius: 40,
-        alignItems: 'center',
-    },
-    ctaTitle: {
-        fontSize: 32,
-        fontWeight: '900',
-        color: '#FFFFFF',
-        textAlign: 'center',
-        marginBottom: 16,
-    },
-    ctaDesc: {
-        fontSize: 18,
-        color: 'rgba(255,255,255,0.7)',
-        textAlign: 'center',
-        marginBottom: 40,
-        maxWidth: 600,
-    },
-    primaryBtn: {
-        backgroundColor: Colors.primary,
-        paddingHorizontal: 32,
-        paddingVertical: 18,
-        borderRadius: 16,
-    },
-    primaryBtnText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '800',
     },
     ctaSection: {
         paddingVertical: 100,

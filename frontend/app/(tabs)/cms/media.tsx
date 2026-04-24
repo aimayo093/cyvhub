@@ -45,7 +45,7 @@ export default function MediaLibraryCMS() {
         try {
             setLoading(true);
             const response = await apiClient('/media');
-            setMediaItems(response.data.media || []);
+            setMediaItems(response.media || response.data?.media || []);
         } catch (e) {
             console.error('Failed to load media:', e);
             Alert.alert('Error', 'Failed to load media from the server.');

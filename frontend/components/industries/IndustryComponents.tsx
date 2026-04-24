@@ -96,7 +96,7 @@ export const HeroSection = ({
 
     return (
         <View style={[s.heroOuter]}>
-            <View style={[s.heroContainer, isMobile && s.heroContainerMobile, isCenter && { flexDirection: 'column', textAlign: 'center' }]}>
+            <View style={[s.heroContainer, isMobile && s.heroContainerMobile, isCenter && { flexDirection: 'column' }]}>
                 <View style={[s.heroTextCol, isMobile && s.heroTextColMobile, isCenter && { alignItems: 'center', paddingRight: 0, marginBottom: isCenter && imageUrl ? 48 : 0 }]}>
                     <Text style={[s.heroEyebrow, isCenter && { textAlign: 'center' }]}>{eyebrow.toUpperCase()}</Text>
                     <Text style={[s.heroTitle, isMobile && s.heroTitleMobile, isCenter && { textAlign: 'center' }]}>{title}</Text>

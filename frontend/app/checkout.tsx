@@ -97,6 +97,20 @@ export default function CheckoutScreen() {
     }
   };
 
+  const hydrateFallbackData = useCallback(() => {
+    setJob({
+      id: jobId,
+      jobNumber: (params.jobNumber as string) || 'N/A',
+      status: 'PENDING_PAYMENT',
+      calculatedPrice: parseFloat(params.amount as string || '0'),
+      pickupCity: (params.pickup as string) || 'Collection',
+      dropoffCity: (params.dropoff as string) || 'Delivery',
+      vehicleType: (params.vehicleType as string) || 'Van',
+      jobType: (params.serviceType as string) || 'Standard',
+    } as any);
+    setStatus('ready');
+  }, [jobId, params.amount, params.dropoff, params.jobNumber, params.pickup, params.serviceType, params.vehicleType]);
+
   // Hydrate full job data to fix "Unknown" fields
   const fetchJobDetails = useCallback(async () => {
     if (!jobId) {
@@ -118,7 +132,7 @@ export default function CheckoutScreen() {
         console.error('[Checkout] Job data empty or invalid format:', response);
         // If we have jobId but couldn't get data, try fallback to URL params
         if (params.jobNumber) {
-          useFallbackData();
+          hydrateFallbackData();
         } else {
           setStatus('booking_not_found');
         }
@@ -130,27 +144,13 @@ export default function CheckoutScreen() {
       // We fall back to the URL parameters so the user can still pay.
       if (params.jobNumber) {
         console.warn('[Checkout] Using URL params as fallback for job data.');
-        useFallbackData();
+        hydrateFallbackData();
       } else {
         setErrorDetails(error?.message || 'Connection failed');
         setStatus('error');
       }
     }
-  }, [jobId]);
-
-  const useFallbackData = () => {
-    setJob({
-      id: jobId,
-      jobNumber: (params.jobNumber as string) || 'N/A',
-      status: 'PENDING_PAYMENT',
-      calculatedPrice: parseFloat(params.amount as string || '0'),
-      pickupCity: (params.pickup as string) || 'Collection',
-      dropoffCity: (params.dropoff as string) || 'Delivery',
-      vehicleType: (params.vehicleType as string) || 'Van',
-      jobType: (params.serviceType as string) || 'Standard',
-    } as any);
-    setStatus('ready');
-  };
+  }, [hydrateFallbackData, jobId, params.jobNumber]);
 
   useEffect(() => {
     fetchJobDetails();

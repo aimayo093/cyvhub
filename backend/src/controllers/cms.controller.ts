@@ -438,6 +438,7 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
             aboutPage: data.aboutPage,
             contactPage: data.contactPage,
             servicesPage: data.servicesPage,
+            industriesPage: data.industriesPage,
             menuConfig: data.menuConfig,
             careersPage: data.careersPage,
             jobOpenings: data.jobOpenings
@@ -491,34 +492,7 @@ export const syncCMSData = async (req: AuthenticatedRequest, res: Response) => {
             await prisma.$transaction(updates);
         }
 
-        // --- AUTOMATED SYNC & REVALIDATION ---
-        // As per critical requirement: Saving any field must commit to GitHub and revalidate Next.js
-        try {
-            console.log('[CMSController] Triggering background GitHub sync and revalidation...');
-            
-            // We do this asynchronously to avoid blocking the response
-            (async () => {
-                try {
-                    const { GithubSyncService } = require('../services/github-sync.service');
-                    await GithubSyncService.syncToGithub();
-                    
-                    // Revalidate industries and detail pages
-                    const paths = ['/industries'];
-                    if (data.industryDetails) {
-                        Object.values(data.industryDetails).forEach((ind: any) => {
-                            if (ind.slug) paths.push(`/industries/${ind.slug}`);
-                        });
-                    }
-                    await GithubSyncService.triggerRevalidation(paths);
-                } catch (syncErr) {
-                    console.error('[CMSController] Background sync/revalidate failed:', syncErr);
-                }
-            })();
-        } catch (e) {
-            console.warn('[CMSController] Could not trigger background sync:', e);
-        }
-
-        res.json({ message: 'CMS data synchronized and publish triggered', count: updates.length });
+        res.json({ message: 'CMS data synchronized', count: updates.length });
     } catch (error) {
         console.error('[CMSController] Sync CMS Data Error:', error);
         res.status(500).json({ error: 'Internal server error' });

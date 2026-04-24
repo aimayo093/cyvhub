@@ -157,7 +157,6 @@ export default function MenuCMS() {
                             <TouchableOpacity 
                                 style={[styles.visibilityBtn, item.showHeader && styles.visibilityBtnActive]}
                                 onPress={() => updateItem(item.id, { showHeader: !item.showHeader }, parentId)}
-                                title="Toggle Header"
                             >
                                 {item.showHeader ? <Eye size={16} color={Colors.primary} /> : <EyeOff size={16} color={Colors.textSecondary} />}
                             </TouchableOpacity>

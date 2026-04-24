@@ -23,6 +23,7 @@ export class CommercialService {
         flags: any, 
         vehicleType?: string, 
         businessId?: string,
+        customerId?: string,
         senderPhone?: string,
         receiverPhone?: string
     }) {
@@ -167,6 +168,7 @@ export class CommercialService {
                 requiresManualPricing: pricing.requiresManualPricing || false,
                 senderPhone: payload.senderPhone,
                 receiverPhone: payload.receiverPhone,
+                customerId: payload.customerId,
                 parcels: {
                     create: payload.items.map((item: any) => ({
                         weightKg: parseFloat(item.weightKg) || 0,

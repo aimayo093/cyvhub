@@ -1,8 +1,7 @@
 import { Slot, usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, Easing, useWindowDimensions, ActivityIndicator, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'react-native';
 import { 
     Truck, Facebook, Twitter, Linkedin, Menu, X, User,
     BriefcaseMedical, Monitor, Factory, Plane, Recycle, Settings, Utensils, ChevronRight, ChevronDown,
@@ -21,7 +20,7 @@ export default function PublicLayout() {
     const insets = useSafeAreaInsets();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [hoveredMenuId, setHoveredMenuId] = useState<string | null>(null);
-    const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const mainScrollRef = useRef<ScrollView>(null);
 
     const handleMouseEnter = (id: string) => {
@@ -135,7 +134,10 @@ export default function PublicLayout() {
         return item;
     });
 
-    const headerItems = menuItems.filter(i => i.showHeader !== false);
+    const headerItems = menuItems.filter((i) => {
+        const label = (i.label || '').toLowerCase();
+        return i.showHeader !== false && label !== 'careers' && i.url !== '/careers';
+    });
     const footerItems = menuItems.filter(i => i.showFooter !== false);
 
     if (!isLoaded) {
@@ -650,7 +652,6 @@ const styles = StyleSheet.create({
         borderLeftColor: Colors.border,
     },
     mobileSubLink: {
-        textDecorationLine: 'none',
     },
     mobileSubText: {
         fontSize: 16,

@@ -9,6 +9,7 @@ export type Parcel = {
   heightCm: number | null;
   weightKg: number | null;
   quantity: number;
+  description?: string;
 };
 
 export type QuoteFormState = {
@@ -29,11 +30,12 @@ export type QuoteFormState = {
   // Step 3 / pricing
   estimatedPrice: number | null;
   selectedServiceType: string | null;
+  selectedVehicleType: string | null;
 
   // Actions
   setStep1: (data: Partial<Pick<QuoteFormState, 'fromAddress' | 'fromPostcode' | 'senderPhone' | 'toAddress' | 'toPostcode' | 'receiverPhone'>>) => void;
   setStep2: (parcels: Parcel[]) => void;
-  setStep3: (pricing: Partial<Pick<QuoteFormState, 'estimatedPrice' | 'selectedServiceType'>>) => void;
+  setStep3: (pricing: Partial<Pick<QuoteFormState, 'estimatedPrice' | 'selectedServiceType' | 'selectedVehicleType'>>) => void;
   setDistance: (miles: number | null) => void;
   resetForm: () => void;
 };
@@ -49,6 +51,7 @@ const initialState = {
   parcels: [{ id: '1', lengthCm: null, widthCm: null, heightCm: null, weightKg: null, quantity: 1 }],
   estimatedPrice: null,
   selectedServiceType: null,
+  selectedVehicleType: null,
 };
 
 export const useQuoteStore = create<QuoteFormState>()(

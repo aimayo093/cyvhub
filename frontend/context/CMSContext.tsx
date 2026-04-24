@@ -173,9 +173,15 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
             return merged;
         });
         
-        // Update homepageData from any cms_*Config keys found in the bundle
+        // Update homepageData from either the master homepageData object or any
+        // legacy cms_*Config keys found in the bundle.
         setHomepageData(prev => {
-            const next = { ...prev };
+            const incomingHomepage = isObject(data.homepageData)
+                ? data.homepageData
+                : isObject(data.homepage)
+                    ? data.homepage
+                    : {};
+            const next = { ...prev, ...incomingHomepage };
             Object.keys(prev).forEach(key => {
                 if (isObject(data[key])) {
                     next[key] = { ...next[key], ...data[key] };

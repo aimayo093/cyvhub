@@ -53,7 +53,7 @@ function IndustriesIndexPage() {
         .filter(([, ind]) => ind && typeof ind === 'object' && ind.publishStatus)
         .map(([slug, ind]) => {
             if (typeof ind !== 'object') return null;
-            return { slug, ...ind };
+            return { ...ind, slug: ind.slug || slug };
         })
         .filter((ind): ind is any => ind !== null)
         .sort((a, b) => (a.order || 0) - (b.order || 0));

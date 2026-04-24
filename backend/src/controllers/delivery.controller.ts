@@ -94,6 +94,7 @@ export class DeliveryController {
                 items: itemsToQuote,
                 vehicleType, // Pass the selected vehicle type
                 businessId: businessAccountId || undefined,
+                customerId: userId || undefined,
                 flags: {
                     stairs: specialInstructions?.toLowerCase().includes('stairs'),
                     isReturnTrip: isReturnTrip === true || isReturnTrip === 'true',

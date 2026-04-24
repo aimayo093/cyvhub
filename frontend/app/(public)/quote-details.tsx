@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ArrowLeft, Package, Ruler, Weight } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,8 +28,8 @@ const Stepper = ({ currentStep }: { currentStep: number }) => (
 );
 
 export default function QuoteDetailsPage() {
-    const { width: SCREEN_WIDTH } = useWindowDimensions();
-    const { fromAddress, toAddress, fromPostcode, toPostcode, senderPhone, receiverPhone, parcels: storedParcels, setStep2 } = useQuoteStore();
+    const router = useRouter();
+    const { fromAddress, toAddress, fromPostcode, toPostcode, senderPhone, receiverPhone, parcels: storedParcels, setStep2, setStep3, setDistance } = useQuoteStore();
     const [parcels, setParcels] = useState<any[]>([]);
     const [config, setConfig] = useState<QuoteDetailsConfig>(initialQuoteDetails);
     const [isLoading, setIsLoading] = useState(true);
@@ -211,6 +211,14 @@ export default function QuoteDetailsPage() {
         setParcels(newParcels);
     };
 
+    if (isLoading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
     return (
         <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -370,6 +378,12 @@ export default function QuoteDetailsPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: '#FFFFFF',
     },
     stepperContainer: {

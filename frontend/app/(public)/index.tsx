@@ -28,7 +28,7 @@ export default function PublicHome() {
     const { homepageData, isLoaded } = useCMS();
 
     // Widget states
-    const { fromAddress, fromPostcode, senderPhone, toAddress, toPostcode, receiverPhone, setStep1, setDistance } = useQuoteStore();
+    const { fromAddress, fromPostcode, senderPhone, toAddress, toPostcode, receiverPhone, setStep1, setStep3, setDistance } = useQuoteStore();
     const [collection, setCollection] = useState<any>(null);
     const [delivery, setDelivery] = useState<any>(null);
     const [sPhone, setSPhone] = useState(senderPhone);
@@ -178,6 +178,7 @@ export default function PublicHome() {
                 toPostcode: delivery.postcode,
                 receiverPhone: rPhone
             });
+            setStep3({ selectedVehicleType: vehicleType });
             setDistance(distMiles);
 
             if (Platform.OS === 'web') {

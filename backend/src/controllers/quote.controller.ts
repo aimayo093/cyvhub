@@ -14,7 +14,7 @@ export class QuoteController {
     static async getQuotes(req: any, res: Response): Promise<void> {
         try {
             const quotes = await prisma.quoteRequest.findMany({
-                where: req.user?.role === 'admin' ? {} : { customerId: req.user?.id },
+                where: req.user?.role === 'admin' ? {} : { customerId: req.user?.userId },
                 include: { vehicle: true, customer: true },
                 orderBy: { createdAt: 'desc' }
             });
@@ -33,6 +33,10 @@ export class QuoteController {
             });
             if (!quote) {
                 res.status(404).json({ error: 'Quote not found' });
+                return;
+            }
+            if (req.user?.role !== 'admin' && quote.customerId !== req.user?.userId) {
+                res.status(403).json({ error: 'Forbidden. You do not own this quote.' });
                 return;
             }
             res.json(quote);
@@ -55,6 +59,13 @@ export class QuoteController {
                 flags, 
                 businessId 
             } = req.body;
+            const userId = req.user?.userId;
+            const user = userId
+                ? await prisma.user.findUnique({ where: { id: userId }, select: { businessAccountId: true } })
+                : null;
+            const effectiveBusinessId = req.user?.role === 'admin'
+                ? businessId
+                : user?.businessAccountId;
 
             const result = await CommercialService.requestQuote({
                 pickupPostcode,
@@ -65,7 +76,8 @@ export class QuoteController {
                 dropoffCoords,
                 items,
                 flags: flags || {},
-                businessId: businessId || req.user?.id
+                businessId: effectiveBusinessId || undefined,
+                customerId: userId
             });
             res.json(result);
         } catch (error: any) {
