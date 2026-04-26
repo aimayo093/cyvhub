@@ -75,8 +75,6 @@ export class DeliveryController {
             // ==========================================
             // COMMERCIAL ENGINE GATEWAY (Epic 2/3)
             // ==========================================
-            const distanceMiles = distanceKm ? parseFloat(distanceKm) / 1.60934 : 10.0;
-            
             // Normalize items for the commercial engine
             let itemsToQuote = parcels && parcels.length > 0 ? parcels : [{
                 weightKg: parseFloat(weightKg) || 0,
@@ -86,11 +84,29 @@ export class DeliveryController {
                 quantity: parseInt(quantity, 10) || 1
             }];
 
+            const pLat = Number(pickupLatitude);
+            const pLng = Number(pickupLongitude);
+            const dLat = Number(dropoffLatitude);
+            const dLng = Number(dropoffLongitude);
+            const hasPickupCoords = Number.isFinite(pLat) && Number.isFinite(pLng) && (pLat !== 0 || pLng !== 0);
+            const hasDropoffCoords = Number.isFinite(dLat) && Number.isFinite(dLng) && (dLat !== 0 || dLng !== 0);
+
             const { CommercialService } = require('../services/commercial.service');
             const quoteResult = await CommercialService.requestQuote({
                 pickupPostcode,
                 dropoffPostcode,
-                distanceMiles,
+                pickupAddress: {
+                    line1: pickupAddressLine1,
+                    townCity: pickupCity,
+                    formatted: `${pickupAddressLine1}, ${pickupCity}, ${pickupPostcode}`,
+                },
+                dropoffAddress: {
+                    line1: dropoffAddressLine1,
+                    townCity: dropoffCity,
+                    formatted: `${dropoffAddressLine1}, ${dropoffCity}, ${dropoffPostcode}`,
+                },
+                pickupCoords: hasPickupCoords ? { lat: pLat, lng: pLng } : undefined,
+                dropoffCoords: hasDropoffCoords ? { lat: dLat, lng: dLng } : undefined,
                 items: itemsToQuote,
                 vehicleType, // Pass the selected vehicle type
                 businessId: businessAccountId || undefined,
@@ -164,7 +180,9 @@ export class DeliveryController {
                     quantity: quoteResult.additionalMetrics?.quantity || 1,
                     basePrice: quoteResult.additionalMetrics?.basePrice,
                     bulkDiscount: quoteResult.additionalMetrics?.bulkDiscount || 0,
-                    distanceKm: distanceKm ? parseFloat(distanceKm) : undefined,
+                    distanceKm: quoteResult.metrics?.distanceMiles
+                        ? Number((quoteResult.metrics.distanceMiles * 1.60934).toFixed(2))
+                        : (distanceKm ? parseFloat(distanceKm) : undefined),
                     quoteRequestId: quoteRequestId,
                     parcels: {
                         create: itemsToQuote.map((p: any) => ({

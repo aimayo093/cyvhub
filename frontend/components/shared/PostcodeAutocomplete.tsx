@@ -13,6 +13,7 @@ import {
 import { MapPin, Search, X, ChevronDown, CheckCircle2 } from 'lucide-react-native';
 import Colors from '../../constants/colors';
 import { apiClient } from '../../services/api';
+import { geocodeBrowserAddress, getGooglePlacePredictions, validateGoogleMapsBrowserConfig } from '../../services/googleMaps';
 import { AddressResult, PostcodeAutocompleteProps } from '../../types/address.types';
 
 export const PostcodeAutocomplete: React.FC<PostcodeAutocompleteProps> = ({
@@ -35,6 +36,10 @@ export const PostcodeAutocomplete: React.FC<PostcodeAutocompleteProps> = ({
   const [manualLine1, setManualLine1] = useState('');
 
   const debounceTimer = useRef<any>(null);
+
+  useEffect(() => {
+    validateGoogleMapsBrowserConfig();
+  }, []);
 
   useEffect(() => {
     if (initialValue) {
@@ -77,7 +82,15 @@ export const PostcodeAutocomplete: React.FC<PostcodeAutocompleteProps> = ({
             setSuggestions([]);
           }
         } else {
-          // General autocomplete
+          if (Platform.OS === 'web') {
+            const googleSuggestions = await getGooglePlacePredictions(text);
+            if (googleSuggestions.length > 0) {
+              setSuggestions(googleSuggestions);
+              setAddresses([]);
+              return;
+            }
+          }
+
           const response = await apiClient(`/location/autocomplete?query=${encodeURIComponent(text)}`);
           if (response && response.suggestions) {
             setSuggestions(response.suggestions);
@@ -98,6 +111,14 @@ export const PostcodeAutocomplete: React.FC<PostcodeAutocompleteProps> = ({
     setShowDropdown(false);
     
     try {
+      if (suggestion.source === 'google') {
+        const address = await geocodeBrowserAddress(suggestion.description);
+        if (address) {
+          handleSelectAddress(address);
+          return;
+        }
+      }
+
       const response = await apiClient(`/location/addresses?postcode=${encodeURIComponent(suggestion.description.split(',').pop().trim())}`);
       if (response && response.addresses) {
         setAddresses(response.addresses);

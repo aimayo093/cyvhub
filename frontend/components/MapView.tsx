@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { View, StyleSheet, Platform, Text } from 'react-native';
+import { getGoogleMapsBrowserKey, validateGoogleMapsBrowserConfig } from '../services/googleMaps';
 
 // Only load native map on mobile devices to prevent web crash
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -121,6 +122,132 @@ const generateMapHTML = (
 </html>`;
 };
 
+const escapeHtml = (value: string) =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+const generateGoogleMapHTML = (
+    apiKey: string,
+    center: { latitude: number; longitude: number },
+    zoom: number,
+    markers: MapMarker[],
+    routeLine: { latitude: number; longitude: number }[],
+    polygons: MapPolygon[]
+) => {
+    const markersData = JSON.stringify(markers.map(marker => ({
+        id: marker.id,
+        lat: marker.latitude,
+        lng: marker.longitude,
+        title: marker.title ? escapeHtml(marker.title) : '',
+        type: marker.type || 'driver',
+    })));
+    const routeData = JSON.stringify(routeLine.map(point => ({ lat: point.latitude, lng: point.longitude })));
+    const polygonsData = JSON.stringify(polygons.map(poly => ({
+        id: poly.id,
+        coordinates: poly.coordinates.map(point => ({ lat: point.latitude, lng: point.longitude })),
+        fillColor: poly.fillColor || '#3B82F6',
+        strokeColor: poly.strokeColor || '#2563EB',
+        strokeWidth: poly.strokeWidth || 2,
+    })));
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; font-family: Arial, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    const markers = ${markersData};
+    const routeLine = ${routeData};
+    const polygons = ${polygonsData};
+    const markerColors = {
+      driver: '#2563EB',
+      pickup: '#11A7FA',
+      dropoff: '#EF4444',
+      carrier: '#EA580C'
+    };
+
+    function initMap() {
+      const map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: ${center.latitude}, lng: ${center.longitude} },
+        zoom: ${zoom},
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false
+      });
+
+      const bounds = new google.maps.LatLngBounds();
+
+      markers.forEach((marker) => {
+        const position = { lat: marker.lat, lng: marker.lng };
+        const googleMarker = new google.maps.Marker({
+          position,
+          map,
+          title: marker.title,
+          label: {
+            text: marker.type === 'pickup' ? 'P' : marker.type === 'dropoff' ? 'D' : marker.type === 'carrier' ? 'C' : 'V',
+            color: '#FFFFFF',
+            fontWeight: '700'
+          },
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: markerColors[marker.type] || markerColors.driver,
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 2,
+            scale: 12
+          }
+        });
+        if (marker.title) {
+          const info = new google.maps.InfoWindow({ content: '<strong>' + marker.title + '</strong>' });
+          googleMarker.addListener('click', () => info.open({ map, anchor: googleMarker }));
+        }
+        bounds.extend(position);
+      });
+
+      if (routeLine.length > 1) {
+        new google.maps.Polyline({
+          path: routeLine,
+          map,
+          strokeColor: '#2563EB',
+          strokeOpacity: 0.85,
+          strokeWeight: 4
+        });
+        routeLine.forEach(point => bounds.extend(point));
+      }
+
+      polygons.forEach((poly) => {
+        new google.maps.Polygon({
+          paths: poly.coordinates,
+          map,
+          strokeColor: poly.strokeColor,
+          strokeOpacity: 0.8,
+          strokeWeight: poly.strokeWidth,
+          fillColor: poly.fillColor,
+          fillOpacity: 0.2
+        });
+        poly.coordinates.forEach(point => bounds.extend(point));
+      });
+
+      if (markers.length > 1 || routeLine.length > 1) {
+        map.fitBounds(bounds, 40);
+      }
+    }
+  </script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=initMap"></script>
+</body>
+</html>`;
+};
+
 // Zoom level math helper for latitudeDelta
 const getRegionForZoom = (lat: number, lon: number, zoom: number) => {
     const accuracy = 0.05; // Base map delta
@@ -145,7 +272,11 @@ export default function MapView({
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     if (Platform.OS === 'web') {
-        const html = generateMapHTML(center, zoom, markers, routeLine, polygons);
+        validateGoogleMapsBrowserConfig();
+        const browserKey = getGoogleMapsBrowserKey();
+        const html = browserKey
+            ? generateGoogleMapHTML(browserKey, center, zoom, markers, routeLine, polygons)
+            : generateMapHTML(center, zoom, markers, routeLine, polygons);
         return (
             <View style={[styles.container, { height: typeof height === 'number' ? height : undefined }]}>
                 <iframe

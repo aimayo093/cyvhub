@@ -2,11 +2,12 @@ import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { DispatchEngineService } from '../services/dispatch.service';
 import { prisma } from '../index';
+import { isAdminRole } from '../utils/roles';
 
 // ─── Admin: Manually trigger dispatch for a job ─────────────────────────────
 export const runDispatch = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') {
+        if (!isAdminRole(req.user?.role)) {
             return res.status(403).json({ error: 'Forbidden' });
         }
         const jobId = req.params.jobId as string;
@@ -106,7 +107,7 @@ export const getPendingOffer = async (req: AuthenticatedRequest, res: Response) 
 // ─── Admin: Get dispatch queue ───────────────────────────────────────────────
 export const getDispatchQueue = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const queue = await DispatchEngineService.getDispatchQueue();
         res.json({ queue });
@@ -146,7 +147,7 @@ export const updateAvailability = async (req: AuthenticatedRequest, res: Respons
 // ─── Admin: Get online drivers ───────────────────────────────────────────────
 export const getOnlineDrivers = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const drivers = await prisma.user.findMany({
             where: {

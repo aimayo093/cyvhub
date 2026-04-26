@@ -32,6 +32,7 @@ import adminRoutes from './routes/admin.routes';
 import accountingRoutes from './routes/accounting.routes';
 import commercialRoutes from './routes/commercial.routes';
 import adminCommercialRoutes from './routes/admin.commercial.routes';
+import knowledgeRoutes from './routes/knowledge.routes';
 import complianceRoutes from './routes/compliance.routes';
 import paypalRoutes from './routes/paypal.routes';
 import stripeConnectRoutes from './routes/stripe-connect.routes';
@@ -41,6 +42,7 @@ import serviceRoutes from './routes/service.routes';
 import industryRoutes from './routes/industry.routes';
 import menuRoutes from './routes/menu.routes';
 import careerRoutes from './routes/career.routes';
+import mapsRoutes from './routes/maps.routes';
 
 dotenv.config();
 
@@ -61,11 +63,15 @@ const REQUIRED_ENV_VARS = [
     'CRON_SECRET',
     'OPENROUTER_API_KEY',
     'GETADDRESS_API_KEY',
-    'GOOGLE_MAPS_API_KEY'
+    'GOOGLE_MAPS_SERVER_KEY'
 ];
 
 REQUIRED_ENV_VARS.forEach(key => {
     if (!process.env[key]) {
+        if (key === 'GOOGLE_MAPS_SERVER_KEY' && process.env.NODE_ENV !== 'production') {
+            console.warn('[DEV WARNING] Missing GOOGLE_MAPS_SERVER_KEY. Backend geocoding, route pricing, ETA, and dispatch distance calls will fail until it is added.');
+            return;
+        }
         console.error(`❌ FATAL: Missing required environment variable: ${key}`);
         // During Vercel build, we don't want to kill the process if it's just typechecking,
         // but it will fail at runtime if not fixed.
@@ -74,6 +80,10 @@ REQUIRED_ENV_VARS.forEach(key => {
         }
     }
 });
+
+if (process.env.GOOGLE_MAPS_API_KEY && !process.env.GOOGLE_MAPS_SERVER_KEY) {
+    console.warn('[CONFIG] GOOGLE_MAPS_API_KEY is deprecated. Use GOOGLE_MAPS_SERVER_KEY for backend route, ETA, pricing, and geocoding calls.');
+}
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -248,6 +258,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/media', uploadRateLimiter, mediaRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/maps', quoteRateLimiter, mapsRoutes);
 
 // Location — dedicated rate limiter to allow frequent driver GPS updates
 app.use('/api/location', locationRateLimiter, locationRoutes);
@@ -265,6 +276,7 @@ app.use('/api/cron', cronRoutes);
 app.use('/api/cms', adminRateLimiter, cmsRoutes);
 app.use('/api/admin', adminRateLimiter, adminRoutes);
 app.use('/api/admin/commercial', adminRateLimiter, adminCommercialRoutes);
+app.use('/api/knowledge', adminRateLimiter, knowledgeRoutes);
 
 // External Integrations
 app.use('/api/accounting', accountingRoutes);

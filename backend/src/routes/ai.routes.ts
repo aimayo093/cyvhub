@@ -1,5 +1,17 @@
 import { Router } from 'express';
-import { getDispatchSuggestions, getSLARisks, getAnomalies, askAssistant } from '../controllers/ai.controller';
+import {
+    askAssistant,
+    bookingAssistant,
+    dispatchAssistant,
+    draftInquiryResponse,
+    getAnomalies,
+    getAiSettingsController,
+    getDispatchSuggestions,
+    getSLARisks,
+    listAiLogs,
+    trackingAssistant,
+    updateAiSettingsController
+} from '../controllers/ai.controller';
 import { authenticate } from '../middleware/auth.middleware';
 import rateLimit from 'express-rate-limit';
 
@@ -22,5 +34,12 @@ const aiRateLimiter = rateLimit({
     message: { error: 'Too many AI requests. Please wait a moment before trying again.' },
 });
 router.post('/assistant', aiRateLimiter, askAssistant);
+router.post('/inquiries/:id/draft', aiRateLimiter, draftInquiryResponse);
+router.post('/booking-assistant', aiRateLimiter, bookingAssistant);
+router.post('/tracking-assistant', aiRateLimiter, trackingAssistant);
+router.get('/dispatch-assistant', aiRateLimiter, dispatchAssistant);
+router.get('/settings', getAiSettingsController);
+router.patch('/settings', updateAiSettingsController);
+router.get('/logs', listAiLogs);
 
 export default router;

@@ -158,13 +158,13 @@ export default function PublicHome() {
 
         setIsCalculating(true);
         try {
-            // Calculate distance immediately before advancing
-            const response = await apiClient('/quotes/calculate', {
+            // Calculate route distance through the backend Google Maps server key.
+            const response = await apiClient('/maps/distance', {
                 method: 'POST',
                 body: JSON.stringify({
-                    pickupPostcode: collection.postcode,
-                    dropoffPostcode: delivery.postcode,
-                    items: [{ lengthCm: 10, widthCm: 10, heightCm: 10, weightKg: 1, quantity: 1 }] // Dummy item for distance calc
+                    origin: collection.postcode,
+                    destination: delivery.postcode,
+                    waypoints: []
                 })
             });
 
@@ -318,7 +318,7 @@ export default function PublicHome() {
                                     <View style={[styles.vehicleSelect, isMobile && styles.vehicleSelectMobile]}>
                                         <Text style={styles.fieldLabel}>Vehicle Required</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vehicleScroll}>
-                                            {['Small Van', 'Medium Van', 'Large Van', 'HGV'].map(v => (
+                                            {['Small Van', 'Medium Van', 'Large Van', 'Luton Van'].map(v => (
                                                 <TouchableOpacity 
                                                     key={v} 
                                                     style={[styles.vOption, vehicleType === v && styles.vOptionActive]}

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../index'; // Adjusted import based on structure
 
 import Stripe from 'stripe';
+import { isSuperAdminRole, logAudit } from '../utils/roles';
 
 const stripe = process.env.STRIPE_SECRET_KEY
     ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion })
@@ -95,6 +96,11 @@ export class PaymentController {
     static async issueRefund(req: Request, res: Response): Promise<void> {
         try {
             const { transactionId, amount } = req.body;
+            const role = (req as any).user?.role;
+            if (!isSuperAdminRole(role)) {
+                res.status(403).json({ error: 'Forbidden. Only super admins can issue refunds.' });
+                return;
+            }
 
             const originalTxn = await prisma.paymentTransaction.findUnique({
                 where: { id: transactionId }
@@ -155,6 +161,16 @@ export class PaymentController {
                     data: { paymentStatus: 'REFUNDED' }
                 });
             }
+            await logAudit(prisma, {
+                userId: (req as any).user?.userId,
+                role,
+                actionType: 'FINANCIAL_REFUND_ISSUED',
+                entityType: 'PaymentTransaction',
+                entityId: refundTxn.id,
+                relatedBookingId: originalTxn.deliveryId || undefined,
+                summary: `Refund issued for ${originalTxn.description}`,
+                humanApprovalRequired: true,
+            });
 
             res.status(200).json({ success: true, transaction: refundTxn });
 
@@ -198,9 +214,8 @@ export class PaymentController {
             const id = req.params.id as string;
             const role = (req as any).user?.role;
 
-            // Only allow admins to process payouts (SEC-04 conceptual RBAC check)
-            if (role !== 'admin') {
-                res.status(403).json({ error: 'Forbidden. Only administrators can process settlements.' });
+            if (!isSuperAdminRole(role)) {
+                res.status(403).json({ error: 'Forbidden. Only super admins can process settlements.' });
                 return;
             }
 
@@ -233,6 +248,15 @@ export class PaymentController {
                     description: `Settlement payout to ${settlement.recipientName}`,
                     reference: settlement.id,
                 }
+            });
+            await logAudit(prisma, {
+                userId: (req as any).user?.userId,
+                role,
+                actionType: 'FINANCIAL_PAYOUT_PROCESSED',
+                entityType: 'SettlementBatch',
+                entityId: settlement.id,
+                summary: `Settlement payout processed for ${settlement.recipientName}`,
+                humanApprovalRequired: true,
             });
 
             res.status(200).json({ success: true, settlement: updated });

@@ -57,6 +57,8 @@ export default function AdminCreateJobScreen() {
     widthCm: '30',
     heightCm: '30',
     distanceMiles: '10',
+    durationMinutes: '0',
+    serverPrice: '0',
   });
 
   useEffect(() => {
@@ -77,6 +79,38 @@ export default function AdminCreateJobScreen() {
     b.tradingName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const calculateRoutePricing = async () => {
+    if (!pickup?.postcode || !dropoff?.postcode) return null;
+    const res = await apiClient('/maps/route-pricing', {
+      method: 'POST',
+      body: JSON.stringify({
+        origin: pickup.postcode,
+        destination: dropoff.postcode,
+        businessId: selectedBusiness?.id,
+        vehicleType: formData.vehicleType,
+        urgency: formData.priority === 'URGENT' ? 'same_day' : 'standard',
+        parcelCount: 1,
+        weightKg: parseFloat(formData.weightKg || '0'),
+        dimensions: [{
+          lengthCm: parseFloat(formData.lengthCm || '0'),
+          widthCm: parseFloat(formData.widthCm || '0'),
+          heightCm: parseFloat(formData.heightCm || '0'),
+          weightKg: parseFloat(formData.weightKg || '0'),
+          quantity: 1,
+        }]
+      })
+    });
+    if (res?.success) {
+      setFormData(prev => ({
+        ...prev,
+        distanceMiles: String(res.distanceMiles || prev.distanceMiles),
+        durationMinutes: String(res.durationMinutes || 0),
+        serverPrice: String(res.totalExVat || res.totalPrice || 0),
+      }));
+    }
+    return res;
+  };
+
   const handleNext = async () => {
     if (step === 1 && !selectedBusiness && searchQuery === '') {
        // Allow continuing as guest
@@ -85,16 +119,22 @@ export default function AdminCreateJobScreen() {
     if (step === 2 && pickup?.postcode && dropoff?.postcode) {
         setLoading(true);
         try {
-            const res = await apiClient('/location/distance', {
+            const res = await apiClient('/maps/distance', {
                 method: 'POST',
                 body: JSON.stringify({
-                    pickupPostcode: pickup.postcode,
-                    dropoffPostcode: dropoff.postcode
+                    origin: pickup.postcode,
+                    destination: dropoff.postcode,
+                    waypoints: []
                 })
             });
             if (res && res.distanceMiles) {
-                setFormData(prev => ({ ...prev, distanceMiles: res.distanceMiles.toString() }));
+                setFormData(prev => ({
+                  ...prev,
+                  distanceMiles: res.distanceMiles.toString(),
+                  durationMinutes: String(res.durationMinutes || 0),
+                }));
             }
+            await calculateRoutePricing();
         } catch (e) {
             console.warn('Could not auto-calc distance:', e);
         } finally {
@@ -127,6 +167,8 @@ export default function AdminCreateJobScreen() {
 
     setLoading(true);
     try {
+      const routePrice = await calculateRoutePricing();
+      const finalDistance = parseFloat(String(routePrice?.distanceMiles || formData.distanceMiles || '0'));
       // Map frontend fields to backend refined schema
       const payload = {
         businessId: selectedBusiness?.id,
@@ -168,7 +210,7 @@ export default function AdminCreateJobScreen() {
         pickupTimeWindow: new Date().toISOString(),
         deliveryTimeWindow: new Date(Date.now() + 4 * 3600000).toISOString(),
         jobType: 'SAME_DAY',
-        distanceMilesOverride: dist,
+        distanceMilesOverride: finalDistance,
         pickupCoords: { lat: pickup.latitude, lng: pickup.longitude },
         dropoffCoords: { lat: dropoff.latitude, lng: dropoff.longitude },
       };
@@ -377,7 +419,7 @@ export default function AdminCreateJobScreen() {
                  { id: 'SMALL_VAN', label: 'Small Van' },
                  { id: 'MEDIUM_VAN', label: 'Medium Van' },
                  { id: 'LARGE_VAN', label: 'Large Van' },
-                 { id: 'LUTON_BOX', label: 'Luton Box' }
+                 { id: 'LUTON_VAN', label: 'Luton Van' }
                ].map(v => (
                  <TouchableOpacity 
                    key={v.id} 
@@ -417,6 +459,14 @@ export default function AdminCreateJobScreen() {
 
              <View style={styles.summaryBox}>
                 <Text style={styles.summaryTitle}>Job Summary</Text>
+                <View style={styles.summaryItem}>
+                   <Truck size={14} color={Colors.textMuted} />
+                   <Text style={styles.summaryValue}>
+                     {parseFloat(formData.distanceMiles || '0').toFixed(1)} miles
+                     {formData.durationMinutes !== '0' ? ` · ${formData.durationMinutes} mins` : ''}
+                     {parseFloat(formData.serverPrice || '0') > 0 ? ` · GBP ${parseFloat(formData.serverPrice).toFixed(2)} ex VAT` : ''}
+                   </Text>
+                </View>
                 <View style={styles.summaryItem}>
                    <Building2 size={14} color={Colors.textMuted} />
                    <Text style={styles.summaryValue}>{selectedBusiness?.companyName || 'Guest Customer'}</Text>

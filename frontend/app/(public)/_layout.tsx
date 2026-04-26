@@ -375,7 +375,7 @@ export default function PublicLayout() {
                         </View>
                         <View style={[styles.footerCol, { width: SCREEN_WIDTH >= 768 ? '22%' : SCREEN_WIDTH >= 640 ? '45%' : '100%' }]}>
                             <Text style={styles.footerTitle}>Legal</Text>
-                            {footer.legalLinks?.map((link) => (
+                            {[...(footer.legalLinks || []), { id: 'faq', label: 'FAQ', url: '/faq' }].map((link) => (
                                 <TouchableOpacity key={link.id} style={styles.footerLinkButton} activeOpacity={0.8} onPress={() => navigateTo(link.url)}>
                                     <Text style={styles.footerLink}>{link.label}</Text>
                                 </TouchableOpacity>

@@ -1,6 +1,7 @@
 import { prisma } from '../index';
 import { NotificationService } from '../utils/notification.service';
 import { ComplianceService } from './compliance.service';
+import { RoutingService } from './routing.service';
 
 // ─── Haversine Formula ───────────────────────────────────────────────────────
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -84,6 +85,21 @@ export class DispatchEngineService {
      * Returns drivers/carriers sorted by proximity to the job pickup.
      */
     static async findRankedCandidates(job: any): Promise<any[]> {
+        let pickupLat = Number(job.pickupLatitude);
+        let pickupLng = Number(job.pickupLongitude);
+
+        if ((!pickupLat && !pickupLng) && job.pickupPostcode) {
+            const coords = await RoutingService.getPostcodeCoords(job.pickupPostcode);
+            if (coords) {
+                pickupLat = coords.lat;
+                pickupLng = coords.lng;
+                prisma.job.update({
+                    where: { id: job.id },
+                    data: { pickupLatitude: pickupLat, pickupLongitude: pickupLng },
+                }).catch(console.error);
+            }
+        }
+
         const totalWeight = (job.parcels || []).reduce(
             (sum: number, p: any) => sum + p.weightKg * Number(p.quantity || 1),
             0,
@@ -123,10 +139,10 @@ export class DispatchEngineService {
             }
 
             let distanceKm = 9999;
-            if (user.lastKnownLat && user.lastKnownLng) {
+            if (Number.isFinite(pickupLat) && Number.isFinite(pickupLng) && user.lastKnownLat && user.lastKnownLng) {
                 distanceKm = haversineKm(
-                    job.pickupLatitude,
-                    job.pickupLongitude,
+                    pickupLat,
+                    pickupLng,
                     user.lastKnownLat,
                     user.lastKnownLng,
                 );

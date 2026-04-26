@@ -57,7 +57,10 @@ export const optionalAuthenticate = (req: AuthenticatedRequest, res: Response, n
 
 export const requireRole = (allowedRoles: string[]) => {
     return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-        if (!req.user || !allowedRoles.includes(req.user.role)) {
+        const effectiveAllowed = allowedRoles.includes('admin')
+            ? [...allowedRoles, 'super_admin']
+            : allowedRoles;
+        if (!req.user || !effectiveAllowed.includes(req.user.role)) {
             return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
         }
         next();

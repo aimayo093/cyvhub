@@ -18,7 +18,7 @@ model User {
   passwordHash String
   firstName    String
   lastName     String
-  role         String // "driver" | "customer" | "admin" | "carrier"
+  role         String // "driver" | "customer" | "admin" | "super_admin" | "carrier"
   status       String  @default("PENDING") // "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING"
   phone        String?
   avatar       String?
@@ -57,6 +57,8 @@ model User {
 
   // Dispatch offers received as a driver/carrier
   dispatchOffers DispatchAttempt[] @relation("DriverOffers")
+  assignedInquiries CustomerInquiry[] @relation("InquiryAssignee")
+  inquiryResponses InquiryResponse[] @relation("InquiryResponder")
 
   // HR & Payroll Additions
   hrRecord        HRRecord?
@@ -78,6 +80,145 @@ model User {
   stripeOnboardingComplete Boolean @default(false)
 
   @@index([businessAccountId])
+}
+
+model SupportCategory {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  type        String   // "faq" | "template" | "policy"
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  faqs      FAQ[]
+  templates ResponseTemplate[]
+  policies  Policy[]
+
+  @@index([type])
+}
+
+model CustomerInquiry {
+  id              String   @id @default(uuid())
+  customerName    String
+  email           String
+  phone           String?
+  bookingId       String?
+  message         String   @db.Text
+  status          String   @default("NEW") // NEW | IN_PROGRESS | RESOLVED
+  assignedAdminId String?
+  assignedAdmin   User?    @relation("InquiryAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  responses InquiryResponse[]
+
+  @@index([status])
+  @@index([assignedAdminId])
+  @@index([bookingId])
+}
+
+model ResponseTemplate {
+  id              String   @id @default(uuid())
+  title           String
+  categoryId      String?
+  category        SupportCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  scenario        String   @db.Text
+  responseMessage String   @db.Text
+  internalNotes   String?  @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  responses InquiryResponse[]
+
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+model InquiryResponse {
+  id            String   @id @default(uuid())
+  inquiryId     String
+  inquiry       CustomerInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  responderId   String
+  responder     User     @relation("InquiryResponder", fields: [responderId], references: [id])
+  templateId    String?
+  template      ResponseTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  message       String   @db.Text
+  sentToEmail   String
+  sentAt        DateTime @default(now())
+  aiGenerated   Boolean  @default(false)
+
+  @@index([inquiryId])
+  @@index([responderId])
+  @@index([templateId])
+}
+
+model FAQ {
+  id            String   @id @default(uuid())
+  question      String
+  answer        String   @db.Text
+  categoryId    String?
+  category      SupportCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  order         Int      @default(0)
+  publishStatus String   @default("DRAFT") // DRAFT | PUBLISHED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([publishStatus])
+  @@index([order])
+}
+
+model Policy {
+  id          String   @id @default(uuid())
+  title       String
+  categoryId  String?
+  category    SupportCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  description String   @db.Text
+  fullContent String   @db.Text
+  version     String   @default("1.0")
+  lastUpdated DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([lastUpdated])
+}
+
+model AuditLog {
+  id              String   @id @default(uuid())
+  userId          String?
+  role            String?
+  actionType      String
+  entityType      String?
+  entityId        String?
+  relatedBookingId String?
+  summary         String   @db.Text
+  humanApprovalRequired Boolean @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([actionType])
+  @@index([entityType, entityId])
+}
+
+model AiSettings {
+  id                         String   @id @default("default")
+  enabled                    Boolean  @default(true)
+  supportDraftOnly           Boolean  @default(true)
+  supportAutoSendEnabled     Boolean  @default(false)
+  bookingAssistantEnabled    Boolean  @default(true)
+  trackingAssistantEnabled   Boolean  @default(true)
+  dispatchAssistantEnabled   Boolean  @default(true)
+  paymentConfirmationRequired Boolean @default(true)
+  enabledLocations           Json     @default("{}")
+  knowledgeSources           Json     @default("{}")
+  escalationRules            Json     @default("{}")
+  bookingRules               Json     @default("{}")
+  updatedBy                  String?
+  updatedAt                  DateTime @updatedAt
 }
 
 // ─── Driver Compliance Documents ────────────────────────────────────────────

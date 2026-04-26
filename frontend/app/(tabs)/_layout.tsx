@@ -25,7 +25,9 @@ import {
   X,
   Edit,
   Globe,
-  Calculator
+  Calculator,
+  HelpCircle,
+  MessageSquareText
 } from "lucide-react-native";
 import React, { useState, useCallback } from "react";
 import {
@@ -229,6 +231,8 @@ export default function TabLayout() {
             <Tabs.Screen name="payments" options={{ title: "Payments", href: (isAdmin || isCustomer) ? undefined : null }} />
             <Tabs.Screen name="users" options={{ title: "Users", href: isAdmin ? undefined : null }} />
             <Tabs.Screen name="cms" options={{ title: "CMS", href: isAdmin ? undefined : null }} />
+            <Tabs.Screen name="support-inquiries" options={{ title: "Inquiries", href: isAdmin ? undefined : null }} />
+            <Tabs.Screen name="faq" options={{ title: "FAQ", href: (isAdmin || isCustomer || isDriver || isCarrier) ? undefined : null }} />
             <Tabs.Screen name="profile" options={{ title: isAdmin ? "Settings" : "Profile" }} />
           </Tabs>
         </View>
@@ -286,6 +290,7 @@ function SidebarContent({
     menuItems.push({ key: "jobs", label: "Jobs", icon: Briefcase, route: "/(tabs)/jobs", section: "Main" });
     menuItems.push({ key: "earnings", label: isCarrier ? "Revenue" : "Earnings", icon: Wallet, route: "/(tabs)/earnings", section: "Main" });
     menuItems.push({ key: "map", label: "Map", icon: MapPin, route: "/(tabs)/map", section: "Main" });
+    menuItems.push({ key: "faq", label: "FAQ / Help", icon: HelpCircle, route: "/(tabs)/faq", section: "Support" });
   }
 
   if (isCarrier) {
@@ -297,6 +302,7 @@ function SidebarContent({
     menuItems.push({ key: "deliveries", label: "Deliveries", icon: Package, route: "/(tabs)/deliveries", section: "Main" });
     menuItems.push({ key: "customer-quotes", label: "Quotes", icon: FileText, route: "/(tabs)/customer-quotes", section: "Main" });
     menuItems.push({ key: "payments", label: "Payments", icon: Wallet, route: "/(tabs)/payments", section: "Main" });
+    menuItems.push({ key: "faq", label: "FAQ / Help", icon: HelpCircle, route: "/(tabs)/faq", section: "Support" });
   }
 
   // Activity (customer + driver)
@@ -309,6 +315,7 @@ function SidebarContent({
     menuItems.push({ key: "dispatch", label: "Dispatch", icon: Navigation, route: "/(tabs)/dispatch", section: "Management" });
     menuItems.push({ key: "tracking", label: "Tracking", icon: MapPin, route: "/(tabs)/tracking", section: "Management" });
     menuItems.push({ key: "manage-jobs", label: "All Jobs", icon: ClipboardList, route: "/(tabs)/manage-jobs", section: "Management" });
+    menuItems.push({ key: "support-inquiries", label: "Inquiries", icon: MessageSquareText, route: "/(tabs)/support-inquiries", section: "Support" });
     menuItems.push({ key: "carriers", label: "Carriers", icon: Truck, route: "/(tabs)/carriers", section: "Management" });
     menuItems.push({ key: "businesses", label: "Businesses", icon: Building2, route: "/(tabs)/businesses", section: "Management" });
     menuItems.push({ key: "contracts", label: "Contracts", icon: ScrollText, route: "/(tabs)/contracts", section: "Management" });
@@ -321,6 +328,7 @@ function SidebarContent({
     menuItems.push({ key: "ai-panel", label: "AI Panel", icon: Brain, route: "/(tabs)/ai-panel", section: "Insights" });
     menuItems.push({ key: "users", label: "Users", icon: Users, route: "/(tabs)/users", section: "Admin" });
     menuItems.push({ key: "cms", label: "Website CMS", icon: Globe, route: "/(tabs)/cms", section: "Admin" });
+    menuItems.push({ key: "faq", label: "FAQ / Help", icon: HelpCircle, route: "/(tabs)/faq", section: "Support" });
   }
 
   // Profile — always shown, at bottom

@@ -84,6 +84,8 @@ function DetailRow({ label, value, valueColor }: { label: string; value: string;
 function AdminPaymentsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { admin } = useAuth();
+  const isSuperAdmin = (admin as any)?.role === 'super_admin';
   const {
     transactions, payouts, summary,
     processRefund, processPayout, holdPayout, releasePayout,
@@ -114,6 +116,10 @@ function AdminPaymentsScreen() {
   }, []);
 
   const handleRefund = useCallback((txn: PaymentTransaction) => {
+    if (!isSuperAdmin) {
+      Alert.alert('Read-only access', 'Only Super Admin can issue refunds.');
+      return;
+    }
     Alert.alert(
       'Process Refund',
       `Refund ${formatCurrency(txn.amount)} for ${txn.description}?`,
@@ -130,9 +136,13 @@ function AdminPaymentsScreen() {
         },
       ]
     );
-  }, [processRefund]);
+  }, [processRefund, isSuperAdmin]);
 
   const handleProcessPayout = useCallback((payout: PayoutRecord) => {
+    if (!isSuperAdmin) {
+      Alert.alert('Read-only access', 'Only Super Admin can initiate payouts.');
+      return;
+    }
     Alert.alert(
       'Process Payout',
       `Pay ${formatCurrency(payout.amount)} to ${payout.recipientName} via ${payout.method === 'stripe' ? 'Stripe' : 'PayPal'}?`,
@@ -149,7 +159,7 @@ function AdminPaymentsScreen() {
         },
       ]
     );
-  }, [processPayout]);
+  }, [processPayout, isSuperAdmin]);
 
   const handleHoldPayout = useCallback((payout: PayoutRecord) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -515,6 +525,7 @@ function AdminPaymentsScreen() {
           <View>
             <Text style={styles.headerTitle}>Payments</Text>
             <Text style={styles.headerSubtitle}>Stripe & PayPal Management</Text>
+            {!isSuperAdmin && <Text style={styles.headerSubtitle}>Read only: financial actions require Super Admin.</Text>}
           </View>
           <View style={styles.gatewayBadges}>
             <View style={[styles.gatewayBadge, { backgroundColor: STRIPE_PURPLE + '20' }]}>

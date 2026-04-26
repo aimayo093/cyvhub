@@ -25,6 +25,9 @@ import {
     Factory,
     Bell,
     Briefcase,
+    HelpCircle,
+    MessageSquareText,
+    BookOpen,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import * as Haptics from 'expo-haptics';
@@ -143,6 +146,50 @@ export default function CMSDashboard() {
                             <View style={styles.menuText}>
                                 <Text style={styles.menuTitle}>Careers Manager</Text>
                                 <Text style={styles.menuSubtitle}>Job openings and recruitment content</Text>
+                            </View>
+                            <ChevronRight size={20} color={Colors.textMuted} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.menuItem} onPress={() => handleNav('/(tabs)/cms/faq')} activeOpacity={0.7}>
+                            <View style={[styles.menuIcon, { backgroundColor: Colors.info + '15' }]}>
+                                <HelpCircle size={20} color={Colors.info} />
+                            </View>
+                            <View style={styles.menuText}>
+                                <Text style={styles.menuTitle}>FAQ Manager</Text>
+                                <Text style={styles.menuSubtitle}>Create, publish, categorize, and reorder public FAQs</Text>
+                            </View>
+                            <ChevronRight size={20} color={Colors.textMuted} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.menuItem} onPress={() => handleNav('/(tabs)/cms/response-templates')} activeOpacity={0.7}>
+                            <View style={[styles.menuIcon, { backgroundColor: Colors.purple + '15' }]}>
+                                <MessageSquareText size={20} color={Colors.purple} />
+                            </View>
+                            <View style={styles.menuText}>
+                                <Text style={styles.menuTitle}>Response Templates</Text>
+                                <Text style={styles.menuSubtitle}>Internal support replies for consistent customer responses</Text>
+                            </View>
+                            <ChevronRight size={20} color={Colors.textMuted} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.menuItem} onPress={() => handleNav('/(tabs)/cms/policies')} activeOpacity={0.7}>
+                            <View style={[styles.menuIcon, { backgroundColor: Colors.warning + '15' }]}>
+                                <BookOpen size={20} color={Colors.warning} />
+                            </View>
+                            <View style={styles.menuText}>
+                                <Text style={styles.menuTitle}>Policy Manager</Text>
+                                <Text style={styles.menuSubtitle}>Internal staff-only policies and operating guidance</Text>
+                            </View>
+                            <ChevronRight size={20} color={Colors.textMuted} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.menuItem} onPress={() => handleNav('/(tabs)/cms/ai-settings')} activeOpacity={0.7}>
+                            <View style={[styles.menuIcon, { backgroundColor: Colors.adminPrimary + '15' }]}>
+                                <Settings size={20} color={Colors.adminPrimary} />
+                            </View>
+                            <View style={styles.menuText}>
+                                <Text style={styles.menuTitle}>AI Settings</Text>
+                                <Text style={styles.menuSubtitle}>Configure assistant locations, draft mode, knowledge sources, and logs</Text>
                             </View>
                             <ChevronRight size={20} color={Colors.textMuted} />
                         </TouchableOpacity>

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { prisma } from '../index';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { isAdminRole, isSuperAdminRole, logAudit } from '../utils/roles';
 
 /**
  * GET /api/admin/accounting/settlements
@@ -8,7 +9,7 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
  */
 export const listSettlements = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const settlements = await prisma.settlementBatch.findMany({
             orderBy: { createdAt: 'desc' }
@@ -37,7 +38,7 @@ export const listSettlements = async (req: AuthenticatedRequest, res: Response) 
  */
 export const listLedger = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const entries = await prisma.accountingEntry.findMany({
             orderBy: { date: 'desc' },
@@ -57,7 +58,7 @@ export const listLedger = async (req: AuthenticatedRequest, res: Response) => {
  */
 export const approveSettlement = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isSuperAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden: super admin required' });
         const id = req.params.id as string;
 
         const settlementCheck = await prisma.settlementBatch.findUnique({ where: { id } });
@@ -89,6 +90,15 @@ export const approveSettlement = async (req: AuthenticatedRequest, res: Response
                 settlementId: settlement.id
             }
         });
+        await logAudit(prisma, {
+            userId: req.user?.userId,
+            role: req.user?.role,
+            actionType: 'FINANCIAL_PAYOUT_APPROVED',
+            entityType: 'SettlementBatch',
+            entityId: settlement.id,
+            summary: `Settlement approved and processed for ${settlement.recipientName}`,
+            humanApprovalRequired: true,
+        });
 
         res.json({ message: 'Settlement approved and processed', settlement });
     } catch (error) {
@@ -103,7 +113,7 @@ export const approveSettlement = async (req: AuthenticatedRequest, res: Response
  */
 export const listInvoices = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const invoices = await prisma.invoice.findMany({
             include: {
@@ -137,7 +147,7 @@ export const listInvoices = async (req: AuthenticatedRequest, res: Response) => 
  */
 export const getInvoiceDetails = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         
         const id = req.params.id as string;
         const invoice = await prisma.invoice.findUnique({
@@ -173,7 +183,7 @@ export const getInvoiceDetails = async (req: AuthenticatedRequest, res: Response
  */
 export const markInvoicePaid = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isSuperAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden: super admin required' });
         
         const id = req.params.id as string;
         const invoice = await prisma.invoice.update({
@@ -193,7 +203,7 @@ export const markInvoicePaid = async (req: AuthenticatedRequest, res: Response) 
  */
 export const listTaxAndNi = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         // Fetch TaxNiRecord with linked user (driver)
         const records = await (prisma as any).taxNiRecord.findMany({
@@ -248,7 +258,7 @@ export const listTaxAndNi = async (req: AuthenticatedRequest, res: Response) => 
  */
 export const listVat = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         
         const entries = await prisma.accountingEntry.findMany({
             where: { category: 'vat' },
@@ -268,7 +278,7 @@ export const listVat = async (req: AuthenticatedRequest, res: Response) => {
  */
 export const reconcileVat = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isSuperAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden: super admin required' });
         
         const id = req.params.id as string;
         

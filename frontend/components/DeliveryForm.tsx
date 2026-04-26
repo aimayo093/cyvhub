@@ -31,7 +31,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { apiClient } from '@/services/api';
 import { PostcodeAutocompleteMobile } from '@/components/shared/PostcodeAutocompleteMobile';
 
-const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'HGV'];
+const VEHICLE_TYPES = ['Small Van', 'Medium Van', 'Large Van', 'Luton Van'];
 const JOB_TYPES = ['IT Equipment', 'Construction', 'Medical', 'Furniture', 'Office Supplies', 'General Freight', 'Fragile Items', 'Documents'];
 const TIME_WINDOWS = [
   { label: 'Morning (8am - 12pm)', value: '08:00-12:00' },
@@ -42,6 +42,8 @@ const TIME_WINDOWS = [
 ];
 
 type LocationTarget = 'pickup' | 'dropoff';
+
+const normalizeVehicleTypeForApi = (vehicle: string) => vehicle.toLowerCase().replace(/\s+/g, '_');
 
 interface DeliveryFormProps {
   mode: 'booking' | 'quote';
@@ -91,6 +93,8 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
   const [estimatedPrice, setEstimatedPrice] = useState<number>(initialData?.estimatedPrice || 0);
   const [calculationError, setCalculationError] = useState<string>('');
   const [distanceMiles, setDistanceMiles] = useState<number>(0);
+  const [durationMinutes, setDurationMinutes] = useState<number>(initialData?.durationMinutes || 0);
+  const [routePricing, setRoutePricing] = useState<any>(initialData?.routePricing || null);
 
   // Picker states
   const [showVehiclePicker, setShowVehiclePicker] = useState<boolean>(false);
@@ -105,51 +109,67 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
     if (!pickup?.postcode || !dropoff?.postcode || parcels.length === 0) {
       setCalculationError('');
       setEstimatedPrice(0);
+      setDistanceMiles(0);
+      setDurationMinutes(0);
+      setRoutePricing(null);
       return;
     }
 
     setCalculationError('');
     try {
-      const response = await apiClient('/quotes/calculate', {
+      const dimensions = parcels.map(p => ({
+        lengthCm: parseFloat(p.lengthCm) || 0,
+        widthCm: parseFloat(p.widthCm) || 0,
+        heightCm: parseFloat(p.heightCm) || 0,
+        weightKg: parseFloat(p.weightKg) || 0,
+        quantity: parseInt(p.quantity, 10) || 1
+      }));
+      const parcelCount = dimensions.reduce((sum, item) => sum + item.quantity, 0);
+      const weightKg = dimensions.reduce((sum, item) => sum + (item.weightKg * item.quantity), 0);
+      const dimensionsComplete = dimensions.every(item =>
+        item.lengthCm > 0 && item.widthCm > 0 && item.heightCm > 0 && item.weightKg > 0
+      );
+
+      if (!dimensionsComplete) {
+        setEstimatedPrice(0);
+        setDistanceMiles(0);
+        setDurationMinutes(0);
+        setRoutePricing(null);
+        return;
+      }
+
+      const response = await apiClient('/maps/route-pricing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pickupPostcode: pickup?.postcode,
-          dropoffPostcode: dropoff?.postcode,
-          pickupCoords: { lat: pickup?.latitude, lng: pickup?.longitude },
-          dropoffCoords: { lat: dropoff?.latitude, lng: dropoff?.longitude },
-          items: parcels.map(p => ({
-            lengthCm: parseFloat(p.lengthCm) || 0,
-            widthCm: parseFloat(p.widthCm) || 0,
-            heightCm: parseFloat(p.heightCm) || 0,
-            weightKg: parseFloat(p.weightKg) || 0,
-            quantity: parseInt(p.quantity, 10) || 1
-          })),
+          origin: pickup?.postcode,
+          destination: dropoff?.postcode,
+          vehicleType: normalizeVehicleTypeForApi(selectedVehicle),
+          urgency: isReadyNow ? 'same_day' : 'standard',
+          parcelCount,
+          weightKg,
+          dimensions,
           businessId: customer?.businessAccountId || undefined
         })
       });
 
-      if (response && response.quotes) {
+      if (response?.success) {
         setDistanceMiles(response.distanceMiles || 0);
-        const normalize = (s: string) => (s || '').toUpperCase().replace(/\s/g, '_');
-        const quote = response.quotes.find((q: any) => normalize(q.vehicleName) === normalize(selectedVehicle));
-
-        if (quote) {
-          setEstimatedPrice(quote.totalExVat);
-          setCalculationError('');
-        } else if (response.error) {
-          setCalculationError(response.error);
-          setEstimatedPrice(0);
-        } else {
-          setCalculationError(`No pricing found for ${selectedVehicle}.`);
-          setEstimatedPrice(0);
-        }
+        setDurationMinutes(response.durationMinutes || 0);
+        setEstimatedPrice(response.totalExVat || Number((response.totalPrice / 1.2).toFixed(2)) || 0);
+        setRoutePricing(response);
+        setCalculationError('');
+      } else {
+        setRoutePricing(null);
+        setCalculationError(response?.error || 'Route pricing unavailable.');
+        setEstimatedPrice(0);
       }
     } catch (e: any) {
       setCalculationError(e.message || 'Price calculation unavailable.');
       setEstimatedPrice(0);
+      setRoutePricing(null);
     }
-  }, [pickup, dropoff, parcels, selectedVehicle, customer]);
+  }, [pickup, dropoff, parcels, selectedVehicle, customer, isReadyNow]);
 
   useEffect(() => {
     fetchPrice();
@@ -190,7 +210,7 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
       Alert.alert('Missing Info', 'Please fill in all dropoff details, including a contact phone number.');
       return false;
     }
-    const parcelsValid = parcels.every(p => p.lengthCm && p.weightKg);
+    const parcelsValid = parcels.every(p => p.lengthCm && p.widthCm && p.heightCm && p.weightKg);
     if (!parcelsValid) {
       Alert.alert('Missing Info', 'Please fill in dimensions and weight for all parcels.');
       return false;
@@ -225,13 +245,16 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
       vehicleType: selectedVehicle,
       estimatedPrice,
       distanceMiles,
+      durationMinutes,
+      routePricing,
       jobType: selectedJobType,
       specialInstructions: specialInstructions.trim() || undefined,
       pickupTimeWindow: isReadyNow ? 'READY_NOW' : (selectedPickupWindow || undefined),
       deliveryTimeWindow: selectedDeliveryWindow || undefined,
       isReadyNow,
-      totalIncVat: estimatedPrice * 1.2,
-      vatAmount: estimatedPrice * 0.2,
+      totalIncVat: routePricing?.totalPrice || estimatedPrice * 1.2,
+      vatAmount: routePricing?.vatAmount || estimatedPrice * 0.2,
+      paymentAmountSource: 'server_route_pricing',
     };
 
     await onSubmit(formData);
@@ -250,8 +273,8 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
   );
 
   const renderSummary = () => {
-    const vat = estimatedPrice * 0.2;
-    const total = estimatedPrice + vat;
+    const vat = routePricing?.vatAmount ?? estimatedPrice * 0.2;
+    const total = routePricing?.totalPrice ?? estimatedPrice + vat;
 
     return (
       <View style={styles.summaryContainer}>
@@ -298,7 +321,7 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
               <Text style={styles.summaryLabel}>SHIPMENT</Text>
               <Text style={styles.summaryText}>{selectedVehicle} · {selectedJobType}</Text>
               <Text style={styles.summarySubtext}>
-                {parcels.reduce((acc, p) => acc + (parseInt(p.quantity) || 1), 0)} items · {distanceMiles.toFixed(1)} miles
+                {parcels.reduce((acc, p) => acc + (parseInt(p.quantity) || 1), 0)} items · {distanceMiles.toFixed(1)} miles{durationMinutes ? ` · ${durationMinutes} mins` : ''}
               </Text>
             </View>
           </View>
@@ -727,7 +750,7 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({
                 {calculationError ? 'Calculation Issue' : 'Estimated Price'}
               </Text>
               <Text style={styles.estimateSubLabel}>
-                {calculationError ? calculationError : `${selectedJobType} · ${selectedVehicle}`}
+                {calculationError ? calculationError : `${selectedJobType} · ${selectedVehicle}${distanceMiles ? ` · ${distanceMiles.toFixed(1)} miles${durationMinutes ? ` · ${durationMinutes} mins` : ''}` : ''}`}
               </Text>
             </View>
             {!calculationError && (

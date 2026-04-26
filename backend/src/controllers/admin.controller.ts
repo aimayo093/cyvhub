@@ -1,10 +1,11 @@
 import { Response } from 'express';
 import { prisma } from '../index';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { isAdminRole } from '../utils/roles';
 
 export const getDashboardOverview = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         // System Wide Snapshots
         const activeJobsCount = await prisma.job.count({ where: { status: { notIn: ['COMPLETED', 'CANCELLED'] } } });
@@ -34,7 +35,7 @@ export const getDashboardOverview = async (req: AuthenticatedRequest, res: Respo
 
 export const getComplianceList = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const vehicles = await prisma.fleetVehicle.findMany({
             include: { carrier: true },
@@ -50,7 +51,7 @@ export const getComplianceList = async (req: AuthenticatedRequest, res: Response
 
 export const getHRList = async (req: AuthenticatedRequest, res: Response) => {
    try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const records = await (prisma as any).hRRecord.findMany({
             include: { user: { select: { firstName: true, lastName: true, email: true } } }
@@ -65,7 +66,7 @@ export const getHRList = async (req: AuthenticatedRequest, res: Response) => {
 
 export const adminUpdateCompliance = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         const id = req.params.id as string;
         const { status, adminNote } = req.body;
 
@@ -83,7 +84,7 @@ export const adminUpdateCompliance = async (req: AuthenticatedRequest, res: Resp
 
 export const adminUpdateHR = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         const id = req.params.id as string;
         const data = req.body;
 
@@ -101,7 +102,7 @@ export const adminUpdateHR = async (req: AuthenticatedRequest, res: Response) =>
 
 export const adminUpdateUserStatus = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         const id = req.params.id as string;
         const { status } = req.body;
 
@@ -123,7 +124,7 @@ export const adminUpdateUserStatus = async (req: AuthenticatedRequest, res: Resp
 
 export const adminAssignJob = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         const jobId = req.params.jobId as string;
         const { assigneeId, assigneeType } = req.body;
 
@@ -161,7 +162,7 @@ export const adminAssignJob = async (req: AuthenticatedRequest, res: Response) =
 
 export const adminListJobs = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         
         const jobs = await prisma.job.findMany({
             include: {
@@ -189,7 +190,7 @@ export const adminListJobs = async (req: AuthenticatedRequest, res: Response) =>
 
 export const getUsersList = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const users = await prisma.user.findMany({
             select: {
@@ -215,7 +216,7 @@ export const getUsersList = async (req: AuthenticatedRequest, res: Response) => 
 
 export const getBusinessesList = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
 
         const businesses = await prisma.businessAccount.findMany({
             include: {
@@ -234,27 +235,61 @@ export const getBusinessesList = async (req: AuthenticatedRequest, res: Response
 
 export const adminCreateJob = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         const payload = req.body;
         const { businessId, ...rest } = payload;
 
         const { CommercialService } = require('../services/commercial.service');
-        const distanceMiles = (rest.distanceKm ? parseFloat(rest.distanceKm) : 10.0) / 1.60934;
+        const pLat = Number(rest.pickupLatitude ?? rest.pickupCoords?.lat);
+        const pLng = Number(rest.pickupLongitude ?? rest.pickupCoords?.lng);
+        const dLat = Number(rest.dropoffLatitude ?? rest.dropoffCoords?.lat);
+        const dLng = Number(rest.dropoffLongitude ?? rest.dropoffCoords?.lng);
+        const hasPickupCoords = Number.isFinite(pLat) && Number.isFinite(pLng) && (pLat !== 0 || pLng !== 0);
+        const hasDropoffCoords = Number.isFinite(dLat) && Number.isFinite(dLng) && (dLat !== 0 || dLng !== 0);
+        const jobItems = rest.items || [{ quantity: 1, weightKg: 10, lengthCm: 30, widthCm: 30, heightCm: 30 }];
         
         const quoteResult = await CommercialService.requestQuote({
             ...rest,
-            items: rest.items || [{ quantity: 1, weightKg: 10, lengthCm: 30, widthCm: 30, heightCm: 30 }],
-            distanceMiles,
+            items: jobItems,
+            pickupAddress: {
+                line1: rest.pickupAddressLine1,
+                line2: rest.pickupAddressLine2,
+                townCity: rest.pickupCity,
+                county: rest.pickupCounty,
+                formatted: `${rest.pickupAddressLine1 || ''}, ${rest.pickupCity || ''}, ${rest.pickupPostcode || ''}`,
+            },
+            dropoffAddress: {
+                line1: rest.dropoffAddressLine1,
+                line2: rest.dropoffAddressLine2,
+                townCity: rest.dropoffCity,
+                county: rest.dropoffCounty,
+                formatted: `${rest.dropoffAddressLine1 || ''}, ${rest.dropoffCity || ''}, ${rest.dropoffPostcode || ''}`,
+            },
+            pickupCoords: hasPickupCoords ? { lat: pLat, lng: pLng } : undefined,
+            dropoffCoords: hasDropoffCoords ? { lat: dLat, lng: dLng } : undefined,
             businessId,
+            vehicleType: rest.vehicleType,
             flags: { 
                 isReturnTrip: rest.isReturnTrip,
-                extraStops: rest.extraStops
+                extraStops: rest.extraStops,
+                serviceLevel: rest.priority === 'URGENT' ? 'SAME_DAY' : 'STANDARD'
             }
         });
 
         if (!quoteResult.approved) {
             return res.status(422).json({ error: quoteResult.message });
         }
+
+        const {
+            items,
+            pickupCoords,
+            dropoffCoords,
+            distanceMilesOverride,
+            distanceKm,
+            isReturnTrip,
+            extraStops,
+            ...jobFields
+        } = rest;
 
         const { jobNumber, trackingNumber } = await prisma.$transaction(async (tx) => {
             const counter = await tx.jobCounter.upsert({
@@ -268,14 +303,27 @@ export const adminCreateJob = async (req: AuthenticatedRequest, res: Response) =
 
         const newJob = await prisma.job.create({
             data: {
-                ...rest,
+                ...jobFields,
                 businessAccountId: businessId,
                 jobNumber,
                 trackingNumber,
                 status: 'ASSIGNED',
                 paymentStatus: 'CONTRACT_INVOICE',
                 calculatedPrice: quoteResult.quote.customerTotal,
-                quoteRequestId: quoteResult.quote.id
+                distanceKm: quoteResult.metrics?.distanceMiles
+                    ? Number((quoteResult.metrics.distanceMiles * 1.60934).toFixed(2))
+                    : undefined,
+                quoteRequestId: quoteResult.quote.id,
+                parcels: {
+                    create: (items || jobItems).map((item: any) => ({
+                        weightKg: parseFloat(item.weightKg || 0),
+                        lengthCm: parseFloat(item.lengthCm || 0),
+                        widthCm: parseFloat(item.widthCm || 0),
+                        heightCm: parseFloat(item.heightCm || 0),
+                        quantity: parseInt(item.quantity || 1, 10),
+                        description: item.description || null,
+                    })),
+                }
             }
         });
 
@@ -288,7 +336,7 @@ export const adminCreateJob = async (req: AuthenticatedRequest, res: Response) =
 
 export const adminUpdateBusiness = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
         const id = req.params.id as string;
         const data = req.body;
 

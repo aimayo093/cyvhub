@@ -9,6 +9,8 @@ export const VEHICLE_MAP: Record<string, string> = {
   'Medium Van': 'MEDIUM_VAN',
   'Large Van': 'LARGE_VAN',
   'Luton Van': 'LUTON_VAN',
+  'Luton Box': 'LUTON_VAN',
+  'HGV': 'LUTON_VAN',
   'Car': 'CAR',
   
   // URL/Slug variants
@@ -16,10 +18,12 @@ export const VEHICLE_MAP: Record<string, string> = {
   'medium_van': 'MEDIUM_VAN',
   'large_van': 'LARGE_VAN',
   'luton_van': 'LUTON_VAN',
+  'luton_box': 'LUTON_VAN',
   'small-van': 'SMALL_VAN',
   'medium-van': 'MEDIUM_VAN',
   'large-van': 'LARGE_VAN',
   'luton-van': 'LUTON_VAN',
+  'luton-box': 'LUTON_VAN',
 
   // Self-mapping for safety
   'SMALL_VAN': 'SMALL_VAN',

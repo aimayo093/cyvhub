@@ -1,42 +1,34 @@
 import { Request, Response } from 'express';
 import { prisma } from '../index';
-import axios from 'axios';
 import { sanitizeUserInput } from '../utils/sanitize';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { AiService, ChatMessage } from '../services/ai.service';
+import { isAdminRole, isSuperAdminRole, logAudit } from '../utils/roles';
+import { RoutingService } from '../services/routing.service';
 
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+const paramString = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value || '';
 
-// Helper to calculate distance/duration using Google Maps
 async function getDistanceMatrix(origin: { lat: number; lng: number }, destination: { lat: number; lng: number }) {
-    if (!GOOGLE_MAPS_API_KEY) {
-        console.warn('No GOOGLE_MAPS_API_KEY provided. Falling back to mock distance logic.');
-        return { distanceText: '25 km', durationText: '40 mins', durationSeconds: 2400 };
-    }
-
     try {
-        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin.lat},${origin.lng}&destinations=${destination.lat},${destination.lng}&key=${GOOGLE_MAPS_API_KEY}`;
-        const response = await axios.get(url);
-
-        if (response.data.status === 'OK' && response.data.rows[0].elements[0].status === 'OK') {
-            const element = response.data.rows[0].elements[0];
-            return {
-                distanceText: element.distance.text,
-                durationText: element.duration.text,
-                durationSeconds: element.duration.value
-            };
-        }
-    } catch (e) {
-        console.error('Distance Matrix Error:', e);
+        const route = await RoutingService.calculateRoadRoute(origin, destination);
+        return {
+            distanceText: `${route.distanceMiles.toFixed(1)} miles`,
+            durationText: `${route.durationMinutes} mins`,
+            durationSeconds: route.durationMinutes * 60
+        };
+    } catch (error) {
+        console.error('Route distance error:', error);
     }
 
-    // Fallback if API fails
     return { distanceText: 'Unknown', durationText: 'Unknown', durationSeconds: 3600 };
 }
 
 // 1. Dispatch Suggestions (Rank real drivers by distance to pickup)
 export const getDispatchSuggestions = async (req: Request, res: Response) => {
     try {
+        if (!isAdminRole((req as any).user?.role)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
         const { jobId } = req.query;
         let job;
 
@@ -111,6 +103,9 @@ function getMockSuggestions() {
 // 2. SLA Risks (Compare real ETA from driver location to pickupWindowEnd)
 export const getSLARisks = async (req: Request, res: Response) => {
     try {
+        if (!isAdminRole((req as any).user?.role)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
         // Find jobs currently awaiting pickup with an assigned driver
         const activeJobs = await prisma.job.findMany({
             where: {
@@ -180,6 +175,9 @@ function getMockRisks() {
 // 3. Anomalies (Real Database Checks for Operational Issues)
 export const getAnomalies = async (req: Request, res: Response) => {
     try {
+        if (!isAdminRole((req as any).user?.role)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
         const anomalies = [];
         const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
 
@@ -361,4 +359,126 @@ INSTRUCTIONS:
         console.error('Error in assistant controller:', error);
         res.status(500).json({ error: 'Failed to process assistant query' });
     }
+};
+
+async function getAiSettings() {
+    return prisma.aiSettings.upsert({
+        where: { id: 'default' },
+        create: { id: 'default' },
+        update: {}
+    });
+}
+
+async function retrieveKnowledge(query: string, role: string, bookingId?: string) {
+    const terms = query.slice(0, 300);
+    const [faqs, templates, policies, services, industries, job] = await Promise.all([
+        prisma.fAQ.findMany({
+            where: { publishStatus: 'PUBLISHED', OR: [{ question: { contains: terms, mode: 'insensitive' } }, { answer: { contains: terms, mode: 'insensitive' } }] },
+            take: 5,
+            include: { category: true }
+        }).catch(() => []),
+        isAdminRole(role) ? prisma.responseTemplate.findMany({ where: { isActive: true }, take: 8, include: { category: true } }).catch(() => []) : Promise.resolve([]),
+        isAdminRole(role) ? prisma.policy.findMany({ take: 5, include: { category: true }, orderBy: { lastUpdated: 'desc' } }).catch(() => []) : Promise.resolve([]),
+        prisma.service.findMany({ where: { isActive: true }, take: 6 }).catch(() => []),
+        prisma.industry.findMany({ where: { isActive: true }, take: 6 }).catch(() => []),
+        bookingId ? prisma.job.findFirst({
+            where: { OR: [{ id: bookingId }, { jobNumber: bookingId }, { trackingNumber: bookingId }] },
+            select: {
+                id: true, jobNumber: true, trackingNumber: true, status: true, paymentStatus: true,
+                pickupPostcode: true, dropoffPostcode: true, vehicleType: true, estimatedDelivery: true,
+                assignedDriver: { select: { firstName: true, lastName: true } },
+                assignedCarrier: { select: { firstName: true, lastName: true } }
+            }
+        }).catch(() => null) : Promise.resolve(null)
+    ]);
+    return { faqs, templates, policies, services, industries, job };
+}
+
+export const getAiSettingsController = async (req: AuthenticatedRequest, res: Response) => {
+    if (!isSuperAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
+    res.json({ settings: await getAiSettings() });
+};
+
+export const updateAiSettingsController = async (req: AuthenticatedRequest, res: Response) => {
+    if (!isSuperAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
+    const allowed = ['enabled', 'supportDraftOnly', 'supportAutoSendEnabled', 'bookingAssistantEnabled', 'trackingAssistantEnabled', 'dispatchAssistantEnabled', 'paymentConfirmationRequired', 'enabledLocations', 'knowledgeSources', 'escalationRules', 'bookingRules'];
+    const data: any = { updatedBy: req.user?.userId };
+    allowed.forEach(key => {
+        if (req.body[key] !== undefined) data[key] = req.body[key];
+    });
+    data.paymentConfirmationRequired = true;
+    const settings = await prisma.aiSettings.upsert({ where: { id: 'default' }, create: { id: 'default', ...data }, update: data });
+    await logAudit(prisma, { userId: req.user?.userId, role: req.user?.role, actionType: 'AI_SETTINGS_UPDATED', entityType: 'AiSettings', entityId: 'default', summary: 'AI settings updated' });
+    res.json({ settings });
+};
+
+export const listAiLogs = async (req: AuthenticatedRequest, res: Response) => {
+    if (!isSuperAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
+    const logs = await prisma.auditLog.findMany({ where: { actionType: { startsWith: 'AI_' } }, orderBy: { createdAt: 'desc' }, take: 250 });
+    res.json({ logs });
+};
+
+export const draftInquiryResponse = async (req: AuthenticatedRequest, res: Response) => {
+    if (!isAdminRole(req.user?.role) || !req.user) return res.status(403).json({ error: 'Forbidden' });
+    const settings = await getAiSettings();
+    if (!settings.enabled) return res.status(503).json({ error: 'AI assistant is disabled' });
+    const inquiry = await prisma.customerInquiry.findUnique({ where: { id: paramString(req.params.id) } });
+    if (!inquiry) return res.status(404).json({ error: 'Inquiry not found' });
+    const knowledge = await retrieveKnowledge(inquiry.message, req.user.role, inquiry.bookingId || undefined);
+    const prompt = `Draft a professional CYVhub support reply. Do not send it. Staff will review. Include only facts grounded in context.\nInquiry: ${JSON.stringify(inquiry)}\nKnowledge: ${JSON.stringify(knowledge)}`;
+    let draft = '';
+    try {
+        draft = await AiService.chatCompletion([{ role: 'system', content: 'You are CYVhub internal support AI. Draft only. Never authorize payments, refunds, payouts, or dispatch assignments.' }, { role: 'user', content: prompt }]);
+    } catch {
+        const template = knowledge.templates[0] as any;
+        draft = template?.responseMessage || 'Thank you for contacting CYVhub. We are reviewing your request and will update you shortly.';
+    }
+    await logAudit(prisma, { userId: req.user.userId, role: req.user.role, actionType: 'AI_INQUIRY_DRAFT_GENERATED', entityType: 'CustomerInquiry', entityId: inquiry.id, relatedBookingId: inquiry.bookingId || undefined, summary: draft.slice(0, 240), humanApprovalRequired: true });
+    res.json({ draft, suggestedTemplates: knowledge.templates, relatedFaq: knowledge.faqs, relatedPolicies: knowledge.policies, draftOnly: settings.supportDraftOnly || !settings.supportAutoSendEnabled });
+};
+
+export const bookingAssistant = async (req: AuthenticatedRequest, res: Response) => {
+    const settings = await getAiSettings();
+    if (!settings.enabled || !settings.bookingAssistantEnabled) return res.status(503).json({ error: 'Booking assistant is disabled' });
+    const query = sanitizeUserInput(req.body?.query);
+    if (!query.ok) return res.status(query.status!).json({ error: query.error });
+    const prompt = `Extract delivery booking fields from this message as strict JSON. Required keys: collectionPostcode, deliveryPostcode, collectionAddress, deliveryAddress, collectionDate, collectionTime, vehicleType, parcelQuantity, parcelWeightKg, parcelDimensions, urgency, specialInstructions. Use null for missing. Message: ${query.value}`;
+    let extracted: any = {};
+    try {
+        const raw = await AiService.chatCompletion([{ role: 'system', content: 'Return JSON only. Do not calculate prices or create payments.' }, { role: 'user', content: prompt }]);
+        extracted = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch {
+        extracted = { notes: query.value };
+    }
+    const missing = ['collectionPostcode', 'deliveryPostcode', 'collectionDate', 'collectionTime', 'vehicleType'].filter(k => !extracted[k]);
+    await logAudit(prisma, { userId: req.user?.userId, role: req.user?.role, actionType: 'AI_BOOKING_DRAFT_CREATED', summary: `Booking assistant extracted ${Object.keys(extracted).length} fields`, humanApprovalRequired: true });
+    res.json({
+        extracted,
+        missing,
+        nextQuestion: missing.length ? `Please provide: ${missing.join(', ')}` : 'Please review the draft details. CYVhub will calculate the quote through the pricing engine before payment.',
+        paymentRequiresCustomerConfirmation: true
+    });
+};
+
+export const trackingAssistant = async (req: AuthenticatedRequest, res: Response) => {
+    const settings = await getAiSettings();
+    if (!settings.enabled || !settings.trackingAssistantEnabled) return res.status(503).json({ error: 'Tracking assistant is disabled' });
+    const trackingNumber = String(req.body?.trackingNumber || req.body?.bookingId || '');
+    if (!trackingNumber) return res.status(400).json({ error: 'Tracking number or booking ID is required' });
+    const job = await prisma.job.findFirst({
+        where: { OR: [{ trackingNumber }, { jobNumber: trackingNumber }, { id: trackingNumber }] },
+        select: { id: true, customerId: true, businessAccountId: true, jobNumber: true, trackingNumber: true, status: true, paymentStatus: true, estimatedDelivery: true, dispatchStatus: true, trackingUnlocked: true, assignedDriver: { select: { firstName: true, lastKnownLat: true, lastKnownLng: true } } }
+    });
+    if (!job) return res.status(404).json({ error: 'Delivery not found' });
+    if (!isAdminRole(req.user?.role) && !job.trackingUnlocked) return res.status(403).json({ error: 'Tracking is not yet available for this delivery' });
+    const answer = `Current status: ${job.status}. ${job.estimatedDelivery ? `Estimated delivery: ${job.estimatedDelivery.toISOString()}.` : 'ETA is not available yet.'} ${job.dispatchStatus ? `Dispatch status: ${job.dispatchStatus}.` : ''}`;
+    await logAudit(prisma, { userId: req.user?.userId, role: req.user?.role, actionType: 'AI_TRACKING_QUERY_ANSWERED', entityType: 'Job', entityId: job.id, relatedBookingId: job.id, summary: answer, humanApprovalRequired: false });
+    res.json({ answer, tracking: job });
+};
+
+export const dispatchAssistant = async (req: AuthenticatedRequest, res: Response) => {
+    if (!isAdminRole(req.user?.role)) return res.status(403).json({ error: 'Forbidden' });
+    const settings = await getAiSettings();
+    if (!settings.enabled || !settings.dispatchAssistantEnabled) return res.status(503).json({ error: 'Dispatch assistant is disabled' });
+    return getDispatchSuggestions(req, res);
 };
